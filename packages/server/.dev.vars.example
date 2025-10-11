@@ -1,0 +1,19 @@
+# Copy this file to .dev.vars and fill in your values
+# .dev.vars is gitignored and loaded by wrangler dev
+
+# API token for the Claude Code plugin
+API_TOKEN=dev_token
+
+# BetterAuth secret (generate with: openssl rand -base64 32)
+BETTER_AUTH_SECRET=your-secret-here-generate-with-openssl-rand-base64-32
+
+# BetterAuth URL (your server URL)
+BETTER_AUTH_URL=http://localhost:8787
+
+# GitHub OAuth credentials
+# Get these from: https://github.com/settings/developers
+# Create a new OAuth app with:
+# - Homepage URL: http://localhost:3001
+# - Authorization callback URL: http://localhost:8787/api/auth/callback/github
+GITHUB_CLIENT_ID=your-github-client-id
+GITHUB_CLIENT_SECRET=your-github-client-secret

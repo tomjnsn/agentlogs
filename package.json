@@ -1,0 +1,29 @@
+{
+  "name": "agentic-engineering-insights",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "bun --filter @aei/server dev",
+    "dev:web": "bun --filter @aei/web dev",
+    "dev:all": "concurrently --kill-others -n server,web -c cyan,magenta \"bun run dev 2>&1 | tee logs/server.log\" \"bun run dev:web 2>&1 | tee logs/web.log\"",
+    "logs": "tail -f logs/server.log logs/web.log",
+    "logs:server": "tail -f logs/server.log",
+    "logs:web": "tail -f logs/web.log",
+    "logs:clear": "rm -f logs/*.log && echo 'Logs cleared'",
+    "build": "bun --filter @aei/web build",
+    "test": "bun test",
+    "typecheck": "bun --filter @aei/web build",
+    "db:setup": "bun --filter @aei/server db:setup",
+    "db:migrate": "bun --filter @aei/server db:migrate:local",
+    "db:studio": "bun --filter @aei/server db:studio",
+    "db:reset": "bun --filter @aei/server db:reset",
+    "validate": "bun --filter @aei/server validate"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

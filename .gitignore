@@ -1,0 +1,48 @@
+node_modules
+
+# Build outputs
+dist/
+.output/
+.vinxi/
+*.tsbuildinfo
+
+# TanStack artifacts
+.tanstack/
+
+# Vite
+.vite/
+vite.config.ts.timestamp-*
+
+# Vinxi legacy artifacts
+app.config.timestamp_*.js
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# Environment
+.env
+.env.local
+.dev.vars
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Bun
+bun.lockb
+
+# Cloudflare Workers
+.wrangler/
+wrangler.toml.local
+
+# Documentation archive
+docs/archive/

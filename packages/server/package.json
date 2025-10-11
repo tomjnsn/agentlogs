@@ -1,0 +1,34 @@
+{
+  "name": "@aei/server",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev --local --persist-to=.wrangler/state",
+    "dev:remote": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:setup": "bun run db:generate && bun run db:migrate:local",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate:local": "wrangler d1 migrations apply aei --local",
+    "db:migrate:remote": "wrangler d1 migrations apply aei --remote",
+    "db:studio": "DB_LOCAL_PATH=$(find .wrangler/state/v3/d1/miniflare-D1DatabaseObject -type f -name '*.sqlite' -print -quit 2>/dev/null) drizzle-kit studio --port 4983",
+    "db:reset": "rm -rf .wrangler/state && bun run db:setup",
+    "types": "wrangler types",
+    "validate": "bun run types && bun run db:generate",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@aei/shared": "workspace:*",
+    "@hono/zod-validator": "^0.2.0",
+    "better-auth": "^1.3.27",
+    "drizzle-orm": "^0.44.6",
+    "hono": "^4.0.0"
+  },
+  "devDependencies": {
+    "@better-auth/cli": "^1.3.27",
+    "@types/bun": "latest",
+    "@types/node": "^24.7.1",
+    "drizzle-kit": "^0.31.5",
+    "wrangler": "^4.42.2"
+  }
+}
