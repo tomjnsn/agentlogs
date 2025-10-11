@@ -5,29 +5,35 @@ Capture and analyze Claude Code transcripts to understand how your team uses AI 
 ## What It Does
 
 - **Plugin**: Captures Claude Code session transcripts automatically
-- **Server**: Stores transcripts and analyzes patterns (retries, errors, context overflows)
-- **Web UI**: Displays insights with health scores and recommendations
+- **Web App**: Full-stack application that stores transcripts, analyzes patterns, and displays insights
 
 ## Tech Stack
 
-- **Runtime**: Cloudflare Workers (edge) + Bun (local dev)
+- **Framework**: TanStack Start (full-stack React with SSR)
+- **Runtime**: Cloudflare Workers (edge compute)
 - **Database**: Cloudflare D1 (SQLite at the edge)
 - **ORM**: Drizzle ORM (type-safe queries + migrations)
 - **Auth**: BetterAuth (GitHub OAuth)
-- **API**: Hono (lightweight web framework)
-- **Web**: TanStack Start + React
+- **Routing**: TanStack Router (file-based, type-safe)
+- **Styling**: Tailwind CSS v4 + shadcn/ui
 - **Package Manager**: Bun (monorepo with workspaces)
 
 ## Project Structure
 
 ```
-agentic-engineering-insights/
-├── logs/               # Development logs (auto-created)
+vibeinsights/
 ├── packages/
 │   ├── shared/         # Shared TypeScript types + Zod schemas
 │   ├── plugin/         # Claude Code plugin (captures transcripts)
-│   ├── server/         # Hono API + D1 database + auth
-│   └── web/            # TanStack Start dashboard
+│   └── web/            # TanStack Start full-stack application
+│       ├── src/
+│       │   ├── db/         # Database schema, queries, connection
+│       │   ├── lib/        # Auth, analyzer, server functions
+│       │   ├── routes/     # File-based routes + API endpoints
+│       │   ├── components/ # React components
+│       │   └── scripts/    # Database migration scripts
+│       ├── data/           # SQLite database (gitignored)
+│       └── migrations/     # Drizzle migrations
 ├── package.json        # Root workspace config
 └── README.md          # This file
 ```
@@ -40,7 +46,7 @@ agentic-engineering-insights/
 - **GitHub OAuth App** (for authentication):
   1. Go to https://github.com/settings/developers
   2. Create new OAuth app:
-     - Homepage URL: `http://localhost:3001`
+     - Homepage URL: `http://localhost:8787`
      - Callback URL: `http://localhost:8787/api/auth/callback/github`
   3. Save Client ID and Client Secret
 
@@ -51,70 +57,56 @@ agentic-engineering-insights/
 bun install
 
 # 2. Configure environment
-cd packages/server
+cd packages/web
 cp .dev.vars.example .dev.vars
 # Edit .dev.vars - add your GitHub OAuth credentials
 
-# 3. Setup database
-cd ../..
-bun run db:setup
+# 3. Set up database
+bun db:setup
 
-# 4. Start services
-bun run dev:all    # Starts both services with logging
+# 4. Start the application
+bun dev
+# Auto-generates types and starts Wrangler dev server
 
-# OR run separately (in separate terminals)
-bun run dev        # API server → http://localhost:8787
-bun run dev:web    # Web UI → http://localhost:3001
-
-# 5. Verify
-curl http://localhost:8787/health
-# Expected: {"status":"ok","database":"connected","test":{"test":1}}
-
-# 6. Visit web UI
-open http://localhost:3001
+# 5. Visit the application
+open http://localhost:8787
 ```
 
 ## Environment Variables
 
-**Server** (`packages/server/.dev.vars`):
+**Web App** (`packages/web/.dev.vars`):
 ```bash
+# GitHub OAuth credentials
+GITHUB_CLIENT_ID=your-github-client-id
+GITHUB_CLIENT_SECRET=your-github-client-secret
+
 # Generate with: openssl rand -base64 32
 BETTER_AUTH_SECRET=your-secret-here
 
+# Application URLs (wrangler dev uses port 8787)
 BETTER_AUTH_URL=http://localhost:8787
-GITHUB_CLIENT_ID=your-github-client-id
-GITHUB_CLIENT_SECRET=your-github-client-secret
-API_TOKEN=dev_token
-```
+WEB_URL=http://localhost:8787
 
-**Web** (`.env`):
-```bash
-VITE_API_URL=http://localhost:8787
+# API token for Claude Code plugin
+API_TOKEN=dev_token
 ```
 
 ## Available Commands
 
 ```bash
-# Development
-bun run dev:all       # ⭐ Start both services (recommended)
-bun run dev           # Start API server only (port 8787)
-bun run dev:web       # Start web UI only (port 3001)
+# Development (from packages/web)
+bun dev               # ⭐ Start the application (auto-migrates database)
+bun run build         # Build for production
+bun start             # Start production server
 
-# Logs (use in another terminal while dev:all is running)
-bun run logs          # View all logs in real-time
-bun run logs:server   # View server logs only
-bun run logs:web      # View web logs only
-bun run logs:clear    # Clear all log files
+# Database (from packages/web)
+bun db:setup          # Setup database (generate + apply migrations)
+bun db:generate       # Generate migrations from schema changes
+bun db:migrate        # Run pending migrations
+bun db:studio         # Open Drizzle Studio (GUI on port 4983)
 
-# Database
-bun run db:setup      # Setup database (generate + apply migrations)
-bun run db:reset      # Reset database (clear + reapply)
-bun run db:studio     # Open Drizzle Studio (GUI)
-
-# Build & Deploy
-bun run build         # Build web UI
-bun run typecheck     # Type check
-bun run test          # Run tests
+# Root commands
+bun install           # Install all dependencies
 ```
 
 ## Database
@@ -124,7 +116,7 @@ bun run test          # Run tests
 - AEI: `repos`, `transcripts`, `analysis`
 
 **Location**:
-- Local: `.wrangler/state/v3/d1/*.sqlite`
+- Development: `packages/web/.wrangler/state/v3/d1/*.sqlite`
 - Production: Cloudflare D1
 
 **Migrations**: Managed by Drizzle ORM + Wrangler
@@ -132,102 +124,83 @@ bun run test          # Run tests
 ## Authentication
 
 **Dual authentication**:
-1. **Web UI**: GitHub OAuth (BetterAuth)
-2. **Plugin**: API token (Bearer authentication)
+1. **Web UI**: GitHub OAuth (BetterAuth) - session-based
+2. **Plugin**: API token (Bearer authentication) - for `/api/ingest` endpoint
 
 All data is isolated by `userId` (multi-tenant).
 
-## Logging & Troubleshooting
+**API Endpoints**:
+- `POST /api/ingest` - Accepts transcript data from Claude Code plugin
+- `GET|POST /api/auth/*` - BetterAuth authentication handlers
 
-### Development Logs
+**Server Functions** (RPC-style, called from route loaders):
+- `getRepos()` - Fetch repositories
+- `getTranscriptsByRepo(repoId)` - Fetch transcripts for a repo
+- `getTranscript(id)` - Fetch transcript with analysis
 
-The project uses `concurrently` to run both services with unified logging:
-
-**Features:**
-- Color-coded console output (`[server]` in cyan, `[web]` in magenta)
-- Persistent log files in `logs/` directory
-- Timestamped entries for debugging
-- Auto-stop all services if one fails
-
-**Log locations:**
-- `logs/server.log` - Wrangler + Hono API logs
-- `logs/web.log` - Vite + React logs
-
-**Usage:**
-```bash
-# Terminal 1: Start services
-bun run dev:all
-
-# Terminal 2: Monitor logs
-bun run logs               # View both logs
-bun run logs:server        # Server only
-bun run logs:web           # Web only
-
-# Search logs
-grep "error" logs/*.log
-grep "/api/transcripts" logs/server.log
-
-# Clear old logs
-bun run logs:clear
-```
+## Troubleshooting
 
 ### Common Issues
 
 **Database issues?**
 ```bash
-bun run db:reset
+cd packages/web
+rm -rf data/
+bun db:setup
 ```
 
 **Port already in use?**
 ```bash
 # Kill existing processes
-pkill -f "wrangler dev"
 pkill -f "vite"
+# Or change port in package.json
 ```
 
-**Health check fails?**
+**Authentication issues?**
+1. Verify GitHub OAuth callback URL: `http://localhost:3001/api/auth/callback/github`
+2. Check that `BETTER_AUTH_SECRET` is set in `.env`
+3. Clear browser cookies and try again
+
+**Build/type errors?**
 ```bash
-# Check server is running
-curl http://localhost:8787/health
-
-# Check database
-bun run db:studio
-
-# Check server logs for errors
-bun run logs:server
-```
-
-**Services not starting?**
-```bash
-# Check logs for errors
-cat logs/server.log
-cat logs/web.log
+bun install
+cd packages/web
+bun run build
 ```
 
 ## Production Deployment
 
+Deploy to Cloudflare Workers:
+
 ```bash
+# From packages/web directory
+
 # 1. Create D1 database
 wrangler d1 create aei
-# Copy database_id to wrangler.toml
 
-# 2. Run migrations
-bun run db:migrate:remote
+# 2. Update wrangler.jsonc with database_id
 
-# 3. Set secrets
+# 3. Run migrations
+bun db:migrate:remote
+
+# 4. Set secrets
 wrangler secret put API_TOKEN
 wrangler secret put GITHUB_CLIENT_ID
 wrangler secret put GITHUB_CLIENT_SECRET
 wrangler secret put BETTER_AUTH_SECRET
 
-# 4. Deploy
-bun --filter @aei/server deploy
+# 5. Deploy
+bun run build
+bun run deploy
 ```
+
+See [packages/web/README.md](./packages/web/README.md) for detailed deployment instructions.
 
 ## Package Documentation
 
-- [Server](./packages/server/README.md) - API server details
+- [Web Application](./packages/web/README.md) - Full setup guide and architecture
 - [Plugin](./packages/plugin/README.md) - Plugin installation
+- [Shared Types](./packages/shared/README.md) - Shared type definitions
 
 ## Product Vision
 
@@ -241,4 +214,4 @@ See [product_spec.md](./product_spec.md) for detailed product vision and roadmap
 
 ---
 
-**Ready?** Run `bun install && bun run db:setup && bun run dev:all` 🚀
+**Ready?** Run `bun install && cd packages/web && bun db:setup && bun dev` 🚀

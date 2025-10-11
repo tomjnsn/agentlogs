@@ -11,9 +11,19 @@ dist/
 vite.config.ts.timestamp-*
 
 # Environment
+.dev.vars
 .env
 .env.local
 .env.*.local
+
+# Wrangler state
+.wrangler/
+
+# Cloudflare generated types
+worker-configuration.d.ts
+
+# Migrations (keep in git)
+!migrations/
 
 # Logs
 *.log

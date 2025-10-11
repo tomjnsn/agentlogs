@@ -13,6 +13,8 @@ import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TranscriptsIdRouteImport } from './routes/transcripts.$id'
 import { Route as ReposIdRouteImport } from './routes/repos.$id'
+import { Route as ApiIngestRouteImport } from './routes/api/ingest'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth.$'
 
 const SignInRoute = SignInRouteImport.update({
   id: '/sign-in',
@@ -34,39 +36,76 @@ const ReposIdRoute = ReposIdRouteImport.update({
   path: '/repos/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiIngestRoute = ApiIngestRouteImport.update({
+  id: '/api/ingest',
+  path: '/api/ingest',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/sign-in': typeof SignInRoute
+  '/api/ingest': typeof ApiIngestRoute
   '/repos/$id': typeof ReposIdRoute
   '/transcripts/$id': typeof TranscriptsIdRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/sign-in': typeof SignInRoute
+  '/api/ingest': typeof ApiIngestRoute
   '/repos/$id': typeof ReposIdRoute
   '/transcripts/$id': typeof TranscriptsIdRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/sign-in': typeof SignInRoute
+  '/api/ingest': typeof ApiIngestRoute
   '/repos/$id': typeof ReposIdRoute
   '/transcripts/$id': typeof TranscriptsIdRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/sign-in' | '/repos/$id' | '/transcripts/$id'
+  fullPaths:
+    | '/'
+    | '/sign-in'
+    | '/api/ingest'
+    | '/repos/$id'
+    | '/transcripts/$id'
+    | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/sign-in' | '/repos/$id' | '/transcripts/$id'
-  id: '__root__' | '/' | '/sign-in' | '/repos/$id' | '/transcripts/$id'
+  to:
+    | '/'
+    | '/sign-in'
+    | '/api/ingest'
+    | '/repos/$id'
+    | '/transcripts/$id'
+    | '/api/auth/$'
+  id:
+    | '__root__'
+    | '/'
+    | '/sign-in'
+    | '/api/ingest'
+    | '/repos/$id'
+    | '/transcripts/$id'
+    | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SignInRoute: typeof SignInRoute
+  ApiIngestRoute: typeof ApiIngestRoute
   ReposIdRoute: typeof ReposIdRoute
   TranscriptsIdRoute: typeof TranscriptsIdRoute
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -99,14 +138,30 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReposIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/ingest': {
+      id: '/api/ingest'
+      path: '/api/ingest'
+      fullPath: '/api/ingest'
+      preLoaderRoute: typeof ApiIngestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SignInRoute: SignInRoute,
+  ApiIngestRoute: ApiIngestRoute,
   ReposIdRoute: ReposIdRoute,
   TranscriptsIdRoute: TranscriptsIdRoute,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

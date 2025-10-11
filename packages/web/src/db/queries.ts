@@ -1,6 +1,9 @@
-import { eq, and, desc, sql } from 'drizzle-orm';
-import type { DrizzleDB } from '../lib/drizzle';
-import { repos, transcripts, analysis } from './schema';
+import { eq, and, desc, sql } from 'drizzle-orm'
+import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
+import { repos, transcripts, analysis } from './schema'
+import * as schema from './schema'
+
+export type DrizzleDB = BetterSQLite3Database<typeof schema>
 
 /**
  * Upsert a repository (insert or update if exists)
@@ -28,7 +31,7 @@ export async function upsertRepo(
         lastActivity: new Date().toISOString(),
         transcriptCount: sql`${repos.transcriptCount} + 1`,
       },
-    });
+    })
 }
 
 /**
@@ -39,7 +42,7 @@ export async function getRepos(db: DrizzleDB, userId: string) {
     .select()
     .from(repos)
     .where(eq(repos.userId, userId))
-    .orderBy(desc(repos.lastActivity));
+    .orderBy(desc(repos.lastActivity))
 }
 
 /**
@@ -59,7 +62,7 @@ export async function insertTranscript(
     sessionId,
     events,
     userId,
-  });
+  })
 }
 
 /**
@@ -79,7 +82,7 @@ export async function getTranscriptsByRepo(
         eq(transcripts.userId, userId)
       )
     )
-    .orderBy(desc(transcripts.createdAt));
+    .orderBy(desc(transcripts.createdAt))
 }
 
 /**
@@ -99,7 +102,7 @@ export async function getTranscript(
       analysis: true,
       repo: true,
     },
-  });
+  })
 }
 
 /**
@@ -113,7 +116,7 @@ export async function getUnanalyzedTranscripts(
     .select()
     .from(transcripts)
     .where(eq(transcripts.analyzed, false))
-    .limit(limit);
+    .limit(limit)
 }
 
 /**
@@ -146,7 +149,7 @@ export async function insertAnalysis(
       .update(transcripts)
       .set({ analyzed: true })
       .where(eq(transcripts.id, transcriptId)),
-  ]);
+  ])
 }
 
 /**
@@ -155,5 +158,5 @@ export async function insertAnalysis(
 export async function getAnalysis(db: DrizzleDB, transcriptId: string) {
   return await db.query.analysis.findFirst({
     where: eq(analysis.transcriptId, transcriptId),
-  });
+  })
 }

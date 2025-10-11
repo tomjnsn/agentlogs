@@ -1,18 +1,25 @@
 /// <reference types="vite/client" />
-import React, { type ReactNode } from 'react';
-import { createRootRoute, Link, Outlet, useRouter, HeadContent, Scripts } from '@tanstack/react-router';
-import { authClient } from '../lib/auth-client';
-import { Button } from '@/components/ui/button';
-import appCss from '../styles/globals.css?url';
+import React, { type ReactNode } from "react";
+import {
+  createRootRoute,
+  Link,
+  Outlet,
+  useRouter,
+  HeadContent,
+  Scripts,
+} from "@tanstack/react-router";
+import { authClient } from "../lib/auth-client";
+import { Button } from "@/components/ui/button";
+import appCss from "../styles/globals.css?url";
 
 export const Route = createRootRoute({
   head: () => ({
     meta: [
-      { charSet: 'utf-8' },
-      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'Agentic Engineering Insights' },
+      { charSet: "utf-8" },
+      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { title: "Agentic Engineering Insights" },
     ],
-    links: [{ rel: 'stylesheet', href: appCss }],
+    links: [{ rel: "stylesheet", href: appCss }],
   }),
   component: RootComponent,
 });
@@ -49,8 +56,8 @@ function AppContent() {
     // Note: The redirect will happen before this completes, but setting state
     // ensures we show the loading state immediately
     await authClient.signIn.social({
-      provider: 'github',
-      callbackURL: 'http://localhost:3001/', // Redirect back to web app after auth
+      provider: "github",
+      callbackURL: "http://localhost:3000/", // Redirect back to web app after auth
     });
   };
 
@@ -62,29 +69,29 @@ function AppContent() {
             router.invalidate(); // Invalidate router to clear cached data
           },
           onError: (ctx) => {
-            console.error('Sign out error:', ctx.error);
+            console.error("Sign out error:", ctx.error);
             const error = ctx.error as any;
 
             // Check if it's a CORS or origin error
             if (error?.status === 403) {
               const currentPort = window.location.port;
-              const expectedPort = '3001';
+              const expectedPort = "3000";
 
               if (currentPort !== expectedPort) {
                 alert(
                   `Port mismatch detected!\n\n` +
-                  `You're accessing the app on port ${currentPort}, but it should be on port ${expectedPort}.\n\n` +
-                  `Please access the app at: http://localhost:${expectedPort}\n\n` +
-                  `This is configured in WEB_PORT in your .env file and WEB_URL in packages/server/.dev.vars`
+                    `You're accessing the app on port ${currentPort}, but it should be on port ${expectedPort}.\n\n` +
+                    `Please access the app at: http://localhost:${expectedPort}\n\n` +
+                    `This is configured in WEB_PORT in your .env file and WEB_URL in packages/server/.dev.vars`
                 );
               } else {
                 alert(
                   `Authentication error (403 Forbidden)\n\n` +
-                  `This might be a CORS or trusted origins issue.\n\n` +
-                  `Check that:\n` +
-                  `1. The API server is running on http://localhost:8787\n` +
-                  `2. WEB_URL in packages/server/.dev.vars matches your current URL\n` +
-                  `3. Both servers were restarted after configuration changes`
+                    `This might be a CORS or trusted origins issue.\n\n` +
+                    `Check that:\n` +
+                    `1. The API server is running on http://localhost:8787\n` +
+                    `2. WEB_URL in packages/server/.dev.vars matches your current URL\n` +
+                    `3. Both servers were restarted after configuration changes`
                 );
               }
             }
@@ -92,8 +99,12 @@ function AppContent() {
         },
       });
     } catch (error) {
-      console.error('Unexpected sign out error:', error);
-      alert(`Failed to sign out: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error("Unexpected sign out error:", error);
+      alert(
+        `Failed to sign out: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     }
   };
 

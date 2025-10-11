@@ -1,33 +1,23 @@
-import { defineConfig, Plugin } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite'
+import viteReact from '@vitejs/plugin-react'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import { cloudflare } from '@cloudflare/vite-plugin'
 import tsconfigPaths from 'vite-tsconfig-paths'
 import path from 'path'
 
-// Custom plugin to add timestamps to Vite logs
-const timestampLogger = (): Plugin => ({
-  name: 'timestamp-logger',
-  configureServer(server) {
-    const originalPrint = server.config.logger.info;
-    server.config.logger.info = (msg, options) => {
-      originalPrint(`[${new Date().toISOString()}] ${msg}`, options);
-    };
-  },
-});
-
 export default defineConfig({
+  server: {
+    port: 3000,
+  },
   plugins: [
-    timestampLogger(),
-    tanstackStart(),
-    react(),
     tsconfigPaths(),
+    cloudflare({ viteEnvironment: { name: 'ssr' } }),
+    tanstackStart(),
+    viteReact(),
   ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
-  },
-  server: {
-    port: 3001,
   },
 })

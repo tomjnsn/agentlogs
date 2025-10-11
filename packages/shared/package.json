@@ -10,8 +10,5 @@
   },
   "dependencies": {
     "zod": "^3.22.4"
-  },
-  "devDependencies": {
-    "@types/bun": "latest"
   }
 }

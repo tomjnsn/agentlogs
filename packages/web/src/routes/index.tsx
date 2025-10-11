@@ -1,6 +1,6 @@
-import { createFileRoute, Link, redirect } from '@tanstack/react-router'
-import { fetchRepos } from '../lib/api'
-import { authClient } from '../lib/auth-client'
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { getRepos } from "../lib/server-functions";
+import { authClient } from "../lib/auth-client";
 import {
   Table,
   TableBody,
@@ -8,40 +8,40 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
-import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+} from "@/components/ui/table";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
-export const Route = createFileRoute('/')({
+export const Route = createFileRoute("/")({
   beforeLoad: async () => {
     // Check if user is authenticated
     const { data: session } = await authClient.getSession();
 
     if (!session) {
-      // Redirect to sign-in page (we'll create this as a modal/flow)
+      // Redirect to sign-in page
       throw redirect({
-        to: '/sign-in',
+        to: "/sign-in",
       });
     }
   },
   loader: async () => {
     try {
-      return await fetchRepos();
+      return await getRepos();
     } catch (error) {
-      console.error('Failed to load repos:', error);
+      console.error("Failed to load repos:", error);
       throw error;
     }
   },
   component: IndexComponent,
   errorComponent: ErrorComponent,
-})
+});
 
 function ErrorComponent({ error }: { error: Error }) {
   return (
     <div className="text-center py-12">
       <h2 className="text-2xl font-bold text-red-600">Error</h2>
       <p className="text-gray-600 mt-2">{error.message}</p>
-      {error.message.includes('Unauthorized') && (
+      {error.message.includes("Unauthorized") && (
         <p className="text-sm text-gray-500 mt-4">
           Please sign in with GitHub using the button in the header.
         </p>
@@ -51,7 +51,7 @@ function ErrorComponent({ error }: { error: Error }) {
 }
 
 function IndexComponent() {
-  const repos = Route.useLoaderData()
+  const repos = Route.useLoaderData();
 
   return (
     <div className="space-y-6">
@@ -80,13 +80,13 @@ function IndexComponent() {
                     <TableCell>
                       <div>
                         <div className="font-medium">{repo.name}</div>
-                        <div className="text-sm text-muted-foreground">{repo.id}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {repo.id}
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>{repo.transcriptCount}</TableCell>
-                    <TableCell>
-                      {repo.avgHealthScore !== null ? `${repo.avgHealthScore}%` : 'N/A'}
-                    </TableCell>
+                    <TableCell>N/A</TableCell>
                     <TableCell className="text-muted-foreground">
                       {new Date(repo.lastActivity).toLocaleString()}
                     </TableCell>
@@ -105,5 +105,5 @@ function IndexComponent() {
         </Card>
       )}
     </div>
-  )
+  );
 }

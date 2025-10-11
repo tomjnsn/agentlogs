@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { fetchTranscripts } from '../lib/api'
+import { getTranscriptsByRepo } from '../lib/server-functions'
 import {
   Table,
   TableBody,
@@ -10,10 +10,9 @@ import {
 } from '@/components/ui/table'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { HealthBadge } from '@/components/health-badge'
 
 export const Route = createFileRoute('/repos/$id')({
-  loader: ({ params }) => fetchTranscripts(params.id),
+  loader: ({ params }) => getTranscriptsByRepo({ data: params.id }),
   component: RepoDetailComponent,
 })
 
@@ -49,12 +48,12 @@ function RepoDetailComponent() {
                 <TableRow key={transcript.id}>
                   <TableCell>
                     <code className="text-sm font-mono">
-                      {transcript.sessionId.slice(0, 8)}...
+                      {transcript.sessionId?.slice(0, 8) || 'N/A'}...
                     </code>
                   </TableCell>
-                  <TableCell>{transcript.eventCount}</TableCell>
+                  <TableCell>N/A</TableCell>
                   <TableCell>
-                    <HealthBadge score={transcript.healthScore} />
+                    {transcript.analyzed ? 'Analyzed' : 'Pending'}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {new Date(transcript.createdAt).toLocaleString()}

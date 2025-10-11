@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { fetchTranscript } from '../lib/api'
+import { getTranscript } from '../lib/server-functions'
 import type { TranscriptEvent } from '@aei/shared'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -8,13 +8,13 @@ import { StatCard } from '@/components/stat-card'
 import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/transcripts/$id')({
-  loader: ({ params }) => fetchTranscript(params.id),
+  loader: ({ params }) => getTranscript({ data: params.id }),
   component: TranscriptDetailComponent,
 })
 
 function TranscriptDetailComponent() {
-  const data = Route.useLoaderData()
-  const { transcript, analysis } = data
+  const transcript = Route.useLoaderData()
+  const analysis = transcript.analysis
 
   return (
     <div className="space-y-6">
@@ -35,11 +35,11 @@ function TranscriptDetailComponent() {
           <CardContent className="space-y-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               <StatCard label="Health Score" value={`${analysis.healthScore}%`} />
-              <StatCard label="Retries" value={analysis.metrics.retries} />
-              <StatCard label="Errors" value={analysis.metrics.errors} />
+              <StatCard label="Retries" value={analysis.retryCount} />
+              <StatCard label="Errors" value={analysis.errorCount} />
               <StatCard
                 label="Failure Rate"
-                value={`${(analysis.metrics.toolFailureRate * 100).toFixed(1)}%`}
+                value={`${(analysis.toolFailureRate * 100).toFixed(1)}%`}
               />
             </div>
 
