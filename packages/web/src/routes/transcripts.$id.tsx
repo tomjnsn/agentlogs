@@ -55,7 +55,7 @@ function TranscriptDetailComponent() {
                             ? 'destructive'
                             : ap.severity === 'medium'
                             ? 'secondary'
-                            : 'outline'
+                            : 'outline-solid'
                         }
                       >
                         {ap.severity}
