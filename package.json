@@ -10,6 +10,7 @@
     "dev": "bun --filter @aei/web dev",
     "build": "bun --filter @aei/web build",
     "start": "bun --filter @aei/web start",
+    "cli": "bun --filter @aei/cli start",
     "db:setup": "bun --filter @aei/web db:setup",
     "db:generate": "bun --filter @aei/web db:generate",
     "db:migrate": "bun --filter @aei/web db:migrate",
