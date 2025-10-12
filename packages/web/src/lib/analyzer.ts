@@ -1,4 +1,4 @@
-import type { TranscriptEvent, AnalysisResult } from '@aei/shared'
+import type { TranscriptEvent, AnalysisResult } from '@vibeinsights/shared'
 
 export function analyzeTranscript(events: TranscriptEvent[]): AnalysisResult {
   // Calculate metrics

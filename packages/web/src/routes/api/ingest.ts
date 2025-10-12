@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
-import { uploadPayloadSchema } from '@aei/shared'
+import { uploadPayloadSchema } from '@vibeinsights/shared'
 import { env } from 'cloudflare:workers'
 import { createDrizzle } from '../../db'
 import * as queries from '../../db/queries'

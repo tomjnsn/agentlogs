@@ -190,7 +190,7 @@ packages/web/
 ### 1. Create D1 Database
 
 ```bash
-wrangler d1 create aei
+wrangler d1 create vibeinsights
 ```
 
 Copy the `database_id` from the output and update `wrangler.jsonc`:
@@ -200,7 +200,7 @@ Copy the `database_id` from the output and update `wrangler.jsonc`:
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "aei",
+      "database_name": "vibeinsights",
       "database_id": "your-database-id-here",
       "migrations_dir": "migrations"
     }
@@ -257,7 +257,7 @@ Your app will be deployed to `https://vibeinsights.your-subdomain.workers.dev`!
 The application uses TypeScript throughout with:
 - Type-safe routing via TanStack Router
 - Type-safe database queries via Drizzle ORM
-- Shared types via `@aei/shared` package
+- Shared types via `@vibeinsights/shared` package
 - Generated route types
 
 ### Code Style

@@ -1,5 +1,5 @@
 {
-  "name": "@aei/web",
+  "name": "@vibeinsights/web",
   "version": "0.1.0",
   "type": "module",
   "scripts": {
@@ -10,13 +10,13 @@
     "cf-typegen": "wrangler types",
     "db:setup": "bun run db:generate && bun run db:migrate:local",
     "db:generate": "drizzle-kit generate",
-    "db:migrate:local": "wrangler d1 migrations apply aei --local",
-    "db:migrate:remote": "wrangler d1 migrations apply aei --remote",
+    "db:migrate:local": "wrangler d1 migrations apply vibeinsights --local",
+    "db:migrate:remote": "wrangler d1 migrations apply vibeinsights --remote",
     "db:studio": "DB_LOCAL_PATH=$(find .wrangler/state/v3/d1/miniflare-D1DatabaseObject -type f -name '*.sqlite' -print -quit 2>/dev/null) drizzle-kit studio --port 4983",
     "db:reset": "rm -rf .wrangler/state && bun run db:setup"
   },
   "dependencies": {
-    "@aei/shared": "workspace:*",
+    "@vibeinsights/shared": "workspace:*",
     "@radix-ui/react-slot": "^1.2.3",
     "@tanstack/react-router": "^1.132.0",
     "@tanstack/react-start": "^1.132.52",

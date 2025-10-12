@@ -7,14 +7,14 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "bun --filter @aei/web dev",
-    "build": "bun --filter @aei/web build",
-    "start": "bun --filter @aei/web start",
-    "cli": "bun --filter @aei/cli start",
-    "db:setup": "bun --filter @aei/web db:setup",
-    "db:generate": "bun --filter @aei/web db:generate",
-    "db:migrate": "bun --filter @aei/web db:migrate",
-    "db:studio": "bun --filter @aei/web db:studio"
+    "dev": "bun --filter @vibeinsights/web dev",
+    "build": "bun --filter @vibeinsights/web build",
+    "start": "bun --filter @vibeinsights/web start",
+    "cli": "bun --filter @vibeinsights/cli start",
+    "db:setup": "bun --filter @vibeinsights/web db:setup",
+    "db:generate": "bun --filter @vibeinsights/web db:generate",
+    "db:migrate": "bun --filter @vibeinsights/web db:migrate",
+    "db:studio": "bun --filter @vibeinsights/web db:studio"
   },
   "devDependencies": {
     "@types/bun": "^1.3.0",

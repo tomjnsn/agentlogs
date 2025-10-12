@@ -19,7 +19,7 @@ function SignInComponent() {
     <div className="flex items-center justify-center min-h-[60vh]">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Welcome to AEI</CardTitle>
+          <CardTitle className="text-2xl">Welcome to Vibe Insights</CardTitle>
           <CardDescription>
             Sign in with your GitHub account to access your engineering insights
           </CardDescription>

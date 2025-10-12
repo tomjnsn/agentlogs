@@ -2,35 +2,39 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "agentic-engineering-insights",
+      "name": "vibeinsights",
       "devDependencies": {
         "@types/bun": "^1.3.0",
         "unenv": "^1.10.0",
       },
     },
+    "packages/cli": {
+      "name": "@vibeinsights/cli",
+      "version": "0.0.0",
+    },
     "packages/plugin": {
-      "name": "@aei/plugin",
+      "name": "@vibeinsights/plugin",
       "version": "0.1.0",
       "dependencies": {
-        "@aei/shared": "workspace:*",
         "@anthropic-ai/claude-code": "^1.0.0",
+        "@vibeinsights/shared": "workspace:*",
       },
     },
     "packages/shared": {
-      "name": "@aei/shared",
+      "name": "@vibeinsights/shared",
       "version": "0.1.0",
       "dependencies": {
         "zod": "^3.22.4",
       },
     },
     "packages/web": {
-      "name": "@aei/web",
+      "name": "@vibeinsights/web",
       "version": "0.1.0",
       "dependencies": {
-        "@aei/shared": "workspace:*",
         "@radix-ui/react-slot": "^1.2.3",
         "@tanstack/react-router": "^1.132.0",
         "@tanstack/react-start": "^1.132.52",
+        "@vibeinsights/shared": "workspace:*",
         "better-auth": "^1.3.27",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
@@ -59,12 +63,6 @@
     },
   },
   "packages": {
-    "@aei/plugin": ["@aei/plugin@workspace:packages/plugin"],
-
-    "@aei/shared": ["@aei/shared@workspace:packages/shared"],
-
-    "@aei/web": ["@aei/web@workspace:packages/web"],
-
     "@anthropic-ai/claude-code": ["@anthropic-ai/claude-code@1.0.128", "", { "optionalDependencies": { "@img/sharp-darwin-arm64": "^0.33.5", "@img/sharp-darwin-x64": "^0.33.5", "@img/sharp-linux-arm": "^0.33.5", "@img/sharp-linux-arm64": "^0.33.5", "@img/sharp-linux-x64": "^0.33.5", "@img/sharp-win32-x64": "^0.33.5" }, "bin": { "claude": "cli.js" } }, "sha512-uUg5cFMJfeQetQzFw76Vpbro6DAXst2Lpu8aoZWRFSoQVYu5ZSAnbBoxaWmW/IgnHSqIIvtMwzCoqmcA9j9rNQ=="],
 
     "@babel/code-frame": ["@babel/code-frame@7.27.1", "", { "dependencies": { "@babel/helper-validator-identifier": "^7.27.1", "js-tokens": "^4.0.0", "picocolors": "^1.1.1" } }, "sha512-cjQ7ZlQ0Mv3b47hABuTevyTuYN4i+loJKGeV9flcCgIK37cCXRh+L1bd3iBHlynerhQ7BhCkn2BPbQUL+rGqFg=="],
@@ -494,6 +492,14 @@
     "@types/react": ["@types/react@19.2.2", "", { "dependencies": { "csstype": "^3.0.2" } }, "sha512-6mDvHUFSjyT2B2yeNx2nUgMxh9LtOWvkhIU3uePn2I2oyNymUAX1NIsdgviM4CH+JSrp2D2hsMvJOkxY+0wNRA=="],
 
     "@types/react-dom": ["@types/react-dom@19.2.1", "", { "peerDependencies": { "@types/react": "^19.2.0" } }, "sha512-/EEvYBdT3BflCWvTMO7YkYBHVE9Ci6XdqZciZANQgKpaiDRGOLIlRo91jbTNRQjgPFWVaRxcYc0luVNFitz57A=="],
+
+    "@vibeinsights/cli": ["@vibeinsights/cli@workspace:packages/cli"],
+
+    "@vibeinsights/plugin": ["@vibeinsights/plugin@workspace:packages/plugin"],
+
+    "@vibeinsights/shared": ["@vibeinsights/shared@workspace:packages/shared"],
+
+    "@vibeinsights/web": ["@vibeinsights/web@workspace:packages/web"],
 
     "@vitejs/plugin-react": ["@vitejs/plugin-react@5.0.4", "", { "dependencies": { "@babel/core": "^7.28.4", "@babel/plugin-transform-react-jsx-self": "^7.27.1", "@babel/plugin-transform-react-jsx-source": "^7.27.1", "@rolldown/pluginutils": "1.0.0-beta.38", "@types/babel__core": "^7.20.5", "react-refresh": "^0.17.0" }, "peerDependencies": { "vite": "^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0" } }, "sha512-La0KD0vGkVkSk6K+piWDKRUyg8Rl5iAIKRMH0vMJI0Eg47bq1eOxmoObAaQG37WMW9MSyk7Cs8EIWwJC1PtzKA=="],
 

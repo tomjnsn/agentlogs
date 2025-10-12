@@ -17,7 +17,7 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Agentic Engineering Insights" },
+      { title: "Vibe Insights" },
     ],
     links: [{ rel: "stylesheet", href: appCss }],
   }),
@@ -114,7 +114,7 @@ function AppContent() {
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold">
             <Link to="/" className="hover:text-blue-600">
-              Agentic Engineering Insights
+              Vibe Insights
             </Link>
           </h1>
 

@@ -1,4 +1,4 @@
-# Agentic Engineering Insights (AEI)
+# Vibe Insights (VI)
 
 Capture and analyze Claude Code transcripts to understand how your team uses AI coding assistants.
 
@@ -113,7 +113,7 @@ bun install           # Install all dependencies
 
 **Tables** (7 total):
 - Auth: `user`, `session`, `account`, `verification` (BetterAuth)
-- AEI: `repos`, `transcripts`, `analysis`
+- VI: `repos`, `transcripts`, `analysis`
 
 **Location**:
 - Development: `packages/web/.wrangler/state/v3/d1/*.sqlite`
@@ -176,7 +176,7 @@ Deploy to Cloudflare Workers:
 # From packages/web directory
 
 # 1. Create D1 database
-wrangler d1 create aei
+wrangler d1 create vibeinsights
 
 # 2. Update wrangler.jsonc with database_id
 

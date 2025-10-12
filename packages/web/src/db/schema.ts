@@ -80,7 +80,7 @@ export const verification = sqliteTable('verification', {
 })
 
 // =============================================================================
-// AEI Tables (with userId for multi-tenancy)
+// Vibe Insights tables (with userId for multi-tenancy)
 // =============================================================================
 export const repos = sqliteTable('repos', {
   id: text('id').primaryKey(),
@@ -144,7 +144,7 @@ export const accountRelations = relations(account, ({ one }) => ({
   }),
 }))
 
-// AEI relations
+// Vibe Insights relations
 export const reposRelations = relations(repos, ({ one, many }) => ({
   user: one(user, {
     fields: [repos.userId],

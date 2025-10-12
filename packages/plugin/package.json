@@ -1,14 +1,14 @@
 {
-  "name": "@aei/plugin",
+  "name": "@vibeinsights/plugin",
   "version": "0.1.0",
   "type": "module",
-  "description": "AEI transcript capture plugin for Claude Code",
+  "description": "Vibe Insights transcript capture plugin for Claude Code",
   "main": "./hooks/session-end.ts",
   "scripts": {
     "test": "bun test"
   },
   "dependencies": {
-    "@aei/shared": "workspace:*",
+    "@vibeinsights/shared": "workspace:*",
     "@anthropic-ai/claude-code": "^1.0.0"
   }
 }

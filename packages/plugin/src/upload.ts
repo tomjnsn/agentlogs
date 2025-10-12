@@ -1,13 +1,13 @@
-import type { UploadPayload, UploadResponse, TranscriptEvent } from '@aei/shared';
+import type { UploadPayload, UploadResponse, TranscriptEvent } from '@vibeinsights/shared';
 import { execSync } from 'child_process';
 
 // Configuration from environment
-const SERVER_URL = process.env.AEI_SERVER_URL || 'http://localhost:8787';
-const API_TOKEN = process.env.AEI_API_TOKEN || 'dev_token';
+const SERVER_URL = process.env.VI_SERVER_URL || 'http://localhost:8787';
+const API_TOKEN = process.env.VI_API_TOKEN || 'dev_token';
 const TIMEOUT_MS = 10000; // 10 second timeout
 
 /**
- * Upload transcript to AEI server
+ * Upload transcript to Vibe Insights server
  * Returns success status and optional transcript ID
  */
 export async function uploadTranscript(

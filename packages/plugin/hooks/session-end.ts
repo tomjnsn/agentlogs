@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
 import type { SessionEndHookInput } from '@anthropic-ai/claude-code';
-import type { TranscriptEvent } from '@aei/shared';
+import type { TranscriptEvent } from '@vibeinsights/shared';
 import { readFileSync } from 'fs';
 import { uploadTranscript, getRepoMetadata } from '../src/upload';
 
@@ -10,11 +10,11 @@ const input = await Bun.stdin.json() as SessionEndHookInput;
 const { session_id, transcript_path, cwd, reason } = input;
 
 // Configuration
-const UPLOAD_ENABLED = process.env.AEI_UPLOAD_ENABLED !== 'false';
+const UPLOAD_ENABLED = process.env.VI_UPLOAD_ENABLED !== 'false';
 
 try {
   if (!UPLOAD_ENABLED) {
-    console.log('⊘ AEI upload disabled (set AEI_UPLOAD_ENABLED=true to enable)');
+    console.log('⊘ VI upload disabled (set VI_UPLOAD_ENABLED=true to enable)');
     process.exit(0);
   }
 
@@ -51,9 +51,9 @@ try {
   });
 
   if (result.success) {
-    console.log(`✓ Uploaded ${events.length} events to AEI (ID: ${result.transcriptId})`);
+    console.log(`✓ Uploaded ${events.length} events to Vibe Insights (ID: ${result.transcriptId})`);
   } else {
-    console.error('✗ Failed to upload transcript to AEI server');
+    console.error('✗ Failed to upload transcript to Vibe Insights server');
   }
 } catch (error) {
   if (error instanceof Error) {

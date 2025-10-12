@@ -1,9 +1,9 @@
-# 🧠 Product Spec: Agentic Engineering Insights (AEI)
+# 🧠 Product Spec: Vibe Insights (VI)
 
 ## 1. Product Idea — *"Observability for Agentic Coding"*
 
 **Concept:**
-AEI captures and analyzes all **Claude Code transcripts** (full user ↔ assistant ↔ tool conversations) across an organization to surface **anti-patterns, performance bottlenecks, and improvement opportunities** in how engineers use AI coding assistants.
+VI captures and analyzes all **Claude Code transcripts** (full user ↔ assistant ↔ tool conversations) across an organization to surface **anti-patterns, performance bottlenecks, and improvement opportunities** in how engineers use AI coding assistants.
 
 It then proposes or even commits **automated improvements** — e.g., editing `agent.md`, adjusting Claude Code settings, adding hooks or feedback loops, or restructuring repos to make agentic coding smoother and more effective.
 
@@ -11,7 +11,7 @@ It then proposes or even commits **automated improvements** — e.g., editing `a
 
 > GitHub Copilot → "autocomplete"
 > Sourcegraph → "search"
-> AEI → "introspection layer for AI-assisted development"
+> VI → "introspection layer for AI-assisted development"
 
 ---
 
@@ -34,19 +34,19 @@ It then proposes or even commits **automated improvements** — e.g., editing `a
 | **VP of Engineering / Head of Platform** | ROI of AI assistants, standardization, compliance | Visibility + measurable improvement              |
 | **Staff Engineer / Tech Lead**           | Improve team efficiency, diagnose "AI thrash"     | Diagnoses usage patterns, teaches best practices |
 | **AI/DevEx Platform Teams**              | Manage internal Claude Code deployments           | Unified telemetry + full transcript archive      |
-| **Enterprises (Fintech, Health, Gov)**   | Self-hosted, audit logs, no cloud data leak       | AEI acts as local observability & insight layer  |
+| **Enterprises (Fintech, Health, Gov)**   | Self-hosted, audit logs, no cloud data leak       | VI acts as local observability & insight layer  |
 
 ---
 
 ## 4. Market & Competitors
 
-| Category                       | Examples                                                   | Strengths                 | Gap AEI Fills                                       |
+| Category                       | Examples                                                   | Strengths                 | Gap VI Fills                                       |
 | ------------------------------ | ---------------------------------------------------------- | ------------------------- | --------------------------------------------------- |
 | **LLM Observability**          | Langfuse, Helicone, LangSmith, TruEra                      | Great tracing/evals       | No repo-context, no action generation               |
 | **AI Coding Analytics**        | Anthropic Claude Code Analytics, GitHub Copilot Enterprise | Aggregated metrics only   | No transcript content, no per-repo feedback         |
 | **Dev Productivity Analytics** | LinearB, Swarmia, Pluralsight Flow                         | Code throughput metrics   | Not AI-specific, no model behavior insights         |
 | **AI Agents/Orchestration**    | LangChain, Semantic Kernel, Continue                       | Agent frameworks          | No org-level learning or optimization               |
-| **Potential Threat**           | Anthropic or GitHub could expand into this                 | Deep platform integration | AEI must stay cross-vendor, multi-repo, self-hosted |
+| **Potential Threat**           | Anthropic or GitHub could expand into this                 | Deep platform integration | VI must stay cross-vendor, multi-repo, self-hosted |
 
 ---
 
@@ -69,7 +69,7 @@ It then proposes or even commits **automated improvements** — e.g., editing `a
 
 **Monorepo Structure:**
 ```
-agentic-engineering-insights/
+vibeinsights/
 ├── packages/
 │   ├── plugin/      # Claude Code plugin (150 lines)
 │   └── server/      # All-in-one: API + Analyzer + Web (1200 lines)
@@ -349,7 +349,7 @@ import { drizzle } from 'drizzle-orm/postgres-js'; // Production
 
 ## 13. Strategic Outlook
 
-**Vision:** AEI becomes the "Datadog of AI-assisted development" — monitoring and optimizing *how code is written by humans + agents together*.
+**Vision:** VI becomes the "Datadog of AI-assisted development" — monitoring and optimizing *how code is written by humans + agents together*.
 
 **Future Scope:**
 - Multi-vendor analytics (Claude, Copilot, Cursor)

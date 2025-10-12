@@ -1,14 +1,14 @@
 {
-  "name": "aei-transcript-logger",
+  "name": "vibeinsights-transcript-logger",
   "version": "0.1.0",
-  "description": "Captures Claude Code transcripts and uploads to AEI server for observability analysis",
+  "description": "Captures Claude Code transcripts and uploads to Vibe Insights server for observability analysis",
   "author": {
-    "name": "AEI Team",
-    "email": "team@aei.dev",
-    "url": "https://github.com/aei"
+    "name": "Vibe Insights Team",
+    "email": "team@vibeinsights.dev",
+    "url": "https://github.com/vibeinsights"
   },
-  "homepage": "https://aei.dev/docs/plugin",
-  "repository": "https://github.com/aei/transcript-logger-plugin",
+  "homepage": "https://vibeinsights.dev/docs/plugin",
+  "repository": "https://github.com/vibeinsights/transcript-logger-plugin",
   "license": "MIT",
   "keywords": ["observability", "analytics", "transcripts", "telemetry"],
   "hooks": "./hooks/hooks.json"

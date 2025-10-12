@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { getTranscript } from '../lib/server-functions'
-import type { TranscriptEvent } from '@aei/shared'
+import type { TranscriptEvent } from '@vibeinsights/shared'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
