@@ -1,24 +1,17 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
-import { getTranscriptsByRepo } from '../lib/server-functions'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { getTranscriptsByRepo } from "../lib/server-functions";
 
-export const Route = createFileRoute('/repos/$id')({
+export const Route = createFileRoute("/repos/$id")({
   loader: ({ params }) => getTranscriptsByRepo({ data: params.id }),
   component: RepoDetailComponent,
-})
+});
 
 function RepoDetailComponent() {
-  const transcripts = Route.useLoaderData()
-  const { id } = Route.useParams()
+  const transcripts = Route.useLoaderData();
+  const { id } = Route.useParams();
 
   return (
     <div className="space-y-6">
@@ -26,9 +19,7 @@ function RepoDetailComponent() {
         <Button variant="ghost" size="sm" asChild>
           <Link to="/">← Back to Dashboard</Link>
         </Button>
-        <h2 className="text-2xl font-bold tracking-tight">
-          Repository: {decodeURIComponent(id)}
-        </h2>
+        <h2 className="text-2xl font-bold tracking-tight">Repository: {decodeURIComponent(id)}</h2>
       </div>
 
       <Card>
@@ -47,14 +38,10 @@ function RepoDetailComponent() {
               {transcripts.map((transcript) => (
                 <TableRow key={transcript.id}>
                   <TableCell>
-                    <code className="text-sm font-mono">
-                      {transcript.sessionId?.slice(0, 8) || 'N/A'}...
-                    </code>
+                    <code className="font-mono text-sm">{transcript.sessionId?.slice(0, 8) || "N/A"}...</code>
                   </TableCell>
                   <TableCell>N/A</TableCell>
-                  <TableCell>
-                    {transcript.analyzed ? 'Analyzed' : 'Pending'}
-                  </TableCell>
+                  <TableCell>{transcript.analyzed ? "Analyzed" : "Pending"}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {new Date(transcript.createdAt).toLocaleString()}
                   </TableCell>
@@ -72,5 +59,5 @@ function RepoDetailComponent() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

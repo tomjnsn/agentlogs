@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 // Transcript Event Schemas
 
@@ -9,9 +9,9 @@ const baseEventSchema = z.object({
 });
 
 const userEventSchema = baseEventSchema.extend({
-  type: z.literal('user'),
+  type: z.literal("user"),
   message: z.object({
-    role: z.literal('user'),
+    role: z.literal("user"),
     content: z.string(),
   }),
   cwd: z.string(),
@@ -23,31 +23,35 @@ const userEventSchema = baseEventSchema.extend({
 });
 
 const assistantEventSchema = baseEventSchema.extend({
-  type: z.literal('assistant'),
+  type: z.literal("assistant"),
   message: z.object({
-    role: z.literal('assistant'),
-    content: z.array(z.object({
-      type: z.string(),
-      text: z.string().optional(),
-    }).passthrough()),
+    role: z.literal("assistant"),
+    content: z.array(
+      z
+        .object({
+          type: z.string(),
+          text: z.string().optional(),
+        })
+        .passthrough(),
+    ),
   }),
 });
 
 const toolUseEventSchema = baseEventSchema.extend({
-  type: z.literal('tool_use'),
+  type: z.literal("tool_use"),
   tool_name: z.string(),
   tool_input: z.record(z.unknown()),
 });
 
 const toolResultEventSchema = baseEventSchema.extend({
-  type: z.literal('tool_result'),
+  type: z.literal("tool_result"),
   tool_name: z.string(),
   tool_response: z.record(z.unknown()),
   success: z.boolean().optional(),
   error: z.string().optional(),
 });
 
-export const transcriptEventSchema = z.discriminatedUnion('type', [
+export const transcriptEventSchema = z.discriminatedUnion("type", [
   userEventSchema,
   assistantEventSchema,
   toolUseEventSchema,
@@ -61,11 +65,13 @@ export const uploadPayloadSchema = z.object({
   repoName: z.string(),
   sessionId: z.string(),
   events: z.array(transcriptEventSchema),
-  metadata: z.object({
-    cwd: z.string(),
-    reason: z.string(),
-    eventCount: z.number(),
-  }).optional(),
+  metadata: z
+    .object({
+      cwd: z.string(),
+      reason: z.string(),
+      eventCount: z.number(),
+    })
+    .optional(),
 });
 
 export const uploadResponseSchema = z.object({

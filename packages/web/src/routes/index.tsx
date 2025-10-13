@@ -1,16 +1,9 @@
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
-import { getRepos } from "../lib/server-functions";
-import { authClient } from "../lib/auth-client";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { authClient } from "../lib/auth-client";
+import { getRepos } from "../lib/server-functions";
 
 export const Route = createFileRoute("/")({
   beforeLoad: async () => {
@@ -38,13 +31,11 @@ export const Route = createFileRoute("/")({
 
 function ErrorComponent({ error }: { error: Error }) {
   return (
-    <div className="text-center py-12">
+    <div className="py-12 text-center">
       <h2 className="text-2xl font-bold text-red-600">Error</h2>
-      <p className="text-gray-600 mt-2">{error.message}</p>
+      <p className="mt-2 text-gray-600">{error.message}</p>
       {error.message.includes("Unauthorized") && (
-        <p className="text-sm text-gray-500 mt-4">
-          Please sign in with GitHub using the button in the header.
-        </p>
+        <p className="mt-4 text-sm text-gray-500">Please sign in with GitHub using the button in the header.</p>
       )}
     </div>
   );
@@ -58,9 +49,7 @@ function IndexComponent() {
       <h2 className="text-2xl font-bold tracking-tight">Repositories</h2>
 
       {repos.length === 0 ? (
-        <p className="text-muted-foreground">
-          No repositories yet. Start capturing transcripts!
-        </p>
+        <p className="text-muted-foreground">No repositories yet. Start capturing transcripts!</p>
       ) : (
         <Card>
           <CardContent className="p-0">
@@ -80,9 +69,7 @@ function IndexComponent() {
                     <TableCell>
                       <div>
                         <div className="font-medium">{repo.name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {repo.id}
-                        </div>
+                        <div className="text-muted-foreground text-sm">{repo.id}</div>
                       </div>
                     </TableCell>
                     <TableCell>{repo.transcriptCount}</TableCell>

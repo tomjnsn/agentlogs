@@ -2,7 +2,7 @@ module.exports = {
   extends: "../../tsconfig.base.json",
   compilerOptions: {
     rootDir: "./src",
-    outDir: "./dist"
+    outDir: "./dist",
   },
-  include: ["src/**/*"]
+  include: ["src/**/*"],
 };

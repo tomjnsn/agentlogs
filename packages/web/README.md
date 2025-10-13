@@ -5,6 +5,7 @@ A unified TanStack Start application that combines the web UI and API server.
 ## Architecture
 
 This application uses:
+
 - **TanStack Start** - Full-stack React framework with SSR
 - **Cloudflare Workers** - Edge runtime with D1 database
 - **TanStack Router** - Type-safe file-based routing
@@ -123,17 +124,18 @@ This is automatically run before `bun dev`, but you can run it manually if neede
 These use TanStack Start's server functions and access Cloudflare bindings via `env` from `cloudflare:workers`:
 
 ```tsx
-import { createServerFn } from '@tanstack/react-start'
-import { env } from 'cloudflare:workers'
-import { createDrizzle } from '../db'
+import { createServerFn } from "@tanstack/react-start";
+import { env } from "cloudflare:workers";
+import { createDrizzle } from "../db";
 
-export const getRepos = createServerFn('GET', async () => {
-  const db = createDrizzle(env.DB)  // Access D1 binding
+export const getRepos = createServerFn("GET", async () => {
+  const db = createDrizzle(env.DB); // Access D1 binding
   // ... query logic
-})
+});
 ```
 
 Available server functions:
+
 - `getRepos()` - Fetch all repositories for authenticated user
 - `getTranscriptsByRepo({ data: repoId })` - Fetch transcripts for a repository
 - `getTranscript(id)` - Fetch single transcript with analysis
@@ -202,9 +204,9 @@ Copy the `database_id` from the output and update `wrangler.jsonc`:
       "binding": "DB",
       "database_name": "vibeinsights",
       "database_id": "your-database-id-here",
-      "migrations_dir": "migrations"
-    }
-  ]
+      "migrations_dir": "migrations",
+    },
+  ],
 }
 ```
 
@@ -231,8 +233,8 @@ In `wrangler.jsonc`, add your production URLs:
 {
   "vars": {
     "BETTER_AUTH_URL": "https://your-app.workers.dev",
-    "WEB_URL": "https://your-app.workers.dev"
-  }
+    "WEB_URL": "https://your-app.workers.dev",
+  },
 }
 ```
 
@@ -255,6 +257,7 @@ Your app will be deployed to `https://vibeinsights.your-subdomain.workers.dev`!
 ### Type Safety
 
 The application uses TypeScript throughout with:
+
 - Type-safe routing via TanStack Router
 - Type-safe database queries via Drizzle ORM
 - Shared types via `@vibeinsights/shared` package
@@ -284,8 +287,8 @@ Wrangler uses port 8787 by default. To change it, modify `wrangler.jsonc`:
 ```jsonc
 {
   "dev": {
-    "port": 8788
-  }
+    "port": 8788,
+  },
 }
 ```
 

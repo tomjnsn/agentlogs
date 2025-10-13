@@ -1,9 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { createDrizzle } from "../db";
 import * as queries from "../db/queries";
 import { createAuth } from "./auth";
-import { getRequestHeaders } from "@tanstack/react-start/server";
 
 /**
  * Get the current authenticated user's ID
@@ -25,7 +25,7 @@ async function getAuthenticatedUserId() {
 /**
  * Server function to fetch all repositories for the authenticated user
  */
-export const getRepos = createServerFn().handler(async (ctx) => {
+export const getRepos = createServerFn().handler(async () => {
   const db = createDrizzle(env.DB);
   const userId = await getAuthenticatedUserId();
   return queries.getRepos(db, userId);

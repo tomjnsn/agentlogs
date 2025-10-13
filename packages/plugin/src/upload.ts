@@ -1,24 +1,22 @@
-import type { UploadPayload, UploadResponse, TranscriptEvent } from '@vibeinsights/shared';
-import { execSync } from 'child_process';
+import { execSync } from "child_process";
+import type { UploadPayload, UploadResponse } from "@vibeinsights/shared";
 
 // Configuration from environment
-const SERVER_URL = process.env.VI_SERVER_URL || 'http://localhost:8787';
-const API_TOKEN = process.env.VI_API_TOKEN || 'dev_token';
+const SERVER_URL = process.env.VI_SERVER_URL || "http://localhost:8787";
+const API_TOKEN = process.env.VI_API_TOKEN || "dev_token";
 const TIMEOUT_MS = 10000; // 10 second timeout
 
 /**
  * Upload transcript to Vibe Insights server
  * Returns success status and optional transcript ID
  */
-export async function uploadTranscript(
-  payload: UploadPayload
-): Promise<{ success: boolean; transcriptId?: string }> {
+export async function uploadTranscript(payload: UploadPayload): Promise<{ success: boolean; transcriptId?: string }> {
   try {
     const response = await fetch(`${SERVER_URL}/api/ingest`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${API_TOKEN}`,
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${API_TOKEN}`,
       },
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(TIMEOUT_MS),
@@ -28,7 +26,7 @@ export async function uploadTranscript(
       const result: UploadResponse = await response.json();
       return {
         success: true,
-        transcriptId: result.transcriptId
+        transcriptId: result.transcriptId,
       };
     }
 
@@ -36,7 +34,7 @@ export async function uploadTranscript(
     return { success: false };
   } catch (error) {
     if (error instanceof Error) {
-      console.error('Upload error:', error.message);
+      console.error("Upload error:", error.message);
     }
     return { success: false };
   }
@@ -51,14 +49,14 @@ export function getRepoMetadata(cwd: string): {
   repoName: string;
 } {
   try {
-    const remoteUrl = execSync('git remote get-url origin', {
+    const remoteUrl = execSync("git remote get-url origin", {
       cwd,
-      encoding: 'utf8',
+      encoding: "utf8",
       timeout: 2000,
-      stdio: ['pipe', 'pipe', 'ignore'], // Suppress stderr
+      stdio: ["pipe", "pipe", "ignore"], // Suppress stderr
     }).trim();
 
-    const repoName = remoteUrl.split('/').pop()?.replace('.git', '') || 'unknown';
+    const repoName = remoteUrl.split("/").pop()?.replace(".git", "") || "unknown";
 
     return {
       repoId: remoteUrl,
@@ -66,7 +64,7 @@ export function getRepoMetadata(cwd: string): {
     };
   } catch {
     // Not a git repo or git command failed
-    const repoName = cwd.split('/').pop() || 'unknown';
+    const repoName = cwd.split("/").pop() || "unknown";
     return {
       repoId: `file://${cwd}`,
       repoName,

@@ -32,13 +32,13 @@ const commands: Record<string, CommandHandler> = {
           transcript,
           status: "queued",
           reference: `stub-${transcript}`,
-          uploadedAt: new Date().toISOString()
+          uploadedAt: new Date().toISOString(),
         },
         null,
-        2
-      )
+        2,
+      ),
     );
-  }
+  },
 };
 
 const main = async () => {

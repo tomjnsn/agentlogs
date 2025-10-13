@@ -1,15 +1,8 @@
 /// <reference types="vite/client" />
-import React, { type ReactNode } from "react";
-import {
-  createRootRoute,
-  Link,
-  Outlet,
-  useRouter,
-  HeadContent,
-  Scripts,
-} from "@tanstack/react-router";
-import { authClient } from "../lib/auth-client";
 import { Button } from "@/components/ui/button";
+import { createRootRoute, HeadContent, Link, Outlet, Scripts, useRouter } from "@tanstack/react-router";
+import React, { type ReactNode } from "react";
+import { authClient } from "../lib/auth-client";
 import appCss from "../styles/globals.css?url";
 
 export const Route = createRootRoute({
@@ -82,7 +75,7 @@ function AppContent() {
                   `Port mismatch detected!\n\n` +
                     `You're accessing the app on port ${currentPort}, but it should be on port ${expectedPort}.\n\n` +
                     `Please access the app at: http://localhost:${expectedPort}\n\n` +
-                    `This is configured in WEB_PORT in your .env file and WEB_URL in packages/server/.dev.vars`
+                    `This is configured in WEB_PORT in your .env file and WEB_URL in packages/server/.dev.vars`,
                 );
               } else {
                 alert(
@@ -91,7 +84,7 @@ function AppContent() {
                     `Check that:\n` +
                     `1. The API server is running on http://localhost:8787\n` +
                     `2. WEB_URL in packages/server/.dev.vars matches your current URL\n` +
-                    `3. Both servers were restarted after configuration changes`
+                    `3. Both servers were restarted after configuration changes`,
                 );
               }
             }
@@ -100,17 +93,13 @@ function AppContent() {
       });
     } catch (error) {
       console.error("Unexpected sign out error:", error);
-      alert(
-        `Failed to sign out: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
-      );
+      alert(`Failed to sign out: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-6 py-4">
+      <header className="border-b border-gray-200 bg-white px-6 py-4">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold">
             <Link to="/" className="hover:text-blue-600">
@@ -121,19 +110,17 @@ function AppContent() {
           <div className="flex items-center gap-4">
             {isSigningIn ? (
               <div className="flex items-center gap-2 text-sm text-gray-500">
-                <div className="animate-spin h-4 w-4 border-2 border-gray-300 border-t-gray-600 rounded-full"></div>
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"></div>
                 <span>Redirecting to GitHub...</span>
               </div>
             ) : isPending ? (
               <div className="flex items-center gap-2 text-sm text-gray-500">
-                <div className="animate-spin h-4 w-4 border-2 border-gray-300 border-t-gray-600 rounded-full"></div>
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"></div>
                 <span>Loading session...</span>
               </div>
             ) : session ? (
               <>
-                <span className="text-sm text-gray-700">
-                  {session.user.email || session.user.name}
-                </span>
+                <span className="text-sm text-gray-700">{session.user.email || session.user.name}</span>
                 <Button onClick={handleSignOut} variant="outline" size="sm">
                   Sign Out
                 </Button>

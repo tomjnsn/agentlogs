@@ -75,6 +75,7 @@ open http://localhost:8787
 ## Environment Variables
 
 **Web App** (`packages/web/.dev.vars`):
+
 ```bash
 # GitHub OAuth credentials
 GITHUB_CLIENT_ID=your-github-client-id
@@ -112,10 +113,12 @@ bun install           # Install all dependencies
 ## Database
 
 **Tables** (7 total):
+
 - Auth: `user`, `session`, `account`, `verification` (BetterAuth)
 - VI: `repos`, `transcripts`, `analysis`
 
 **Location**:
+
 - Development: `packages/web/.wrangler/state/v3/d1/*.sqlite`
 - Production: Cloudflare D1
 
@@ -124,16 +127,19 @@ bun install           # Install all dependencies
 ## Authentication
 
 **Dual authentication**:
+
 1. **Web UI**: GitHub OAuth (BetterAuth) - session-based
 2. **Plugin**: API token (Bearer authentication) - for `/api/ingest` endpoint
 
 All data is isolated by `userId` (multi-tenant).
 
 **API Endpoints**:
+
 - `POST /api/ingest` - Accepts transcript data from Claude Code plugin
 - `GET|POST /api/auth/*` - BetterAuth authentication handlers
 
 **Server Functions** (RPC-style, called from route loaders):
+
 - `getRepos()` - Fetch repositories
 - `getTranscriptsByRepo(repoId)` - Fetch transcripts for a repo
 - `getTranscript(id)` - Fetch transcript with analysis
@@ -143,6 +149,7 @@ All data is isolated by `userId` (multi-tenant).
 ### Common Issues
 
 **Database issues?**
+
 ```bash
 cd packages/web
 rm -rf data/
@@ -150,6 +157,7 @@ bun db:setup
 ```
 
 **Port already in use?**
+
 ```bash
 # Kill existing processes
 pkill -f "vite"
@@ -157,11 +165,13 @@ pkill -f "vite"
 ```
 
 **Authentication issues?**
+
 1. Verify GitHub OAuth callback URL: `http://localhost:3001/api/auth/callback/github`
 2. Check that `BETTER_AUTH_SECRET` is set in `.env`
 3. Clear browser cookies and try again
 
 **Build/type errors?**
+
 ```bash
 bun install
 cd packages/web

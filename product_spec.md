@@ -1,6 +1,6 @@
 # 🧠 Product Spec: Vibe Insights (VI)
 
-## 1. Product Idea — *"Observability for Agentic Coding"*
+## 1. Product Idea — _"Observability for Agentic Coding"_
 
 **Concept:**
 VI captures and analyzes all **Claude Code transcripts** (full user ↔ assistant ↔ tool conversations) across an organization to surface **anti-patterns, performance bottlenecks, and improvement opportunities** in how engineers use AI coding assistants.
@@ -34,18 +34,18 @@ It then proposes or even commits **automated improvements** — e.g., editing `a
 | **VP of Engineering / Head of Platform** | ROI of AI assistants, standardization, compliance | Visibility + measurable improvement              |
 | **Staff Engineer / Tech Lead**           | Improve team efficiency, diagnose "AI thrash"     | Diagnoses usage patterns, teaches best practices |
 | **AI/DevEx Platform Teams**              | Manage internal Claude Code deployments           | Unified telemetry + full transcript archive      |
-| **Enterprises (Fintech, Health, Gov)**   | Self-hosted, audit logs, no cloud data leak       | VI acts as local observability & insight layer  |
+| **Enterprises (Fintech, Health, Gov)**   | Self-hosted, audit logs, no cloud data leak       | VI acts as local observability & insight layer   |
 
 ---
 
 ## 4. Market & Competitors
 
 | Category                       | Examples                                                   | Strengths                 | Gap VI Fills                                       |
-| ------------------------------ | ---------------------------------------------------------- | ------------------------- | --------------------------------------------------- |
-| **LLM Observability**          | Langfuse, Helicone, LangSmith, TruEra                      | Great tracing/evals       | No repo-context, no action generation               |
-| **AI Coding Analytics**        | Anthropic Claude Code Analytics, GitHub Copilot Enterprise | Aggregated metrics only   | No transcript content, no per-repo feedback         |
-| **Dev Productivity Analytics** | LinearB, Swarmia, Pluralsight Flow                         | Code throughput metrics   | Not AI-specific, no model behavior insights         |
-| **AI Agents/Orchestration**    | LangChain, Semantic Kernel, Continue                       | Agent frameworks          | No org-level learning or optimization               |
+| ------------------------------ | ---------------------------------------------------------- | ------------------------- | -------------------------------------------------- |
+| **LLM Observability**          | Langfuse, Helicone, LangSmith, TruEra                      | Great tracing/evals       | No repo-context, no action generation              |
+| **AI Coding Analytics**        | Anthropic Claude Code Analytics, GitHub Copilot Enterprise | Aggregated metrics only   | No transcript content, no per-repo feedback        |
+| **Dev Productivity Analytics** | LinearB, Swarmia, Pluralsight Flow                         | Code throughput metrics   | Not AI-specific, no model behavior insights        |
+| **AI Agents/Orchestration**    | LangChain, Semantic Kernel, Continue                       | Agent frameworks          | No org-level learning or optimization              |
 | **Potential Threat**           | Anthropic or GitHub could expand into this                 | Deep platform integration | VI must stay cross-vendor, multi-repo, self-hosted |
 
 ---
@@ -68,6 +68,7 @@ It then proposes or even commits **automated improvements** — e.g., editing `a
 ### Overview
 
 **Monorepo Structure:**
+
 ```
 vibeinsights/
 ├── packages/
@@ -76,6 +77,7 @@ vibeinsights/
 ```
 
 **Key Design Principles:**
+
 - **POC-first**: Absolute minimum to demonstrate value
 - **Type-safe**: TypeScript strict mode + Zod validation
 - **Fast iteration**: Bun for zero-config development
@@ -86,11 +88,13 @@ vibeinsights/
 ### Plugin Package (`packages/plugin`)
 
 **Technology:**
+
 - Pure TypeScript functions (no classes)
 - Zod for validation
 - Bun runtime
 
 **Files:**
+
 ```
 plugin/
 ├── src/
@@ -102,6 +106,7 @@ plugin/
 ```
 
 **Responsibilities:**
+
 - Subscribe to `UserPromptSubmit` and `SessionEnd` hooks
 - Read transcript deltas from `transcript_path`
 - Extract repo metadata (single git command)
@@ -109,12 +114,16 @@ plugin/
 - **Fail-open**: Never block IDE on errors
 
 **Key Implementation Details:**
+
 ```typescript
 // Simple state management
-const sessionState = new Map<string, {
-  events: TranscriptEvent[];
-  repoId: string;
-}>();
+const sessionState = new Map<
+  string,
+  {
+    events: TranscriptEvent[];
+    repoId: string;
+  }
+>();
 
 // Upload on session end
 await uploadTranscript({
@@ -129,12 +138,14 @@ await uploadTranscript({
 ### Server Package (`packages/server`)
 
 **Technology:**
+
 - Hono (fast HTTP framework)
 - Bun SQLite (POC) → PostgreSQL (production)
 - Server-rendered JSX for web UI
 - Tailwind CSS via CDN
 
 **Files:**
+
 ```
 server/
 ├── src/
@@ -147,6 +158,7 @@ server/
 ```
 
 **Database Schema (SQLite):**
+
 ```sql
 CREATE TABLE repos (
   id TEXT PRIMARY KEY,
@@ -179,6 +191,7 @@ CREATE TABLE analysis (
 ```
 
 **API Endpoints:**
+
 ```
 POST /api/ingest                    # Receive transcript from plugin
 GET  /api/repos                     # List all repositories
@@ -187,6 +200,7 @@ GET  /api/transcripts/:id           # Get full transcript + analysis
 ```
 
 **Web Routes:**
+
 ```
 GET  /                              # Dashboard (repo list)
 GET  /repos/:id                     # Repo detail (transcripts + insights)
@@ -198,6 +212,7 @@ GET  /transcripts/:id               # Transcript viewer
 ### Analysis Engine (`analyzer.ts` in server)
 
 **Heuristics (Deterministic):**
+
 1. **Retry Loop Detection**
    - Pattern: Same tool called 2+ times consecutively
    - Threshold: 3+ retries = medium severity, 5+ = high severity
@@ -214,17 +229,19 @@ GET  /transcripts/:id               # Transcript viewer
    - Pattern: Code changes (Write/Edit) without test execution (Bash with test commands)
 
 **Health Score Calculation (0-100):**
+
 ```typescript
 let score = 100;
-score -= retries * 5;              // -5 per retry
-score -= errors * 3;                // -3 per error
-score -= contextOverflows * 10;     // -10 per overflow
+score -= retries * 5; // -5 per retry
+score -= errors * 3; // -3 per error
+score -= contextOverflows * 10; // -10 per overflow
 score -= highSeverityPatterns * 15; // -15 per high severity
 score -= mediumSeverityPatterns * 10; // -10 per medium severity
 return Math.max(0, Math.min(100, score));
 ```
 
 **Output:**
+
 ```typescript
 {
   transcriptId: string;
@@ -249,13 +266,13 @@ return Math.max(0, Math.min(100, score));
 
 ## 7. POC Implementation Timeline (5 Days)
 
-| Day | Focus | Deliverables | Time |
-|-----|-------|-------------|------|
+| Day       | Focus          | Deliverables                                          | Time    |
+| --------- | -------------- | ----------------------------------------------------- | ------- |
 | **Day 1** | Infrastructure | Monorepo setup, packages initialized, database schema | 2 hours |
-| **Day 2** | Plugin | Hook handlers, upload logic, local testing | 2 hours |
-| **Day 3** | API + DB | Types, database, REST endpoints, test with curl | 4 hours |
-| **Day 4** | Analysis + Web | Analyzer logic, web pages, browser testing | 4 hours |
-| **Day 5** | Integration | End-to-end testing, bug fixes, demo prep | 2 hours |
+| **Day 2** | Plugin         | Hook handlers, upload logic, local testing            | 2 hours |
+| **Day 3** | API + DB       | Types, database, REST endpoints, test with curl       | 4 hours |
+| **Day 4** | Analysis + Web | Analyzer logic, web pages, browser testing            | 4 hours |
+| **Day 5** | Integration    | End-to-end testing, bug fixes, demo prep              | 2 hours |
 
 **Total: ~14 hours over 5 days**
 
@@ -263,13 +280,13 @@ return Math.max(0, Math.min(100, score));
 
 ## 8. Success Criteria (POC Validation)
 
-| Metric | Target | How to Measure |
-|--------|--------|----------------|
-| **Transcript capture** | ≥95% successful uploads | Monitor server logs |
-| **Analysis accuracy** | Correctly identifies 3+ anti-pattern types | Manual review of 10 sessions |
-| **Performance** | Analysis completes in <500ms per transcript | Measure with Bun's built-in timer |
-| **UI functionality** | Can view repos, transcripts, and analysis | Manual testing in browser |
-| **End-to-end flow** | Plugin → Server → Analysis → Web (working) | Full integration test |
+| Metric                 | Target                                      | How to Measure                    |
+| ---------------------- | ------------------------------------------- | --------------------------------- |
+| **Transcript capture** | ≥95% successful uploads                     | Monitor server logs               |
+| **Analysis accuracy**  | Correctly identifies 3+ anti-pattern types  | Manual review of 10 sessions      |
+| **Performance**        | Analysis completes in <500ms per transcript | Measure with Bun's built-in timer |
+| **UI functionality**   | Can view repos, transcripts, and analysis   | Manual testing in browser         |
+| **End-to-end flow**    | Plugin → Server → Analysis → Web (working)  | Full integration test             |
 
 ---
 
@@ -278,17 +295,20 @@ return Math.max(0, Math.min(100, score));
 ### Phase 1 → Phase 2 (Post-POC)
 
 **When to enhance:**
+
 - SQLite → PostgreSQL: When >100k transcripts or need multi-region
 - Simple analysis → LLM insights: When basic heuristics prove value
 - Monolithic server → Microservices: When team has 5+ developers
 - Single file → Split packages: When files exceed 500 lines
 
 **Migration is designed to be easy:**
+
 ```typescript
 // Database: Just swap the driver
-import { Database } from 'bun:sqlite';  // POC
+import { Database } from "bun:sqlite"; // POC
+
 // to
-import { drizzle } from 'drizzle-orm/postgres-js'; // Production
+import { drizzle } from "drizzle-orm/postgres-js"; // Production
 
 // Files: Extract when needed
 // analyzer.ts (300 lines) → split when hits 500+ lines
@@ -300,6 +320,7 @@ import { drizzle } from 'drizzle-orm/postgres-js'; // Production
 ## 10. Key Constraints & Trade-offs
 
 ### POC Constraints (Accepted)
+
 ✅ **SQLite only** - Fast, zero-config, good for <100k transcripts
 ✅ **No queue system** - Analysis runs in setTimeout() (fine for POC)
 ✅ **Bearer token auth** - Simple, secure if kept secret
@@ -307,6 +328,7 @@ import { drizzle } from 'drizzle-orm/postgres-js'; // Production
 ✅ **Inline code** - Extract abstractions only when copied 3+ times
 
 ### Production Requirements (Later)
+
 ⏰ **PostgreSQL + Redis** - Better concurrency, queueing
 ⏰ **OAuth/RBAC** - Proper authentication system
 ⏰ **Retry with backoff** - Reliable upload guarantees
@@ -318,12 +340,14 @@ import { drizzle } from 'drizzle-orm/postgres-js'; // Production
 ## 11. Privacy & Security
 
 **Self-Hosted First:**
+
 - All data stays on customer infrastructure
 - No cloud dependencies (except optional Claude API)
 - Encrypted transport (HTTPS)
 - Bearer token authentication
 
 **Redaction Options (Future):**
+
 - PII detection and masking
 - Configurable retention policies
 - Opt-out per repo or user
@@ -333,14 +357,15 @@ import { drizzle } from 'drizzle-orm/postgres-js'; // Production
 
 ## 12. Monetization Strategy
 
-| Model | Description | Pricing |
-|-------|-------------|---------|
-| **Self-Hosted License** | Annual license for unlimited users | $10k-$50k/year |
-| **SaaS (Future)** | Hosted version with per-seat pricing | $20-$40/user/month |
-| **Enterprise Support** | Dedicated support + custom features | $25k-$100k/year |
-| **Free Tier** | Open source core + paid enterprise features | $0 |
+| Model                   | Description                                 | Pricing            |
+| ----------------------- | ------------------------------------------- | ------------------ |
+| **Self-Hosted License** | Annual license for unlimited users          | $10k-$50k/year     |
+| **SaaS (Future)**       | Hosted version with per-seat pricing        | $20-$40/user/month |
+| **Enterprise Support**  | Dedicated support + custom features         | $25k-$100k/year    |
+| **Free Tier**           | Open source core + paid enterprise features | $0                 |
 
 **Pilot Strategy:**
+
 - Free 30-day trial for teams (5-20 engineers)
 - Focus on demonstrating ROI (reduced retries, faster sessions)
 - Partner with DevEx/Platform teams
@@ -349,9 +374,10 @@ import { drizzle } from 'drizzle-orm/postgres-js'; // Production
 
 ## 13. Strategic Outlook
 
-**Vision:** VI becomes the "Datadog of AI-assisted development" — monitoring and optimizing *how code is written by humans + agents together*.
+**Vision:** VI becomes the "Datadog of AI-assisted development" — monitoring and optimizing _how code is written by humans + agents together_.
 
 **Future Scope:**
+
 - Multi-vendor analytics (Claude, Copilot, Cursor)
 - Unified agent-efficiency benchmark
 - Automatic feedback loop generation
@@ -359,6 +385,7 @@ import { drizzle } from 'drizzle-orm/postgres-js'; // Production
 - Team collaboration insights
 
 **Exit Routes:**
+
 - Acquisition by Anthropic, GitHub, Sourcegraph, or observability companies
 - IPO as standalone developer tools company
 
@@ -367,11 +394,13 @@ import { drizzle } from 'drizzle-orm/postgres-js'; // Production
 ## 14. Next Steps
 
 ### Immediate (Today)
+
 ✅ Review and approve this spec
 ✅ Initialize monorepo structure
 ✅ Setup development environment (Bun + pnpm)
 
 ### This Week (Days 1-5)
+
 1. **Day 1**: Setup infrastructure
 2. **Day 2**: Build plugin
 3. **Day 3**: Build API + database
@@ -379,6 +408,7 @@ import { drizzle } from 'drizzle-orm/postgres-js'; // Production
 5. **Day 5**: Integration testing + demo
 
 ### Next Week
+
 - Deploy to first pilot team
 - Gather feedback
 - Iterate on analysis heuristics

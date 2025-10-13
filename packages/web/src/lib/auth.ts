@@ -1,17 +1,17 @@
-import { betterAuth } from 'better-auth'
-import { drizzleAdapter } from 'better-auth/adapters/drizzle'
-import { env } from 'cloudflare:workers'
-import { createDrizzle } from '../db'
+import { betterAuth } from "better-auth";
+import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { env } from "cloudflare:workers";
+import { createDrizzle } from "../db";
 
 /**
  * Creates a BetterAuth instance using Cloudflare bindings
  */
 export function createAuth() {
-  const db = createDrizzle(env.DB)
+  const db = createDrizzle(env.DB);
 
   return betterAuth({
     database: drizzleAdapter(db, {
-      provider: 'sqlite',
+      provider: "sqlite",
     }),
     socialProviders: {
       github: {
@@ -22,7 +22,7 @@ export function createAuth() {
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
     trustedOrigins: [env.WEB_URL, env.BETTER_AUTH_URL],
-  })
+  });
 }
 
-export type Auth = ReturnType<typeof createAuth>
+export type Auth = ReturnType<typeof createAuth>;

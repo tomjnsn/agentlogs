@@ -7,9 +7,9 @@ export interface BaseTranscriptEvent {
 }
 
 export interface UserMessageEvent extends BaseTranscriptEvent {
-  type: 'user';
+  type: "user";
   message: {
-    role: 'user';
+    role: "user";
     content: string;
   };
   cwd: string;
@@ -21,9 +21,9 @@ export interface UserMessageEvent extends BaseTranscriptEvent {
 }
 
 export interface AssistantMessageEvent extends BaseTranscriptEvent {
-  type: 'assistant';
+  type: "assistant";
   message: {
-    role: 'assistant';
+    role: "assistant";
     content: Array<{
       type: string;
       text?: string;
@@ -33,24 +33,20 @@ export interface AssistantMessageEvent extends BaseTranscriptEvent {
 }
 
 export interface ToolUseEvent extends BaseTranscriptEvent {
-  type: 'tool_use';
+  type: "tool_use";
   tool_name: string;
   tool_input: Record<string, unknown>;
 }
 
 export interface ToolResultEvent extends BaseTranscriptEvent {
-  type: 'tool_result';
+  type: "tool_result";
   tool_name: string;
   tool_response: Record<string, unknown>;
   success?: boolean;
   error?: string;
 }
 
-export type TranscriptEvent =
-  | UserMessageEvent
-  | AssistantMessageEvent
-  | ToolUseEvent
-  | ToolResultEvent;
+export type TranscriptEvent = UserMessageEvent | AssistantMessageEvent | ToolUseEvent | ToolResultEvent;
 
 // API Payloads
 
@@ -124,7 +120,7 @@ export interface AnalysisResult {
   antiPatterns: Array<{
     type: string;
     description: string;
-    severity: 'low' | 'medium' | 'high';
+    severity: "low" | "medium" | "high";
   }>;
   recommendations: string[];
   healthScore: number;
