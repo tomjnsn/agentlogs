@@ -1,4 +1,7 @@
 import { parseArgs } from "util";
+import { loginCommand } from "./commands/login";
+import { logoutCommand } from "./commands/logout";
+import { statusCommand } from "./commands/status";
 
 type CommandHandler = (args: string[]) => Promise<void> | void;
 
@@ -7,15 +10,17 @@ const printHelp = () => {
   bun run src/index.ts <command> [options]
 
 Commands:
-  login                 Perform CLI login (stub).
-  upload <transcript>   Upload a transcript by path or identifier (stub).
+  login                 Authenticate with VibeInsights using device authorization
+  status                Check your current login status
+  logout                Log out and clear stored credentials
+  upload <transcript>   Upload a transcript by path or identifier (stub)
 `);
 };
 
 const commands: Record<string, CommandHandler> = {
-  login: () => {
-    console.log("Login command not implemented yet. Replace this with real auth handling.");
-  },
+  login: loginCommand,
+  status: statusCommand,
+  logout: logoutCommand,
   upload: (args) => {
     const [transcript] = args;
 

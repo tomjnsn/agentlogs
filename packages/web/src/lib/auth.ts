@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { bearer, deviceAuthorization } from "better-auth/plugins";
 import { env } from "cloudflare:workers";
 import { createDrizzle } from "../db";
 
@@ -22,6 +23,13 @@ export function createAuth() {
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
     trustedOrigins: [env.WEB_URL, env.BETTER_AUTH_URL],
+    plugins: [
+      bearer(),
+      deviceAuthorization({
+        expiresIn: "15m", // 15 minutes
+        interval: "5s", // 5 second minimum polling interval
+      }),
+    ],
   });
 }
 

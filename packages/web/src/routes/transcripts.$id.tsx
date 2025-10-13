@@ -59,11 +59,7 @@ function TranscriptDetailComponent() {
                 <ul className="space-y-2">
                   {antiPatterns.map((antiPattern, index) => (
                     <li key={index} className="flex items-start gap-2">
-                      <Badge
-                        variant={severityVariantMap[antiPattern.severity]}
-                      >
-                        {antiPattern.severity}
-                      </Badge>
+                      <Badge variant={severityVariantMap[antiPattern.severity]}>{antiPattern.severity}</Badge>
                       <span className="text-muted-foreground text-sm">{antiPattern.description}</span>
                     </li>
                   ))}

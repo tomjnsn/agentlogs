@@ -1,6 +1,6 @@
 import { and, desc, eq, sql } from "drizzle-orm";
-import { analysis, repos, transcripts } from "./schema";
 import type { DrizzleDB } from ".";
+import { analysis, repos, transcripts } from "./schema";
 
 /**
  * Upsert a repository (insert or update if exists)
