@@ -6,6 +6,9 @@
   "workspaces": [
     "packages/*"
   ],
+  "overrides": {
+    "vite": "npm:rolldown-vite@latest"
+  },
   "scripts": {
     "dev": "bun --filter @vibeinsights/web dev",
     "build": "bun --filter @vibeinsights/web build",
@@ -19,5 +22,8 @@
   "devDependencies": {
     "@types/bun": "^1.3.0",
     "unenv": "^1.10.0"
+  },
+  "dependencies": {
+    "vite-tsconfig-paths": "^5.1.4"
   }
 }
