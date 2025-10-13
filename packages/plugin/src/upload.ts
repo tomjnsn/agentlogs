@@ -23,11 +23,17 @@ export async function uploadTranscript(payload: UploadPayload): Promise<{ succes
     });
 
     if (response.ok) {
-      const result: UploadResponse = await response.json();
-      return {
-        success: true,
-        transcriptId: result.transcriptId,
-      };
+      const result = (await response.json()) as unknown;
+
+      if (isUploadResponse(result)) {
+        return {
+          success: true,
+          transcriptId: result.transcriptId,
+        };
+      }
+
+      console.error("Upload succeeded but response had unexpected shape:", result);
+      return { success: false };
     }
 
     console.error(`Upload failed: ${response.status} ${response.statusText}`);
@@ -38,6 +44,20 @@ export async function uploadTranscript(payload: UploadPayload): Promise<{ succes
     }
     return { success: false };
   }
+}
+
+function isUploadResponse(data: unknown): data is UploadResponse {
+  if (typeof data !== "object" || data === null) {
+    return false;
+  }
+
+  const maybeResponse = data as Partial<UploadResponse>;
+
+  return (
+    typeof maybeResponse.success === "boolean" &&
+    (maybeResponse.success === false || typeof maybeResponse.transcriptId === "string") &&
+    (maybeResponse.eventsReceived === undefined || typeof maybeResponse.eventsReceived === "number")
+  );
 }
 
 /**

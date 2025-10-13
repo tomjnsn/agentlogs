@@ -1,9 +1,6 @@
 import { and, desc, eq, sql } from "drizzle-orm";
-import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { analysis, repos, transcripts } from "./schema";
-import * as schema from "./schema";
-
-export type DrizzleDB = BetterSQLite3Database<typeof schema>;
+import type { DrizzleDB } from ".";
 
 /**
  * Upsert a repository (insert or update if exists)

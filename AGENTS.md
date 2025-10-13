@@ -1,1 +1,5 @@
-This project uses `bun` instead of `npm`.
+- Use `bun` instead of `npm` or `pnpm`.
+- `bun run test` in the workspace root for unit tests
+- `bun run lint` in the workspace root for linting
+- `bun run format` in the workspace root for formatting
+- `bun run typecheck` in the workspace root for running TypeScript checks

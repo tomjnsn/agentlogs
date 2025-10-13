@@ -75,7 +75,7 @@ function IndexComponent() {
                     <TableCell>{repo.transcriptCount}</TableCell>
                     <TableCell>N/A</TableCell>
                     <TableCell className="text-muted-foreground">
-                      {new Date(repo.lastActivity).toLocaleString()}
+                      {repo.lastActivity ? new Date(repo.lastActivity).toLocaleString() : "Never"}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="sm" asChild>

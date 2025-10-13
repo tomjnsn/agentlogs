@@ -50,17 +50,17 @@ export const Route = createFileRoute("/api/ingest")({
           return json({ error: "Invalid request body", details: result.error }, { status: 400 });
         }
 
-        const { repo, sessionId, events } = result.data;
+        const { repoId, repoName, sessionId, events } = result.data;
 
         try {
           // Generate transcript ID
           const transcriptId = crypto.randomUUID();
 
           // Upsert repository
-          await queries.upsertRepo(db, userId, repo.id, repo.name, repo.url);
+          await queries.upsertRepo(db, userId, repoId, repoName, repoId);
 
           // Insert transcript
-          await queries.insertTranscript(db, userId, transcriptId, repo.id, sessionId, JSON.stringify(events));
+          await queries.insertTranscript(db, userId, transcriptId, repoId, sessionId, JSON.stringify(events));
 
           // Analyze transcript asynchronously (don't block response)
           // Note: In TanStack Start, we can use setImmediate or a background job queue

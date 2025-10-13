@@ -1,5 +1,5 @@
 import { StatCard } from "@/components/stat-card";
-import { Badge } from "@/components/ui/badge";
+import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -12,9 +12,22 @@ export const Route = createFileRoute("/transcripts/$id")({
   component: TranscriptDetailComponent,
 });
 
+type AntiPattern = {
+  severity: "low" | "medium" | "high";
+  description: string;
+  type?: string;
+};
+
 function TranscriptDetailComponent() {
   const transcript = Route.useLoaderData();
   const analysis = transcript.analysis;
+  const antiPatterns = (analysis?.antiPatterns ?? []) as AntiPattern[];
+  const recommendations = (analysis?.recommendations ?? []) as string[];
+  const severityVariantMap: Record<AntiPattern["severity"], BadgeProps["variant"]> = {
+    high: "destructive",
+    medium: "secondary",
+    low: "outline",
+  };
 
   return (
     <div className="space-y-6">
@@ -40,37 +53,31 @@ function TranscriptDetailComponent() {
               <StatCard label="Failure Rate" value={`${(analysis.toolFailureRate * 100).toFixed(1)}%`} />
             </div>
 
-            {analysis.antiPatterns.length > 0 && (
+            {antiPatterns.length > 0 && (
               <div className="space-y-2">
                 <h4 className="font-medium">Anti-Patterns</h4>
                 <ul className="space-y-2">
-                  {analysis.antiPatterns.map((ap, i) => (
-                    <li key={i} className="flex items-start gap-2">
+                  {antiPatterns.map((antiPattern, index) => (
+                    <li key={index} className="flex items-start gap-2">
                       <Badge
-                        variant={
-                          ap.severity === "high"
-                            ? "destructive"
-                            : ap.severity === "medium"
-                              ? "secondary"
-                              : "outline-solid"
-                        }
+                        variant={severityVariantMap[antiPattern.severity]}
                       >
-                        {ap.severity}
+                        {antiPattern.severity}
                       </Badge>
-                      <span className="text-muted-foreground text-sm">{ap.description}</span>
+                      <span className="text-muted-foreground text-sm">{antiPattern.description}</span>
                     </li>
                   ))}
                 </ul>
               </div>
             )}
 
-            {analysis.recommendations.length > 0 && (
+            {recommendations.length > 0 && (
               <div className="space-y-2">
                 <h4 className="font-medium">Recommendations</h4>
                 <ul className="list-inside list-disc space-y-1">
-                  {analysis.recommendations.map((rec, i) => (
-                    <li key={i} className="text-muted-foreground text-sm">
-                      {rec}
+                  {recommendations.map((recommendation, index) => (
+                    <li key={index} className="text-muted-foreground text-sm">
+                      {recommendation}
                     </li>
                   ))}
                 </ul>
