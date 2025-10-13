@@ -5,7 +5,8 @@
   "description": "Vibe Insights transcript capture plugin for Claude Code",
   "main": "./hooks/session-end.ts",
   "scripts": {
-    "test": "bun test"
+    "test": "bun test",
+    "typecheck": "tsc --noEmit --project tsconfig.json"
   },
   "dependencies": {
     "@vibeinsights/shared": "workspace:*",

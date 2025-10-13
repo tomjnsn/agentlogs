@@ -13,7 +13,8 @@
     "db:migrate:local": "wrangler d1 migrations apply vibeinsights --local",
     "db:migrate:remote": "wrangler d1 migrations apply vibeinsights --remote",
     "db:studio": "DB_LOCAL_PATH=$(find .wrangler/state/v3/d1/miniflare-D1DatabaseObject -type f -name '*.sqlite' -print -quit 2>/dev/null) drizzle-kit studio --port 4983",
-    "db:reset": "rm -rf .wrangler/state && bun run db:setup"
+    "db:reset": "rm -rf .wrangler/state && bun run db:setup",
+    "typecheck": "tsc --noEmit --project tsconfig.json"
   },
   "dependencies": {
     "@vibeinsights/shared": "workspace:*",
