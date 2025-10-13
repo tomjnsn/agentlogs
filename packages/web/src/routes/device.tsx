@@ -50,7 +50,7 @@ function DeviceAuthorizationPage() {
 
       setSuccess(true);
       setLoading(false);
-    } catch (err) {
+    } catch {
       setError("An unexpected error occurred");
       setLoading(false);
     }
@@ -78,7 +78,7 @@ function DeviceAuthorizationPage() {
 
       setSuccess(true);
       setLoading(false);
-    } catch (err) {
+    } catch {
       setError("An unexpected error occurred");
       setLoading(false);
     }

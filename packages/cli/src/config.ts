@@ -72,7 +72,7 @@ export function getToken(): string | null {
     const entry = new Entry(KEYRING_SERVICE, config.user.email);
     const token = entry.getPassword();
     return token;
-  } catch (error) {
+  } catch {
     // Token doesn't exist or couldn't be retrieved
     return null;
   }
@@ -103,7 +103,7 @@ export function deleteToken(): void {
 
     const entry = new Entry(KEYRING_SERVICE, config.user.email);
     entry.deletePassword();
-  } catch (error) {
+  } catch {
     // Token doesn't exist or couldn't be deleted - that's okay
   }
 }

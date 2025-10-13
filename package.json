@@ -18,7 +18,7 @@
     "db:generate": "bun --filter @vibeinsights/web db:generate",
     "db:migrate": "bun --filter @vibeinsights/web db:migrate",
     "db:studio": "bun --filter @vibeinsights/web db:studio",
-    "lint": "oxlint .",
+    "lint": "oxlint --deny-warnings .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check": "bun run lint && bun run format:check",
