@@ -1,6 +1,6 @@
 # Vibe Insights
 
-Capture and analyze Amp session transcripts to understand AI coding assistant usage patterns.
+Capture and analyze coding agent session transcripts to understand AI assistant usage patterns.
 
 ## What It Does
 
