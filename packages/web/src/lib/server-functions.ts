@@ -23,6 +23,33 @@ async function getAuthenticatedUserId() {
 }
 
 /**
+ * Server function to fetch the current session
+ * Returns null if not authenticated
+ */
+export const getSession = createServerFn({ method: "GET" }).handler(async () => {
+  const auth = createAuth();
+  const session = await auth.api.getSession({
+    headers: getRequestHeaders(),
+  });
+
+  if (!session?.user) {
+    return null;
+  }
+
+  return {
+    user: {
+      id: session.user.id,
+      email: session.user.email,
+      name: session.user.name,
+    },
+    session: {
+      id: session.session.id,
+      expiresAt: session.session.expiresAt,
+    },
+  };
+});
+
+/**
  * Server function to fetch all repositories for the authenticated user
  */
 export const getRepos = createServerFn().handler(async () => {

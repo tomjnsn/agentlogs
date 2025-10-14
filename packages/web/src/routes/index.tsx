@@ -2,13 +2,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
-import { authClient } from "../lib/auth-client";
-import { getRepos } from "../lib/server-functions";
+import { getRepos, getSession } from "../lib/server-functions";
 
 export const Route = createFileRoute("/")({
   beforeLoad: async () => {
     // Check if user is authenticated
-    const { data: session } = await authClient.getSession();
+    const session = await getSession();
 
     if (!session) {
       // Redirect to sign-in page

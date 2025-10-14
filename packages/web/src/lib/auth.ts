@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { bearer, deviceAuthorization } from "better-auth/plugins";
+import { reactStartCookies } from "better-auth/react-start";
 import { env } from "cloudflare:workers";
 import { createDrizzle } from "../db";
 
@@ -23,7 +24,7 @@ export function createAuth() {
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.WEB_URL,
     trustedOrigins: [env.WEB_URL],
-    plugins: [bearer(), deviceAuthorization()],
+    plugins: [bearer(), deviceAuthorization(), reactStartCookies()],
   });
 }
 

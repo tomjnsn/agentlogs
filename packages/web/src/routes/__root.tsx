@@ -3,9 +3,14 @@ import { Button } from "@/components/ui/button";
 import { createRootRoute, HeadContent, Link, Outlet, Scripts, useRouter } from "@tanstack/react-router";
 import React, { type ReactNode } from "react";
 import { authClient } from "../lib/auth-client";
+import { getSession } from "../lib/server-functions";
 import appCss from "../styles/globals.css?url";
 
 export const Route = createRootRoute({
+  beforeLoad: async () => {
+    const session = await getSession();
+    return { session };
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -40,7 +45,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
 }
 
 function AppContent() {
-  const { data: session, isPending } = authClient.useSession();
+  const { session } = Route.useRouteContext();
   const router = useRouter();
   const [isSigningIn, setIsSigningIn] = React.useState(false);
 
@@ -112,11 +117,6 @@ function AppContent() {
               <div className="flex items-center gap-2 text-sm text-gray-500">
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"></div>
                 <span>Redirecting to GitHub...</span>
-              </div>
-            ) : isPending ? (
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"></div>
-                <span>Loading session...</span>
               </div>
             ) : session ? (
               <>
