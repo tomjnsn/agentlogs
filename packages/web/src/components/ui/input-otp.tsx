@@ -24,7 +24,6 @@ const InputOTPSlot = React.forwardRef<
   React.ElementRef<"div">,
   React.ComponentPropsWithoutRef<"div"> & { index: number }
 >(({ index, className, ...props }, ref) => {
-  // @ts-expect-error - React 19 Context type incompatibility with input-otp (React 18)
   const inputOTPContext = React.useContext(OTPInputContext) as RenderProps;
   const { char, hasFakeCaret, isActive } = inputOTPContext.slots[index];
 
