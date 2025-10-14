@@ -25,5 +25,9 @@
       "persist": true,
       "invocation_logs": true
     }
-  }
+  },
+	"vars": {
+		"WEB_URL": "https://vibeinsights.dev",
+		"GITHUB_CLIENT_ID": "Ov23liVfRvpwBO5yaLun",
+	}
 }
