@@ -33,6 +33,10 @@ jobs:
       - name: Run tests
         run: bun test
 
+      - name: Generate Cloudflare types
+        run: bun run cf-typegen
+        working-directory: ./packages/web
+
       - name: TypeScript checks
         run: bun run typecheck
 
