@@ -1,227 +1,133 @@
-# Vibe Insights (VI)
+# Vibe Insights
 
-Capture and analyze Claude Code transcripts to understand how your team uses AI coding assistants.
+Capture and analyze Amp session transcripts to understand AI coding assistant usage patterns.
 
 ## What It Does
 
-- **Plugin**: Captures Claude Code session transcripts automatically
-- **Web App**: Full-stack application that stores transcripts, analyzes patterns, and displays insights
+- **CLI**: Captures Amp transcripts via hooks and uploads them
+- **Web App**: Stores transcripts, analyzes patterns, displays insights
 
 ## Tech Stack
 
-- **Framework**: TanStack Start (full-stack React with SSR)
-- **Runtime**: Cloudflare Workers (edge compute)
-- **Database**: Cloudflare D1 (SQLite at the edge)
-- **ORM**: Drizzle ORM (type-safe queries + migrations)
-- **Auth**: BetterAuth (GitHub OAuth)
-- **Routing**: TanStack Router (file-based, type-safe)
-- **Styling**: Tailwind CSS v4 + shadcn/ui
-- **Package Manager**: Bun (monorepo with workspaces)
-
-## Project Structure
-
-```
-vibeinsights/
-├── packages/
-│   ├── shared/         # Shared TypeScript types + Zod schemas
-│   ├── plugin/         # Claude Code plugin (captures transcripts)
-│   └── web/            # TanStack Start full-stack application
-│       ├── src/
-│       │   ├── db/         # Database schema, queries, connection
-│       │   ├── lib/        # Auth, analyzer, server functions
-│       │   ├── routes/     # File-based routes + API endpoints
-│       │   ├── components/ # React components
-│       │   └── scripts/    # Database migration scripts
-│       ├── data/           # SQLite database (gitignored)
-│       └── migrations/     # Drizzle migrations
-├── package.json        # Root workspace config
-└── README.md          # This file
-```
+TanStack Start + Cloudflare Workers + D1 (SQLite) + Drizzle ORM + BetterAuth (GitHub OAuth) + Tailwind CSS v4
 
 ## Quick Start
 
 ### Prerequisites
 
-- **Bun** v1.3.0+ ([install](https://bun.sh/))
-- **GitHub OAuth App** (for authentication):
-  1. Go to https://github.com/settings/developers
-  2. Create new OAuth app:
-     - Homepage URL: `http://localhost:8787`
-     - Callback URL: `http://localhost:8787/api/auth/callback/github`
-  3. Save Client ID and Client Secret
+- [Bun](https://bun.sh/) v1.3.0+
+- GitHub OAuth App ([create one](https://github.com/settings/developers))
+  - Homepage: `http://localhost:8787`
+  - Callback: `http://localhost:8787/api/auth/callback/github`
 
-### Setup (< 2 minutes)
+### Setup
 
 ```bash
-# 1. Install dependencies
+# Install
 bun install
 
-# 2. Configure environment
+# Configure
 cd packages/web
 cp .dev.vars.example .dev.vars
-# Edit .dev.vars - add your GitHub OAuth credentials
+# Edit .dev.vars with GitHub OAuth credentials
 
-# 3. Set up database
+# Initialize database
 bun db:setup
 
-# 4. Start the application
+# Start
 bun dev
-# Auto-generates types and starts Wrangler dev server
+```
 
-# 5. Visit the application
-open http://localhost:8787
+Open http://localhost:8787
+
+## Project Structure
+
+```
+packages/
+├── cli/       # Amp transcript capture tool
+├── web/       # TanStack Start app on Cloudflare Workers
+└── shared/    # TypeScript types and Zod schemas
+```
+
+## Commands
+
+```bash
+# Development
+bun dev              # Start web app
+bun cli              # Run CLI tool
+
+# Database (from packages/web)
+bun db:setup         # Setup database
+bun db:studio        # Open Drizzle Studio
+
+# Quality
+bun run lint         # Lint code
+bun run format       # Format code
+bun run typecheck    # Type check
+```
+
+## CLI Usage
+
+```bash
+cd packages/cli
+
+# Authenticate
+bun run start login
+
+# Upload transcript
+bun run start claudecode upload path/to/transcript.jsonl
+
+# Hook (receives transcript via stdin)
+bun run start claudecode hook
 ```
 
 ## Environment Variables
 
-**Web App** (`packages/web/.dev.vars`):
+Create `packages/web/.dev.vars`:
 
 ```bash
-# GitHub OAuth credentials
-GITHUB_CLIENT_ID=your-github-client-id
-GITHUB_CLIENT_SECRET=your-github-client-secret
-
-# Generate with: openssl rand -base64 32
-BETTER_AUTH_SECRET=your-secret-here
-
-# Application URLs (wrangler dev uses port 8787)
+GITHUB_CLIENT_ID=your_client_id
+GITHUB_CLIENT_SECRET=your_client_secret
+BETTER_AUTH_SECRET=your_secret  # openssl rand -base64 32
 BETTER_AUTH_URL=http://localhost:8787
 WEB_URL=http://localhost:8787
-
-# API token for Claude Code plugin
 API_TOKEN=dev_token
 ```
 
-## Available Commands
-
-```bash
-# Development (from packages/web)
-bun dev               # ⭐ Start the application (auto-migrates database)
-bun run build         # Build for production
-bun start             # Start production server
-
-# Database (from packages/web)
-bun db:setup          # Setup database (generate + apply migrations)
-bun db:generate       # Generate migrations from schema changes
-bun db:migrate        # Run pending migrations
-bun db:studio         # Open Drizzle Studio (GUI on port 4983)
-
-# Root commands
-bun install           # Install all dependencies
-```
-
-## Database
-
-**Tables** (7 total):
-
-- Auth: `user`, `session`, `account`, `verification` (BetterAuth)
-- VI: `repos`, `transcripts`, `analysis`
-
-**Location**:
-
-- Development: `packages/web/.wrangler/state/v3/d1/*.sqlite`
-- Production: Cloudflare D1
-
-**Migrations**: Managed by Drizzle ORM + Wrangler
-
-## Authentication
-
-**Dual authentication**:
-
-1. **Web UI**: GitHub OAuth (BetterAuth) - session-based
-2. **Plugin**: API token (Bearer authentication) - for `/api/ingest` endpoint
-
-All data is isolated by `userId` (multi-tenant).
-
-**API Endpoints**:
-
-- `POST /api/ingest` - Accepts transcript data from Claude Code plugin
-- `GET|POST /api/auth/*` - BetterAuth authentication handlers
-
-**Server Functions** (RPC-style, called from route loaders):
-
-- `getRepos()` - Fetch repositories
-- `getTranscriptsByRepo(repoId)` - Fetch transcripts for a repo
-- `getTranscript(id)` - Fetch transcript with analysis
-
-## Troubleshooting
-
-### Common Issues
-
-**Database issues?**
+## Deployment
 
 ```bash
 cd packages/web
-rm -rf data/
-bun db:setup
-```
 
-**Port already in use?**
-
-```bash
-# Kill existing processes
-pkill -f "vite"
-# Or change port in package.json
-```
-
-**Authentication issues?**
-
-1. Verify GitHub OAuth callback URL: `http://localhost:3001/api/auth/callback/github`
-2. Check that `BETTER_AUTH_SECRET` is set in `.env`
-3. Clear browser cookies and try again
-
-**Build/type errors?**
-
-```bash
-bun install
-cd packages/web
-bun run build
-```
-
-## Production Deployment
-
-Deploy to Cloudflare Workers:
-
-```bash
-# From packages/web directory
-
-# 1. Create D1 database
+# Create D1 database
 wrangler d1 create vibeinsights
 
-# 2. Update wrangler.jsonc with database_id
-
-# 3. Run migrations
+# Run migrations
 bun db:migrate:remote
 
-# 4. Set secrets
-wrangler secret put API_TOKEN
+# Set secrets
 wrangler secret put GITHUB_CLIENT_ID
 wrangler secret put GITHUB_CLIENT_SECRET
 wrangler secret put BETTER_AUTH_SECRET
+wrangler secret put API_TOKEN
 
-# 5. Deploy
-bun run build
+# Deploy
 bun run deploy
 ```
 
-See [packages/web/README.md](./packages/web/README.md) for detailed deployment instructions.
+## Database Schema
 
-## Package Documentation
+**Core Tables**: `repos`, `transcripts`, `analysis`  
+**Auth Tables**: `user`, `session`, `account`, `verification`, `device_code`
 
-- [Web Application](./packages/web/README.md) - Full setup guide and architecture
-- [Plugin](./packages/plugin/README.md) - Plugin installation
-- [Shared Types](./packages/shared/README.md) - Shared type definitions
+All data scoped by `userId` for multi-tenant isolation.
 
-## Product Vision
+## Troubleshooting
 
-See [product_spec.md](./product_spec.md) for detailed product vision and roadmap.
+**Database issues**: `cd packages/web && bun db:reset`  
+**Auth issues**: Verify callback URL and clear cookies  
+**Build errors**: `bun install && bun run typecheck`
 
-## Support
+## License
 
-- **Issues**: Use GitHub issues for bugs
-- **Questions**: Check package READMEs first
-- **Logs**: `logs/` directory for development logs
-
----
-
-**Ready?** Run `bun install && cd packages/web && bun db:setup && bun dev` 🚀
+MIT
