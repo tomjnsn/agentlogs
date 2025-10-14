@@ -1,6 +1,6 @@
 import type { UploadOptions } from "@vibeinsights/shared/upload";
-import { performUpload, resolveTranscriptPath } from "../lib/perform-upload";
 import { getToken } from "../config";
+import { performUpload, resolveTranscriptPath } from "../lib/perform-upload";
 
 const MANUAL_UPLOAD_REASON = "manual-cli-upload";
 
@@ -51,9 +51,7 @@ export async function uploadCommand(args: string[]): Promise<void> {
 
     console.error("✗ Failed to upload transcript to Vibe Insights server.");
   } catch (error) {
-    console.error(
-      error instanceof Error ? error.message : "Unexpected error occurred while uploading transcript.",
-    );
+    console.error(error instanceof Error ? error.message : "Unexpected error occurred while uploading transcript.");
   }
   process.exit(1);
 }

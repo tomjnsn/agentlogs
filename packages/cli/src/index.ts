@@ -1,10 +1,9 @@
 #!/usr/bin/env node
-
 import { parseArgs } from "util";
+import { hookCommand } from "./commands/hook";
 import { loginCommand } from "./commands/login";
 import { logoutCommand } from "./commands/logout";
 import { statusCommand } from "./commands/status";
-import { hookCommand } from "./commands/hook";
 import { uploadCommand } from "./commands/upload";
 
 type CommandHandler = (args: string[]) => Promise<void> | void;

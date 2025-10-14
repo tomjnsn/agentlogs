@@ -1,6 +1,6 @@
 import type { UploadOptions } from "@vibeinsights/shared/upload";
-import { performUpload } from "../lib/perform-upload";
 import { getToken, readConfig } from "../config";
+import { performUpload } from "../lib/perform-upload";
 
 interface ClaudeHookInput {
   session_id?: string;
@@ -58,10 +58,7 @@ async function handleSessionEnd(hookInput: ClaudeHookInput): Promise<void> {
 
   const config = readConfig();
   const serverUrl =
-    process.env.VI_SERVER_URL ??
-    process.env.VIBEINSIGHTS_BASE_URL ??
-    config.baseURL ??
-    "http://localhost:3000";
+    process.env.VI_SERVER_URL ?? process.env.VIBEINSIGHTS_BASE_URL ?? config.baseURL ?? "http://localhost:3000";
   const apiToken = process.env.VI_API_TOKEN ?? getToken() ?? undefined;
 
   const options: UploadOptions = {};
@@ -114,10 +111,7 @@ async function handleStop(hookInput: ClaudeHookInput): Promise<void> {
 
   const config = readConfig();
   const serverUrl =
-    process.env.VI_SERVER_URL ??
-    process.env.VIBEINSIGHTS_BASE_URL ??
-    config.baseURL ??
-    "http://localhost:3000";
+    process.env.VI_SERVER_URL ?? process.env.VIBEINSIGHTS_BASE_URL ?? config.baseURL ?? "http://localhost:3000";
   const apiToken = process.env.VI_API_TOKEN ?? getToken() ?? undefined;
 
   const options: UploadOptions = {};

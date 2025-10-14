@@ -1,21 +1,17 @@
 {
-	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "vibeinsights",
-	"compatibility_date": "2025-01-10",
-	"compatibility_flags": [
-		"nodejs_compat",
-		"enable_nodejs_http_modules",
-		"enable_nodejs_http_server_modules"
-	],
-	"main": "@tanstack/react-start/server-entry",
-	"d1_databases": [
-		{
-			"binding": "DB",
-			"database_name": "vibeinsights",
-			"database_id": "a6422c62-c246-4e37-886a-5b97edcfdc4a",
-			"migrations_dir": "migrations",
-		},
-	],
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "vibeinsights",
+  "compatibility_date": "2025-01-10",
+  "compatibility_flags": ["nodejs_compat", "enable_nodejs_http_modules", "enable_nodejs_http_server_modules"],
+  "main": "@tanstack/react-start/server-entry",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "vibeinsights",
+      "database_id": "a6422c62-c246-4e37-886a-5b97edcfdc4a",
+      "migrations_dir": "migrations",
+    },
+  ],
   "observability": {
     "enabled": false,
     "head_sampling_rate": 1,
@@ -23,11 +19,11 @@
       "enabled": true,
       "head_sampling_rate": 1,
       "persist": true,
-      "invocation_logs": true
-    }
+      "invocation_logs": true,
+    },
   },
-	"vars": {
-		"WEB_URL": "https://vibeinsights.dev",
-		"GITHUB_CLIENT_ID": "Ov23liVfRvpwBO5yaLun",
-	}
+  "vars": {
+    "WEB_URL": "https://vibeinsights.dev",
+    "GITHUB_CLIENT_ID": "Ov23liVfRvpwBO5yaLun",
+  },
 }

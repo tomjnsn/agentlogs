@@ -110,8 +110,7 @@ export function resolveTranscriptPath(inputPath: string): string | null {
     return existsSync(candidate) ? candidate : null;
   };
 
-  const directCandidate =
-    tryResolve(process.cwd()) ?? tryResolve(process.env.INIT_CWD) ?? tryResolve(process.env.PWD);
+  const directCandidate = tryResolve(process.cwd()) ?? tryResolve(process.env.INIT_CWD) ?? tryResolve(process.env.PWD);
 
   if (directCandidate) {
     return directCandidate;

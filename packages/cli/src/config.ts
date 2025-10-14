@@ -13,7 +13,7 @@ const KEYRING_SERVICE = "vibeinsights-cli";
  * Development and production accounts are stored separately
  */
 function getKeychainAccount(email: string): string {
-  return NODE_ENV === 'production' ? `prod:${email}` : `dev:${email}`;
+  return NODE_ENV === "production" ? `prod:${email}` : `dev:${email}`;
 }
 
 interface Config {
