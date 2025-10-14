@@ -24,6 +24,9 @@
   },
   "vars": {
     "WEB_URL": "https://vibeinsights.dev",
+    "GITHUB_CLIENT_SECRET": "set in .env file",
     "GITHUB_CLIENT_ID": "Ov23liVfRvpwBO5yaLun",
+    "BETTER_AUTH_SECRET": "set in .env file",
+    "API_TOKEN": "set in .env file",
   },
 }
