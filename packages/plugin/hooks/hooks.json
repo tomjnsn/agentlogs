@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun run ${CLAUDE_PLUGIN_ROOT}/hooks/session-end.ts"
+            "command": "npx -y @vibeinsights/cli@latest claudecode hook"
           }
         ]
       }

@@ -4,6 +4,7 @@ import { parseArgs } from "util";
 import { loginCommand } from "./commands/login";
 import { logoutCommand } from "./commands/logout";
 import { statusCommand } from "./commands/status";
+import { hookCommand } from "./commands/hook";
 import { uploadCommand } from "./commands/upload";
 
 type CommandHandler = (args: string[]) => Promise<void> | void;
@@ -18,11 +19,13 @@ Commands:
   logout                Log out and clear stored credentials
   claudecode upload <transcript>
                         Upload a transcript JSONL file to Vibe Insights
+  claudecode hook       Process Claude Code hook input from stdin
 `);
 };
 
 const claudecodeCommands: Record<string, CommandHandler> = {
   upload: uploadCommand,
+  hook: hookCommand,
 };
 
 const commands: Record<string, CommandHandler> = {
