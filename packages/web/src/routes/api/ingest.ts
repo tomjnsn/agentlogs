@@ -19,16 +19,25 @@ export const Route = createFileRoute("/api/ingest")({
         let userId: string;
 
         if (authHeader?.startsWith("Bearer ")) {
-          // API token authentication (for Claude Code plugin)
           const token = authHeader.replace("Bearer ", "");
           const expectedToken = env.API_TOKEN || "dev_token";
 
-          if (token !== expectedToken) {
-            return json({ error: "Unauthorized" }, { status: 401 });
-          }
+          if (token === expectedToken) {
+            userId = "plugin-user";
+          } else {
+            // Attempt to authenticate using BetterAuth bearer tokens (e.g. CLI login flow)
+            const session = await auth.api.getSession({
+              headers: new Headers({
+                Authorization: authHeader,
+              }),
+            });
 
-          // Use plugin user ID
-          userId = "plugin-user";
+            if (!session?.user) {
+              return json({ error: "Unauthorized" }, { status: 401 });
+            }
+
+            userId = session.user.id;
+          }
         } else {
           // Session authentication (for web UI)
           const session = await auth.api.getSession({

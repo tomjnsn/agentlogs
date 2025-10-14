@@ -2,6 +2,7 @@ import { parseArgs } from "util";
 import { loginCommand } from "./commands/login";
 import { logoutCommand } from "./commands/logout";
 import { statusCommand } from "./commands/status";
+import { uploadCommand } from "./commands/upload";
 
 type CommandHandler = (args: string[]) => Promise<void> | void;
 
@@ -13,36 +14,37 @@ Commands:
   login                 Authenticate with VibeInsights using device authorization
   status                Check your current login status
   logout                Log out and clear stored credentials
-  upload <transcript>   Upload a transcript by path or identifier (stub)
+  claudecode upload <transcript>
+                        Upload a transcript JSONL file to Vibe Insights
 `);
+};
+
+const claudecodeCommands: Record<string, CommandHandler> = {
+  upload: uploadCommand,
 };
 
 const commands: Record<string, CommandHandler> = {
   login: loginCommand,
   status: statusCommand,
   logout: logoutCommand,
-  upload: (args) => {
-    const [transcript] = args;
+  claudecode: (args) => {
+    const [subcommand, ...subcommandArgs] = args;
 
-    if (!transcript) {
-      console.error("The upload command expects a <transcript> argument.");
+    if (!subcommand) {
+      console.error('The "claudecode" command expects a subcommand.');
       printHelp();
       process.exit(1);
     }
 
-    console.log(`Preparing to upload transcript "${transcript}" (stub).`);
-    console.log(
-      JSON.stringify(
-        {
-          transcript,
-          status: "queued",
-          reference: `stub-${transcript}`,
-          uploadedAt: new Date().toISOString(),
-        },
-        null,
-        2,
-      ),
-    );
+    const handler = claudecodeCommands[subcommand];
+
+    if (!handler) {
+      console.error(`Unknown claudecode subcommand "${subcommand}".`);
+      printHelp();
+      process.exit(1);
+    }
+
+    return handler(subcommandArgs);
   },
 };
 
