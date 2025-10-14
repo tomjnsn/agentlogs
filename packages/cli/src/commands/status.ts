@@ -1,5 +1,13 @@
 import { authClient } from "../auth";
 import { getToken, readConfig } from "../config";
+import { NODE_ENV } from "../env-config";
+
+/**
+ * Get the effective server URL being used
+ */
+function getEffectiveServerURL(): string {
+  return process.env.SERVER_URL ?? "http://localhost:3000";
+}
 
 export async function statusCommand(): Promise<void> {
   const token = getToken();
@@ -27,10 +35,13 @@ export async function statusCommand(): Promise<void> {
     }
 
     const config = readConfig();
+    const serverUrl = getEffectiveServerURL();
 
     console.log("✅ Logged in");
     console.log(`👤 Name: ${session.user.name}`);
     console.log(`📧 Email: ${session.user.email}`);
+    console.log(`🌐 Server: ${serverUrl}`);
+    console.log(`🔧 Environment: ${NODE_ENV}`);
     if (config.lastLoginTime) {
       const lastLogin = new Date(config.lastLoginTime);
       console.log(`🕐 Last login: ${lastLogin.toLocaleString()}`);

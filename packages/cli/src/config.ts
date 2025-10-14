@@ -2,10 +2,19 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { homedir } from "os";
 import { join } from "path";
 import { Entry } from "@napi-rs/keyring";
+import { NODE_ENV } from "./env-config";
 
 const CONFIG_DIR = join(homedir(), ".config", "vibeinsights");
 const CONFIG_FILE = join(CONFIG_DIR, "config.json");
 const KEYRING_SERVICE = "vibeinsights-cli";
+
+/**
+ * Get the environment-specific account name for keyring storage
+ * Development and production accounts are stored separately
+ */
+function getKeychainAccount(email: string): string {
+  return NODE_ENV === 'production' ? `prod:${email}` : `dev:${email}`;
+}
 
 interface Config {
   baseURL?: string;
@@ -61,6 +70,7 @@ export function writeConfig(config: Config): void {
 
 /**
  * Get the access token from the OS keychain
+ * Uses environment-specific account names
  */
 export function getToken(): string | null {
   try {
@@ -69,7 +79,8 @@ export function getToken(): string | null {
       return null;
     }
 
-    const entry = new Entry(KEYRING_SERVICE, config.user.email);
+    const account = getKeychainAccount(config.user.email);
+    const entry = new Entry(KEYRING_SERVICE, account);
     const token = entry.getPassword();
     return token;
   } catch {
@@ -80,9 +91,11 @@ export function getToken(): string | null {
 
 /**
  * Set the access token in the OS keychain
+ * Uses environment-specific account names
  */
-export function setToken(account: string, token: string): void {
+export function setToken(email: string, token: string): void {
   try {
+    const account = getKeychainAccount(email);
     const entry = new Entry(KEYRING_SERVICE, account);
     entry.setPassword(token);
   } catch (error) {
@@ -93,6 +106,7 @@ export function setToken(account: string, token: string): void {
 
 /**
  * Delete the access token from the OS keychain
+ * Uses environment-specific account names
  */
 export function deleteToken(): void {
   try {
@@ -101,7 +115,8 @@ export function deleteToken(): void {
       return;
     }
 
-    const entry = new Entry(KEYRING_SERVICE, config.user.email);
+    const account = getKeychainAccount(config.user.email);
+    const entry = new Entry(KEYRING_SERVICE, account);
     entry.deletePassword();
   } catch {
     // Token doesn't exist or couldn't be deleted - that's okay

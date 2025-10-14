@@ -1,6 +1,6 @@
 import type { UploadOptions } from "@vibeinsights/shared/upload";
 import { performUpload, resolveTranscriptPath } from "../lib/perform-upload";
-import { getToken, readConfig } from "../config";
+import { getToken } from "../config";
 
 const MANUAL_UPLOAD_REASON = "manual-cli-upload";
 
@@ -19,12 +19,7 @@ export async function uploadCommand(args: string[]): Promise<void> {
     process.exit(1);
   }
 
-  const config = readConfig();
-  const serverUrl =
-    process.env.VI_SERVER_URL ??
-    process.env.VIBEINSIGHTS_BASE_URL ??
-    config.baseURL ??
-    "http://localhost:3000";
+  const serverUrl = process.env.SERVER_URL ?? "http://localhost:3000";
   const apiToken = process.env.VI_API_TOKEN ?? getToken() ?? undefined;
 
   const options: UploadOptions = {};
