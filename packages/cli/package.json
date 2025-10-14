@@ -1,8 +1,11 @@
 {
   "name": "@vibeinsights/cli",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "type": "module",
   "main": "dist/index.js",
+  "bin": {
+    "vibeinsights": "dist/index.js"
+  },
   "files": [
     "dist"
   ],
@@ -11,7 +14,7 @@
   },
   "scripts": {
     "start": "bun run src/index.ts",
-    "build": "bun build ./src/index.ts --outdir ./dist --target bun --external @napi-rs/keyring --production",
+    "build": "bun build ./src/index.ts --outdir ./dist --target node --external @napi-rs/keyring --production",
     "prepublishOnly": "bun run build",
     "typecheck": "tsc --noEmit --project tsconfig.json"
   },

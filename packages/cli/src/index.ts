@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import { parseArgs } from "util";
 import { loginCommand } from "./commands/login";
 import { logoutCommand } from "./commands/logout";
