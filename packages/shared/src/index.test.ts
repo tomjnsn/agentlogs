@@ -1,7 +1,7 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, test } from "bun:test";
 
-describe('vibeinsights', () => {
-  test('sanity check', () => {
-    expect(true).toBe(true)
-  })
-})
+describe("vibeinsights", () => {
+  test("sanity check", () => {
+    expect(true).toBe(true);
+  });
+});
