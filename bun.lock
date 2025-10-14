@@ -16,7 +16,7 @@
     },
     "packages/cli": {
       "name": "@vibeinsights/cli",
-      "version": "0.0.3",
+      "version": "0.0.5",
       "bin": {
         "vibeinsights": "dist/index.js",
       },
@@ -28,10 +28,6 @@
         "better-auth": "^1.3.27",
         "open": "^10.2.0",
       },
-    },
-    "packages/plugin": {
-      "name": "@vibeinsights/plugin",
-      "version": "0.1.0",
     },
     "packages/shared": {
       "name": "@vibeinsights/shared",
@@ -578,8 +574,6 @@
     "@types/react-dom": ["@types/react-dom@19.2.2", "", { "peerDependencies": { "@types/react": "^19.2.0" } }, "sha512-9KQPoO6mZCi7jcIStSnlOWn2nEF3mNmyr3rIAsGnAbQKYbRLyqmeSc39EVgtxXVia+LMT8j3knZLAZAh+xLmrw=="],
 
     "@vibeinsights/cli": ["@vibeinsights/cli@workspace:packages/cli"],
-
-    "@vibeinsights/plugin": ["@vibeinsights/plugin@workspace:packages/plugin"],
 
     "@vibeinsights/shared": ["@vibeinsights/shared@workspace:packages/shared"],
 
