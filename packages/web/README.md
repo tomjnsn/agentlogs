@@ -41,8 +41,7 @@ GITHUB_CLIENT_SECRET=your_github_client_secret_here
 BETTER_AUTH_SECRET=your_secret_here
 
 # Application URLs (wrangler dev runs on port 8787 by default)
-BETTER_AUTH_URL=http://localhost:8787
-WEB_URL=http://localhost:8787
+WEB_URL=http://localhost:3000
 
 # API token for Claude Code plugin
 API_TOKEN=dev_token
@@ -232,7 +231,6 @@ In `wrangler.jsonc`, add your production URLs:
 ```jsonc
 {
   "vars": {
-    "BETTER_AUTH_URL": "https://your-app.workers.dev",
     "WEB_URL": "https://your-app.workers.dev",
   },
 }
