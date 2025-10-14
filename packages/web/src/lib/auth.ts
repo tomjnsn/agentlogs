@@ -22,7 +22,12 @@ export function createAuth() {
     },
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
-    trustedOrigins: [env.WEB_URL, env.BETTER_AUTH_URL],
+    trustedOrigins: [
+      env.WEB_URL,
+      env.BETTER_AUTH_URL,
+      "http://localhost:3000", // Vite dev server
+      "http://localhost:3001", // Wrangler proxy
+    ],
     plugins: [
       bearer(),
       deviceAuthorization({

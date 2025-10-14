@@ -8,6 +8,6 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "types": ["bun-types"]
+    "types": ["@types/bun"]
   }
 }

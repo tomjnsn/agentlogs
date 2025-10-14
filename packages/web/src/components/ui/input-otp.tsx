@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { OTPInput, OTPInputContext } from "input-otp";
+import { OTPInput, OTPInputContext, type RenderProps } from "input-otp";
 import { Dot } from "lucide-react";
 import * as React from "react";
 
@@ -24,7 +24,8 @@ const InputOTPSlot = React.forwardRef<
   React.ElementRef<"div">,
   React.ComponentPropsWithoutRef<"div"> & { index: number }
 >(({ index, className, ...props }, ref) => {
-  const inputOTPContext = React.useContext(OTPInputContext);
+  // @ts-expect-error - React 19 Context type incompatibility with input-otp (React 18)
+  const inputOTPContext = React.useContext(OTPInputContext) as RenderProps;
   const { char, hasFakeCaret, isActive } = inputOTPContext.slots[index];
 
   return (
