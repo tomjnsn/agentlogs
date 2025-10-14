@@ -1,7 +1,6 @@
 {
   "name": "@vibeinsights/cli",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.0.1",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
