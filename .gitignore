@@ -42,6 +42,7 @@ bun.lockb
 
 # Cloudflare Workers
 .wrangler/
+.wrangler-test/
 wrangler.toml.local
 
 # Documentation archive

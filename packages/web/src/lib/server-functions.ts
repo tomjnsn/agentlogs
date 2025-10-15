@@ -4,6 +4,7 @@ import { env } from "cloudflare:workers";
 import { createDrizzle } from "../db";
 import * as queries from "../db/queries";
 import { createAuth } from "./auth";
+import { logger } from "./logger";
 
 /**
  * Get the current authenticated user's ID
@@ -11,11 +12,14 @@ import { createAuth } from "./auth";
  */
 async function getAuthenticatedUserId() {
   const auth = createAuth();
+  const headers = getRequestHeaders();
+
   const session = await auth.api.getSession({
-    headers: getRequestHeaders(),
+    headers,
   });
 
   if (!session?.user) {
+    logger.error("Authentication failed: No session or user found");
     throw new Error("Unauthorized");
   }
 

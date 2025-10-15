@@ -115,7 +115,11 @@ function EventCard({ event, index }: { event: TranscriptEvent; index: number }) 
         </div>
 
         {event.type === "user" && (
-          <pre className="bg-background/50 whitespace-pre-wrap rounded border p-3 text-sm">{event.message.content}</pre>
+          <pre className="bg-background/50 whitespace-pre-wrap rounded border p-3 text-sm">
+            {typeof event.message.content === "string"
+              ? event.message.content
+              : JSON.stringify(event.message.content, null, 2)}
+          </pre>
         )}
 
         {event.type === "assistant" && (

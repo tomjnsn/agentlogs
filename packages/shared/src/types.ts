@@ -6,11 +6,17 @@ export interface BaseTranscriptEvent {
   timestamp: string;
 }
 
+// Content block for structured messages
+export interface ContentBlock {
+  type: string;
+  [key: string]: unknown;
+}
+
 export interface UserMessageEvent extends BaseTranscriptEvent {
   type: "user";
   message: {
     role: "user";
-    content: string;
+    content: string | ContentBlock[];
   };
   cwd: string;
   gitBranch?: string;
@@ -46,7 +52,17 @@ export interface ToolResultEvent extends BaseTranscriptEvent {
   error?: string;
 }
 
-export type TranscriptEvent = UserMessageEvent | AssistantMessageEvent | ToolUseEvent | ToolResultEvent;
+export interface FileHistorySnapshotEvent extends BaseTranscriptEvent {
+  type: "file-history-snapshot";
+  [key: string]: unknown;
+}
+
+export type TranscriptEvent =
+  | UserMessageEvent
+  | AssistantMessageEvent
+  | ToolUseEvent
+  | ToolResultEvent
+  | FileHistorySnapshotEvent;
 
 // API Payloads
 

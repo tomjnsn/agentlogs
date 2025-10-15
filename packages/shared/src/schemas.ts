@@ -8,11 +8,20 @@ const baseEventSchema = z.object({
   timestamp: z.string(),
 });
 
+// Content block schema for structured messages (tool results, etc.)
+const contentBlockSchema = z
+  .object({
+    type: z.string(),
+    // Additional fields vary by type, so we use passthrough to allow them
+  })
+  .passthrough();
+
 const userEventSchema = baseEventSchema.extend({
   type: z.literal("user"),
   message: z.object({
     role: z.literal("user"),
-    content: z.string(),
+    // Content can be string (simple message) or array (tool result with content blocks)
+    content: z.union([z.string(), z.array(contentBlockSchema)]),
   }),
   cwd: z.string(),
   gitBranch: z.string().optional(),
@@ -51,11 +60,20 @@ const toolResultEventSchema = baseEventSchema.extend({
   error: z.string().optional(),
 });
 
+// Catch-all for other event types (like file-history-snapshot, etc.)
+// We accept these but don't strictly validate their structure
+const fileHistorySnapshotSchema = baseEventSchema
+  .extend({
+    type: z.literal("file-history-snapshot"),
+  })
+  .passthrough();
+
 export const transcriptEventSchema = z.discriminatedUnion("type", [
   userEventSchema,
   assistantEventSchema,
   toolUseEventSchema,
   toolResultEventSchema,
+  fileHistorySnapshotSchema,
 ]);
 
 // API Payload Schemas

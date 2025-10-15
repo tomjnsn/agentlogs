@@ -18,6 +18,8 @@
     "db:generate": "bun --filter @vibeinsights/web db:generate",
     "db:migrate": "bun --filter @vibeinsights/web db:migrate",
     "db:studio": "bun --filter @vibeinsights/web db:studio",
+    "test": "bun run --workspaces test",
+    "test:e2e": "bun --filter @vibeinsights/plugin test:e2e",
     "lint": "oxlint --deny-warnings .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

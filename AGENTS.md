@@ -9,3 +9,9 @@
 - Project uses Prettier with double quotes and semicolons (standard Prettier defaults)
 - **IMPORTANT**: Always run `bun run format` before committing any code changes
 - Run `bun run format:check` to verify formatting without making changes
+
+## Logging
+
+- All development logs (server, client, dev server) are collected in `logs/dev.log`
+- Use `tail -f logs/dev.log` to monitor logs in real-time
+- For logger architecture details, see `packages/shared/README.md`

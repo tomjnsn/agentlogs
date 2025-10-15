@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { createRootRoute, HeadContent, Link, Outlet, Scripts, useRouter } from "@tanstack/react-router";
 import React, { type ReactNode } from "react";
 import { authClient } from "../lib/auth-client";
+import { initializeClientLogger } from "../lib/client-logger";
 import { getSession } from "../lib/server-functions";
 import appCss from "../styles/globals.css?url";
 
@@ -16,13 +17,29 @@ export const Route = createRootRoute({
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Vibe Insights" },
+      { name: "theme-color", content: "#6366f1" },
     ],
-    links: [{ rel: "stylesheet", href: appCss }],
+    links: [
+      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+      { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon-32x32.png" },
+      { rel: "icon", type: "image/png", sizes: "16x16", href: "/favicon-16x16.png" },
+      { rel: "apple-touch-icon", sizes: "180x180", href: "/apple-touch-icon.png" },
+      { rel: "icon", type: "image/png", sizes: "192x192", href: "/android-chrome-192x192.png" },
+      { rel: "icon", type: "image/png", sizes: "512x512", href: "/android-chrome-512x512.png" },
+      { rel: "manifest", href: "/site.webmanifest" },
+      { rel: "stylesheet", href: appCss },
+    ],
   }),
   component: RootComponent,
+  notFoundComponent: NotFoundComponent,
 });
 
 function RootComponent() {
+  // Initialize client logger once on mount (dev only)
+  React.useEffect(() => {
+    initializeClientLogger();
+  }, []);
+
   return (
     <RootDocument>
       <AppContent />
@@ -137,5 +154,32 @@ function AppContent() {
         <Outlet />
       </main>
     </div>
+  );
+}
+
+function NotFoundComponent() {
+  return (
+    <RootDocument>
+      <div className="min-h-screen bg-gray-50">
+        <header className="border-b border-gray-200 bg-white px-6 py-4">
+          <div className="flex items-center justify-between">
+            <h1 className="text-xl font-semibold">
+              <Link to="/" className="hover:text-blue-600">
+                Vibe Insights
+              </Link>
+            </h1>
+          </div>
+        </header>
+        <main className="container mx-auto px-6 py-8">
+          <div className="flex flex-col items-center justify-center py-16">
+            <h1 className="mb-4 text-4xl font-bold text-gray-900">404</h1>
+            <p className="mb-8 text-lg text-gray-600">Page not found</p>
+            <Link to="/" className="text-blue-600 underline hover:text-blue-700">
+              Go back home
+            </Link>
+          </div>
+        </main>
+      </div>
+    </RootDocument>
   );
 }
