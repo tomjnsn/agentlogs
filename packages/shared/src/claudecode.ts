@@ -1,0 +1,1521 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+import type { z } from "zod";
+import {
+  unifiedGitContextSchema,
+  unifiedModelUsageSchema,
+  unifiedTokenUsageSchema,
+  unifiedTranscriptMessageSchema,
+  unifiedTranscriptSchema,
+} from "./schemas";
+
+export type UnifiedTranscript = z.infer<typeof unifiedTranscriptSchema>;
+export type UnifiedTranscriptMessage = z.infer<typeof unifiedTranscriptMessageSchema>;
+export type UnifiedTokenUsage = z.infer<typeof unifiedTokenUsageSchema>;
+
+export type UnifiedModelUsage = z.infer<typeof unifiedModelUsageSchema>;
+export type UnifiedGitContext = z.infer<typeof unifiedGitContextSchema>;
+
+export type LiteLLMModelPricing = {
+  input_cost_per_token?: number;
+  output_cost_per_token?: number;
+  cache_creation_input_token_cost?: number;
+  cache_read_input_token_cost?: number;
+  max_tokens?: number;
+  max_input_tokens?: number;
+  max_output_tokens?: number;
+  input_cost_per_token_above_200k_tokens?: number;
+  output_cost_per_token_above_200k_tokens?: number;
+  cache_creation_input_token_cost_above_200k_tokens?: number;
+  cache_read_input_token_cost_above_200k_tokens?: number;
+  input_cost_per_token_above_128k_tokens?: number;
+  output_cost_per_token_above_128k_tokens?: number;
+};
+
+export type ConvertClaudeCodeOptions = {
+  pricing?: Record<string, LiteLLMModelPricing>;
+  now?: Date;
+};
+
+type ClaudeUsage = {
+  input_tokens?: number;
+  cache_creation_input_tokens?: number;
+  cache_read_input_tokens?: number;
+  output_tokens?: number;
+  reasoning_output_tokens?: number;
+};
+
+type ClaudeMessagePayload = {
+  id?: string;
+  role?: string;
+  content?: unknown;
+  model?: string;
+  usage?: ClaudeUsage | null;
+};
+
+type ClaudeMessageRecord = {
+  uuid: string;
+  type: string;
+  timestamp?: string;
+  parentUuid?: string | null;
+  isSidechain?: boolean;
+  isMeta?: boolean;
+  sessionId?: string;
+  cwd?: string;
+  gitBranch?: string;
+  costUSD?: number;
+  message?: ClaudeMessagePayload;
+  raw: Record<string, unknown>;
+};
+
+type ClaudeUsageDetail = {
+  model: string | null;
+  usage: ClaudeUsage;
+};
+
+type TokenUsage = z.infer<typeof unifiedTokenUsageSchema>;
+
+const DEFAULT_TIERED_THRESHOLD = 200_000;
+const PROVIDER_PREFIXES = [
+  "anthropic/",
+  "claude-3-5-",
+  "claude-3-",
+  "claude-",
+  "openai/",
+  "azure/",
+  "openrouter/openai/",
+];
+
+const IGNORE_STATUS_MESSAGES = new Set([
+  "[request interrupted by user]",
+  "[request aborted by user]",
+  "[request cancelled by user]",
+]);
+
+const COMMAND_ENVELOPE_PATTERN = /^<\/?(?:command|local)-[a-z-]+>/i;
+const SHELL_PROMPT_PATTERN = /^[α-ωΑ-Ω]\s/i;
+
+const NON_PROMPT_PREFIXES = [
+  "npm ",
+  "npm:",
+  "npm error",
+  "node:",
+  "node.js",
+  "error:",
+  "fatal:",
+  "warning:",
+  "traceback (most recent call last):",
+  "usage:",
+  "hint:",
+  "note:",
+  "code:",
+  "requirestack",
+];
+
+const PROMPT_KEYWORD_PATTERN = new RegExp(
+  "\\b(" +
+    [
+      "fix",
+      "please",
+      "should",
+      "update",
+      "change",
+      "add",
+      "remove",
+      "create",
+      "write",
+      "implement",
+      "refactor",
+      "investigate",
+      "explain",
+      "help",
+      "why",
+      "what",
+      "how",
+      "need",
+      "ensure",
+      "make",
+      "build",
+      "let's",
+      "optimize",
+      "review",
+      "check",
+    ].join("|") +
+    ")\\b",
+  "i",
+);
+
+const MAX_SUMMARY_LINES = 3;
+
+/**
+ * Convert a Claude Code transcript from an array of message records
+ * (for testing or in-memory processing)
+ */
+export function convertClaudeCodeTranscript(
+  transcript: Array<Record<string, unknown>>,
+  options: ConvertClaudeCodeOptions = {},
+): UnifiedTranscript | null {
+  const parseResult = parseClaudeTranscript(transcript);
+  if (parseResult.records.size === 0) {
+    return null;
+  }
+
+  const leaf = selectLeafMessage(parseResult.records, parseResult.children);
+  if (!leaf) {
+    return null;
+  }
+
+  const transcriptChain = buildTranscriptChain(leaf, parseResult.records);
+  if (transcriptChain.length === 0) {
+    return null;
+  }
+
+  const usageMessages = collectAssistantUsageMessages(transcriptChain);
+  const tokenUsage = aggregateUsage(usageMessages);
+  const modelUsageMap = aggregateUsageByModel(usageMessages);
+  const blendedTokens = blendedTokenTotal(tokenUsage);
+  const usageDetails = usageMessages
+    .map<ClaudeUsageDetail | null>((message) => {
+      const usage = message.message?.usage;
+      if (!usage) {
+        return null;
+      }
+      return {
+        model: message.message?.model ?? null,
+        usage,
+      };
+    })
+    .filter((detail): detail is ClaudeUsageDetail => detail !== null);
+
+  const costUsd = calculateCostFromUsageDetails(usageDetails, options.pricing);
+  const promptMessages = findPromptUserMessages(transcriptChain);
+  const previewMessage = promptMessages.length > 0 ? summarizeMessage(promptMessages[0]) : null;
+
+  const timestamp = parseDate(leaf.timestamp) ?? options.now ?? new Date();
+  const sessionId = findSessionId(transcriptChain);
+  const primaryModel = selectPrimaryModel(modelUsageMap);
+  const cwd = deriveWorkingDirectory(transcriptChain);
+  // For in-memory processing, we can't reliably do async git operations
+  const gitContext = null;
+  const messages = convertTranscriptToMessages(transcriptChain);
+
+  const transcriptCandidate = {
+    v: 1 as const,
+    id: sessionId ?? leaf.uuid,
+    source: "claude-code" as const,
+    timestamp,
+    preview: previewMessage,
+    model: primaryModel,
+    blendedTokens,
+    costUsd,
+    messageCount: transcriptChain.length,
+    tokenUsage,
+    modelUsage: Array.from(modelUsageMap.entries()).map(([model, usage]) => ({ model, usage })),
+    git: gitContext,
+    messages,
+  };
+
+  return unifiedTranscriptSchema.parse(transcriptCandidate);
+}
+
+export async function convertClaudeCodeFile(
+  filePath: string,
+  options: ConvertClaudeCodeOptions = {},
+): Promise<UnifiedTranscript | null> {
+  const parseResult = await parseClaudeJsonl(filePath);
+  if (parseResult.records.size === 0) {
+    return null;
+  }
+
+  const leaf = selectLeafMessage(parseResult.records, parseResult.children);
+  if (!leaf) {
+    return null;
+  }
+
+  const transcriptChain = buildTranscriptChain(leaf, parseResult.records);
+  if (transcriptChain.length === 0) {
+    return null;
+  }
+
+  const usageMessages = collectAssistantUsageMessages(transcriptChain);
+  const tokenUsage = aggregateUsage(usageMessages);
+  const modelUsageMap = aggregateUsageByModel(usageMessages);
+  const blendedTokens = blendedTokenTotal(tokenUsage);
+  const usageDetails = usageMessages
+    .map<ClaudeUsageDetail | null>((message) => {
+      const usage = message.message?.usage;
+      if (!usage) {
+        return null;
+      }
+      return {
+        model: message.message?.model ?? null,
+        usage,
+      };
+    })
+    .filter((detail): detail is ClaudeUsageDetail => detail !== null);
+
+  const costUsd = calculateCostFromUsageDetails(usageDetails, options.pricing);
+  const promptMessages = findPromptUserMessages(transcriptChain);
+  const previewMessage = promptMessages.length > 0 ? summarizeMessage(promptMessages[0]) : null;
+
+  const timestamp = parseDate(leaf.timestamp) ?? (await getFileMTime(filePath)) ?? new Date();
+  const sessionId = findSessionId(transcriptChain);
+  const primaryModel = selectPrimaryModel(modelUsageMap);
+  const cwd = deriveWorkingDirectory(transcriptChain);
+  const gitContext = await resolveGitContext(cwd, leaf.gitBranch);
+  const messages = convertTranscriptToMessages(transcriptChain);
+
+  const transcriptCandidate = {
+    v: 1 as const,
+    id: sessionId ?? leaf.uuid,
+    source: "claude-code" as const,
+    timestamp,
+    preview: previewMessage,
+    model: primaryModel,
+    blendedTokens,
+    costUsd,
+    messageCount: transcriptChain.length,
+    tokenUsage,
+    modelUsage: Array.from(modelUsageMap.entries()).map(([model, usage]) => ({ model, usage })),
+    git: gitContext,
+    messages,
+  };
+
+  return unifiedTranscriptSchema.parse(transcriptCandidate);
+}
+
+export async function convertClaudeCodeFiles(
+  filePaths: string[],
+  options: ConvertClaudeCodeOptions = {},
+): Promise<UnifiedTranscript[]> {
+  const results: UnifiedTranscript[] = [];
+  for (const filePath of filePaths) {
+    const transcript = await convertClaudeCodeFile(filePath, options);
+    if (transcript) {
+      results.push(transcript);
+    }
+  }
+  return results;
+}
+
+function parseClaudeTranscript(transcript: Array<Record<string, unknown>>): {
+  records: Map<string, ClaudeMessageRecord>;
+  children: Map<string, Set<string>>;
+} {
+  const records = new Map<string, ClaudeMessageRecord>();
+  const children = new Map<string, Set<string>>();
+
+  for (const parsed of transcript) {
+    const type = typeof parsed.type === "string" ? parsed.type : "";
+    if (type === "summary") {
+      continue;
+    }
+
+    const uuid = typeof parsed.uuid === "string" ? parsed.uuid : null;
+    if (!uuid) {
+      continue;
+    }
+
+    const record: ClaudeMessageRecord = {
+      uuid,
+      type,
+      timestamp: typeof parsed.timestamp === "string" ? parsed.timestamp : undefined,
+      parentUuid:
+        typeof parsed.parentUuid === "string" || parsed.parentUuid === null
+          ? (parsed.parentUuid as string | null | undefined)
+          : undefined,
+      isSidechain: Boolean(parsed.isSidechain),
+      isMeta: Boolean(parsed.isMeta),
+      sessionId: typeof parsed.sessionId === "string" ? parsed.sessionId : undefined,
+      cwd: typeof parsed.cwd === "string" ? parsed.cwd : undefined,
+      gitBranch: typeof parsed.gitBranch === "string" ? parsed.gitBranch : undefined,
+      costUSD: typeof parsed.costUSD === "number" ? parsed.costUSD : undefined,
+      message: extractMessagePayload(parsed.message),
+      raw: parsed,
+    };
+
+    records.set(uuid, record);
+
+    if (record.parentUuid) {
+      const set = children.get(record.parentUuid) ?? new Set<string>();
+      set.add(uuid);
+      children.set(record.parentUuid, set);
+    }
+  }
+
+  return { records, children };
+}
+
+async function parseClaudeJsonl(filePath: string): Promise<{
+  records: Map<string, ClaudeMessageRecord>;
+  children: Map<string, Set<string>>;
+}> {
+  const content = await fs.readFile(filePath, "utf8");
+  const lines = content.split(/\r?\n/);
+  const records = new Map<string, ClaudeMessageRecord>();
+  const children = new Map<string, Set<string>>();
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) {
+      continue;
+    }
+
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(line) as Record<string, unknown>;
+    } catch {
+      continue;
+    }
+
+    const type = typeof parsed.type === "string" ? parsed.type : "";
+    if (type === "summary") {
+      continue;
+    }
+
+    const uuid = typeof parsed.uuid === "string" ? parsed.uuid : null;
+    if (!uuid) {
+      continue;
+    }
+
+    const record: ClaudeMessageRecord = {
+      uuid,
+      type,
+      timestamp: typeof parsed.timestamp === "string" ? parsed.timestamp : undefined,
+      parentUuid:
+        typeof parsed.parentUuid === "string" || parsed.parentUuid === null
+          ? (parsed.parentUuid as string | null | undefined)
+          : undefined,
+      isSidechain: Boolean(parsed.isSidechain),
+      isMeta: Boolean(parsed.isMeta),
+      sessionId: typeof parsed.sessionId === "string" ? parsed.sessionId : undefined,
+      cwd: typeof parsed.cwd === "string" ? parsed.cwd : undefined,
+      gitBranch: typeof parsed.gitBranch === "string" ? parsed.gitBranch : undefined,
+      costUSD: typeof parsed.costUSD === "number" ? parsed.costUSD : undefined,
+      message: extractMessagePayload(parsed.message),
+      raw: parsed,
+    };
+
+    records.set(uuid, record);
+
+    if (record.parentUuid) {
+      const set = children.get(record.parentUuid) ?? new Set<string>();
+      set.add(uuid);
+      children.set(record.parentUuid, set);
+    }
+  }
+
+  return { records, children };
+}
+
+function extractMessagePayload(value: unknown): ClaudeMessagePayload | undefined {
+  if (!value || typeof value !== "object") {
+    return undefined;
+  }
+  const record = value as Record<string, unknown>;
+  const id = typeof record.id === "string" ? record.id : undefined;
+  const role = typeof record.role === "string" ? record.role : undefined;
+  const content = record.content;
+  const model = typeof record.model === "string" ? record.model : undefined;
+  const usage = extractUsage(record.usage);
+  return { id, role, content, model, usage };
+}
+
+function extractUsage(value: unknown): ClaudeUsage | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const record = value as Record<string, unknown>;
+  const usage: ClaudeUsage = {};
+  if (typeof record.input_tokens === "number") {
+    usage.input_tokens = record.input_tokens;
+  }
+  if (typeof record.cache_creation_input_tokens === "number") {
+    usage.cache_creation_input_tokens = record.cache_creation_input_tokens;
+  }
+  if (typeof record.cache_read_input_tokens === "number") {
+    usage.cache_read_input_tokens = record.cache_read_input_tokens;
+  }
+  if (typeof record.output_tokens === "number") {
+    usage.output_tokens = record.output_tokens;
+  }
+  if (typeof record.reasoning_output_tokens === "number") {
+    usage.reasoning_output_tokens = record.reasoning_output_tokens;
+  }
+  return Object.keys(usage).length > 0 ? usage : null;
+}
+
+function selectLeafMessage(
+  records: Map<string, ClaudeMessageRecord>,
+  children: Map<string, Set<string>>,
+): ClaudeMessageRecord | null {
+  const leaves: ClaudeMessageRecord[] = [];
+  for (const record of records.values()) {
+    if (!children.has(record.uuid)) {
+      leaves.push(record);
+    }
+  }
+
+  if (leaves.length === 0) {
+    return null;
+  }
+
+  leaves.sort((a, b) => {
+    const aTime = timestampToNumber(a.timestamp) ?? 0;
+    const bTime = timestampToNumber(b.timestamp) ?? 0;
+    if (aTime === bTime) {
+      return a.uuid.localeCompare(b.uuid);
+    }
+    return bTime - aTime;
+  });
+
+  return leaves[0];
+}
+
+function buildTranscriptChain(
+  leaf: ClaudeMessageRecord,
+  records: Map<string, ClaudeMessageRecord>,
+): ClaudeMessageRecord[] {
+  const chain: ClaudeMessageRecord[] = [];
+  const visited = new Set<string>();
+  let current: ClaudeMessageRecord | undefined = leaf;
+
+  while (current) {
+    if (visited.has(current.uuid)) {
+      break;
+    }
+    visited.add(current.uuid);
+    chain.unshift(current);
+    const parentUuid = current.parentUuid ?? undefined;
+    if (!parentUuid) {
+      break;
+    }
+    current = records.get(parentUuid);
+  }
+
+  return chain;
+}
+
+function collectAssistantUsageMessages(transcript: ClaudeMessageRecord[]): ClaudeMessageRecord[] {
+  const unique = new Map<string, ClaudeMessageRecord>();
+
+  for (const message of transcript) {
+    if (message.type !== "assistant") {
+      continue;
+    }
+
+    const payload = message.message;
+    if (!payload?.usage) {
+      continue;
+    }
+
+    const key = getAssistantUsageKey(message);
+    unique.set(key, message);
+  }
+
+  return Array.from(unique.values());
+}
+
+function getAssistantUsageKey(message: ClaudeMessageRecord): string {
+  const payload = message.message;
+  const messageId = asNonEmptyString(payload?.id);
+  const requestId = asNonEmptyString((message.raw as Record<string, unknown>).requestId);
+  if (messageId && requestId) {
+    return `${messageId}:${requestId}`;
+  }
+  if (messageId) {
+    return messageId;
+  }
+  if (requestId) {
+    return requestId;
+  }
+  return message.uuid;
+}
+
+function aggregateUsage(messages: ClaudeMessageRecord[]): TokenUsage {
+  const usage: TokenUsage = {
+    inputTokens: 0,
+    cachedInputTokens: 0,
+    outputTokens: 0,
+    reasoningOutputTokens: 0,
+    totalTokens: 0,
+  };
+
+  for (const message of messages) {
+    const stats = message.message?.usage;
+    if (!stats) {
+      continue;
+    }
+    const input = ensureNumber(stats.input_tokens);
+    const cacheCreation = ensureNumber(stats.cache_creation_input_tokens);
+    const cacheRead = ensureNumber(stats.cache_read_input_tokens);
+    const output = ensureNumber(stats.output_tokens);
+    const reasoning = ensureNumber(stats.reasoning_output_tokens);
+
+    usage.inputTokens += input + cacheCreation + cacheRead;
+    usage.cachedInputTokens += cacheRead;
+    usage.outputTokens += output;
+    usage.reasoningOutputTokens += reasoning;
+    usage.totalTokens += input + cacheCreation + cacheRead + output + reasoning;
+  }
+
+  return usage;
+}
+
+function aggregateUsageByModel(messages: ClaudeMessageRecord[]): Map<string, TokenUsage> {
+  const perModel = new Map<string, TokenUsage>();
+
+  for (const message of messages) {
+    const model = message.message?.model;
+    const usage = message.message?.usage;
+    if (!model || !usage) {
+      continue;
+    }
+
+    const record =
+      perModel.get(model) ??
+      ({
+        inputTokens: 0,
+        cachedInputTokens: 0,
+        outputTokens: 0,
+        reasoningOutputTokens: 0,
+        totalTokens: 0,
+      } satisfies TokenUsage);
+
+    const input = ensureNumber(usage.input_tokens);
+    const cacheCreation = ensureNumber(usage.cache_creation_input_tokens);
+    const cacheRead = ensureNumber(usage.cache_read_input_tokens);
+    const output = ensureNumber(usage.output_tokens);
+    const reasoning = ensureNumber(usage.reasoning_output_tokens);
+
+    record.inputTokens += input + cacheCreation + cacheRead;
+    record.cachedInputTokens += cacheRead;
+    record.outputTokens += output;
+    record.reasoningOutputTokens += reasoning;
+    record.totalTokens += input + cacheCreation + cacheRead + output + reasoning;
+
+    perModel.set(model, record);
+  }
+
+  return perModel;
+}
+
+function findPromptUserMessages(transcript: ClaudeMessageRecord[]): ClaudeMessageRecord[] {
+  const prompts: ClaudeMessageRecord[] = [];
+
+  for (const message of transcript) {
+    if (!isPromptCandidate(message)) {
+      continue;
+    }
+    prompts.push(message);
+  }
+
+  return prompts;
+}
+
+function isPromptCandidate(message: ClaudeMessageRecord): boolean {
+  if (message.type !== "user") {
+    return false;
+  }
+  if (message.isSidechain) {
+    return false;
+  }
+  if (message.isMeta) {
+    return false;
+  }
+
+  const raw = message.raw as Record<string, unknown>;
+  if (raw && typeof raw === "object") {
+    if ("toolUseResult" in raw) {
+      return false;
+    }
+  }
+
+  const content = message.message?.content;
+  if (Array.isArray(content)) {
+    if (content.some((part) => isToolResultPart(part))) {
+      return false;
+    }
+  }
+
+  const normalized = getNormalizedMessageText(message);
+  if (!normalized) {
+    return false;
+  }
+
+  const lower = normalized.toLowerCase();
+  if (IGNORE_STATUS_MESSAGES.has(lower)) {
+    return false;
+  }
+  if (isCommandEnvelope(normalized)) {
+    return false;
+  }
+  if (SHELL_PROMPT_PATTERN.test(normalized)) {
+    return false;
+  }
+
+  if (NON_PROMPT_PREFIXES.some((prefix) => lower.startsWith(prefix))) {
+    if (!hasPromptCue(normalized)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function isToolResultPart(part: unknown): boolean {
+  if (!part || typeof part !== "object") {
+    return false;
+  }
+  const record = part as Record<string, unknown>;
+  if (record.type === "tool_result") {
+    return true;
+  }
+  if (typeof record.tool_use_id === "string") {
+    return true;
+  }
+  return false;
+}
+
+function isCommandEnvelope(value: string): boolean {
+  return COMMAND_ENVELOPE_PATTERN.test(value);
+}
+
+function summarizeMessage(message: ClaudeMessageRecord, maxLength = 80): string | null {
+  const normalized = getNormalizedMessageText(message);
+  if (!normalized) {
+    return null;
+  }
+  return truncate(normalized, maxLength);
+}
+
+function truncate(value: string, maxLength: number): string {
+  const normalized = collapseWhitespace(value);
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+  if (maxLength <= 1) {
+    return normalized.slice(0, maxLength);
+  }
+  return `${normalized.slice(0, maxLength - 1)}…`;
+}
+
+function deriveWorkingDirectory(transcript: ClaudeMessageRecord[]): string | undefined {
+  for (const message of transcript) {
+    if (message.cwd) {
+      return message.cwd;
+    }
+  }
+  return undefined;
+}
+
+async function resolveGitContext(cwd: string | undefined, gitBranch: string | undefined): Promise<UnifiedGitContext> {
+  if (!cwd) {
+    return null;
+  }
+
+  try {
+    const stats = await fs.stat(cwd);
+    if (!stats.isDirectory()) {
+      return unifiedGitContextSchema.parse({
+        relativeCwd: null,
+        branch: gitBranch ?? null,
+        repo: null,
+      });
+    }
+  } catch {
+    return unifiedGitContextSchema.parse({
+      relativeCwd: null,
+      branch: gitBranch ?? null,
+      repo: null,
+    });
+  }
+
+  const repoRoot = await locateGitRoot(cwd);
+  if (!repoRoot) {
+    return unifiedGitContextSchema.parse({
+      relativeCwd: null,
+      branch: gitBranch ?? null,
+      repo: null,
+    });
+  }
+
+  const relativeCwd = path.relative(repoRoot, cwd) || ".";
+  const branch = await readGitHead(repoRoot, gitBranch);
+  const repo = await readGitRemoteRepo(repoRoot);
+
+  return unifiedGitContextSchema.parse({
+    relativeCwd,
+    branch,
+    repo,
+  });
+}
+
+async function locateGitRoot(start: string): Promise<string | null> {
+  let current = path.resolve(start);
+  const { root } = path.parse(current);
+
+  while (true) {
+    const gitDir = path.join(current, ".git");
+    try {
+      const stats = await fs.stat(gitDir);
+      if (stats.isDirectory() || stats.isFile()) {
+        return current;
+      }
+    } catch {
+      // continue
+    }
+
+    if (current === root) {
+      return null;
+    }
+
+    const parent = path.dirname(current);
+    if (parent === current) {
+      return null;
+    }
+    current = parent;
+  }
+}
+
+async function readGitHead(repoRoot: string, fallbackBranch?: string): Promise<string | null> {
+  try {
+    const headPath = path.join(repoRoot, ".git", "HEAD");
+    const headContent = await fs.readFile(headPath, "utf8");
+    const trimmed = headContent.trim();
+    if (trimmed.startsWith("ref:")) {
+      const ref = trimmed.slice(4).trim();
+      const parts = ref.split("/");
+      return parts[parts.length - 1] ?? fallbackBranch ?? null;
+    }
+    return trimmed || fallbackBranch || null;
+  } catch {
+    return fallbackBranch ?? null;
+  }
+}
+
+async function readGitRemoteRepo(repoRoot: string): Promise<string | null> {
+  try {
+    const configPath = path.join(repoRoot, ".git", "config");
+    const configContent = await fs.readFile(configPath, "utf8");
+
+    // Look for remote "origin" url
+    const remoteMatch = configContent.match(/\[remote "origin"\]\s+url\s*=\s*(.+)/i);
+    if (!remoteMatch || !remoteMatch[1]) {
+      return null;
+    }
+
+    const url = remoteMatch[1].trim();
+
+    // Parse GitHub/GitLab URLs
+    // Formats: git@github.com:owner/repo.git, https://github.com/owner/repo.git, etc.
+    const sshMatch = url.match(/git@([^:]+):(.+?)(?:\.git)?$/);
+    if (sshMatch) {
+      const host = sshMatch[1];
+      const path = sshMatch[2];
+      return `${host}/${path}`;
+    }
+
+    const httpsMatch = url.match(/https?:\/\/([^/]+)\/(.+?)(?:\.git)?$/);
+    if (httpsMatch) {
+      const host = httpsMatch[1];
+      const path = httpsMatch[2];
+      return `${host}/${path}`;
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function findSessionId(transcript: ClaudeMessageRecord[]): string | null {
+  for (const message of transcript) {
+    const rawId = typeof message.sessionId === "string" ? message.sessionId.trim() : "";
+    if (rawId.length > 0) {
+      return rawId;
+    }
+  }
+  return null;
+}
+
+function selectPrimaryModel(modelUsage: Map<string, TokenUsage>): string | null {
+  let primaryModel: string | null = null;
+  let highestTokens = -1;
+  for (const [modelName, usage] of modelUsage) {
+    const tokens = usage.totalTokens > 0 ? usage.totalTokens : usage.inputTokens + usage.outputTokens;
+    if (tokens > highestTokens) {
+      highestTokens = tokens;
+      primaryModel = modelName;
+    }
+  }
+  return primaryModel;
+}
+
+function getNormalizedMessageText(message: ClaudeMessageRecord): string | null {
+  const candidates = extractNormalizedCandidates(message.message);
+  return candidates[0] ?? null;
+}
+
+function extractNormalizedCandidates(payload: ClaudeMessagePayload | undefined): string[] {
+  if (!payload) {
+    return [];
+  }
+
+  const content = payload.content;
+
+  if (typeof content === "string") {
+    const normalized = normalizeStringContent(content);
+    return normalized ? [normalized] : [];
+  }
+
+  if (Array.isArray(content)) {
+    const results: string[] = [];
+    for (const part of content) {
+      if (typeof part === "string") {
+        const normalized = normalizeStringContent(part);
+        if (normalized) {
+          results.push(normalized);
+        }
+        continue;
+      }
+      if (part && typeof part === "object") {
+        const record = part as Record<string, unknown>;
+        const fields = ["content", "text"];
+        for (const field of fields) {
+          const value = record[field];
+          if (typeof value === "string") {
+            const normalized = normalizeStringContent(value);
+            if (normalized) {
+              results.push(normalized);
+            }
+          }
+        }
+      }
+    }
+    return results;
+  }
+
+  return [];
+}
+
+function normalizeStringContent(value: string, maxLines = MAX_SUMMARY_LINES): string | null {
+  const lines = extractMeaningfulLines(value);
+  if (lines.length === 0) {
+    return null;
+  }
+
+  const selected = lines.slice(0, maxLines);
+  const merged = selected.join(" ");
+  const normalized = collapseWhitespace(merged);
+  return normalized.length > 0 ? normalized : null;
+}
+
+function extractMeaningfulLines(value: string): string[] {
+  const lines: string[] = [];
+  for (const rawLine of value.split(/\r?\n/)) {
+    const trimmed = rawLine.trim();
+    if (!trimmed) {
+      continue;
+    }
+
+    const lower = trimmed.toLowerCase();
+    if (IGNORE_STATUS_MESSAGES.has(lower)) {
+      continue;
+    }
+    if (isCommandEnvelope(trimmed)) {
+      continue;
+    }
+    if (SHELL_PROMPT_PATTERN.test(trimmed)) {
+      continue;
+    }
+
+    if (NON_PROMPT_PREFIXES.some((prefix) => lower.startsWith(prefix))) {
+      if (!hasPromptCue(trimmed)) {
+        continue;
+      }
+    }
+
+    if (!/[a-z]/i.test(trimmed) && !/\d/.test(trimmed)) {
+      continue;
+    }
+
+    lines.push(trimmed);
+  }
+  return lines;
+}
+
+function collapseWhitespace(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function hasPromptCue(value: string): boolean {
+  const lower = value.toLowerCase();
+  if (PROMPT_KEYWORD_PATTERN.test(lower)) {
+    return true;
+  }
+
+  if (lower.includes("?")) {
+    return true;
+  }
+
+  const cuePhrases = [
+    "can you",
+    "can we",
+    "could you",
+    "could we",
+    "would you",
+    "would we",
+    "should we",
+    "should i",
+    "let's",
+    "let us",
+  ];
+
+  return cuePhrases.some((phrase) => lower.includes(phrase));
+}
+
+function blendedTokenTotal(usage: TokenUsage): number {
+  const nonCached = Math.max(0, usage.inputTokens - usage.cachedInputTokens);
+  return nonCached + usage.outputTokens + usage.reasoningOutputTokens;
+}
+
+async function getFileMTime(filePath: string): Promise<Date | null> {
+  try {
+    const stats = await fs.stat(filePath);
+    return stats.mtime;
+  } catch {
+    return null;
+  }
+}
+
+function parseDate(value: string | undefined): Date | null {
+  if (!value) {
+    return null;
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function timestampToNumber(value: string | undefined): number | null {
+  const date = parseDate(value);
+  return date ? date.getTime() : null;
+}
+
+function ensureNumber(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function asNonEmptyString(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function calculateCostFromUsageDetails(
+  usageDetails: ClaudeUsageDetail[],
+  pricingData: Record<string, LiteLLMModelPricing> | undefined,
+): number {
+  if (!pricingData || Object.keys(pricingData).length === 0) {
+    return 0;
+  }
+
+  let total = 0;
+  for (const detail of usageDetails) {
+    const modelName = detail.model;
+    if (!modelName) {
+      continue;
+    }
+
+    const pricing = resolvePricingForModel(modelName, pricingData);
+    if (!pricing) {
+      continue;
+    }
+
+    const cost = calculateCostFromPricing(
+      {
+        input_tokens: ensureNumber(detail.usage.input_tokens),
+        output_tokens: ensureNumber(detail.usage.output_tokens),
+        cache_creation_input_tokens: ensureNumber(detail.usage.cache_creation_input_tokens),
+        cache_read_input_tokens: ensureNumber(detail.usage.cache_read_input_tokens),
+      },
+      pricing,
+    );
+
+    total += cost;
+  }
+
+  return total;
+}
+
+function resolvePricingForModel(
+  modelName: string,
+  pricingData: Record<string, LiteLLMModelPricing>,
+): LiteLLMModelPricing | null {
+  const normalizedName = modelName.trim();
+  if (!normalizedName) {
+    return null;
+  }
+
+  const candidates = new Set<string>();
+  candidates.add(normalizedName);
+  for (const prefix of PROVIDER_PREFIXES) {
+    candidates.add(`${prefix}${normalizedName}`);
+  }
+
+  for (const candidate of candidates) {
+    const pricing = pricingData[candidate];
+    if (pricing) {
+      return pricing;
+    }
+  }
+
+  const lower = normalizedName.toLowerCase();
+  for (const [key, pricing] of Object.entries(pricingData)) {
+    const comparison = key.toLowerCase();
+    if (comparison.includes(lower) || lower.includes(comparison)) {
+      return pricing;
+    }
+  }
+
+  return null;
+}
+
+function calculateCostFromPricing(
+  tokens: {
+    input_tokens: number;
+    output_tokens: number;
+    cache_creation_input_tokens?: number;
+    cache_read_input_tokens?: number;
+  },
+  pricing: LiteLLMModelPricing,
+): number {
+  const calculateTieredCost = (
+    totalTokens: number | undefined,
+    basePrice: number | undefined,
+    tieredPrice: number | undefined,
+    threshold: number = DEFAULT_TIERED_THRESHOLD,
+  ) => {
+    if (totalTokens == null || totalTokens <= 0) {
+      return 0;
+    }
+
+    if (totalTokens > threshold && tieredPrice != null) {
+      const tokensBelowThreshold = Math.min(totalTokens, threshold);
+      const tokensAboveThreshold = Math.max(0, totalTokens - threshold);
+
+      let tieredCost = tokensAboveThreshold * tieredPrice;
+      if (basePrice != null) {
+        tieredCost += tokensBelowThreshold * basePrice;
+      }
+      return tieredCost;
+    }
+
+    if (basePrice != null) {
+      return totalTokens * basePrice;
+    }
+
+    return 0;
+  };
+
+  const inputCost = calculateTieredCost(
+    tokens.input_tokens,
+    pricing.input_cost_per_token,
+    pricing.input_cost_per_token_above_200k_tokens,
+  );
+
+  const outputCost = calculateTieredCost(
+    tokens.output_tokens,
+    pricing.output_cost_per_token,
+    pricing.output_cost_per_token_above_200k_tokens,
+  );
+
+  const cacheCreationCost = calculateTieredCost(
+    tokens.cache_creation_input_tokens,
+    pricing.cache_creation_input_token_cost,
+    pricing.cache_creation_input_token_cost_above_200k_tokens,
+  );
+
+  const cacheReadCost = calculateTieredCost(
+    tokens.cache_read_input_tokens,
+    pricing.cache_read_input_token_cost,
+    pricing.cache_read_input_token_cost_above_200k_tokens,
+  );
+
+  return inputCost + outputCost + cacheCreationCost + cacheReadCost;
+}
+
+function convertTranscriptToMessages(transcript: ClaudeMessageRecord[]): UnifiedTranscriptMessage[] {
+  const messages: UnifiedTranscriptMessage[] = [];
+  const toolCallById = new Map<
+    string,
+    {
+      index: number;
+      toolName: string | null;
+    }
+  >();
+
+  // Get cwd for path relativization
+  const cwd = deriveWorkingDirectory(transcript);
+
+  for (const record of transcript) {
+    if (record.isMeta) {
+      continue;
+    }
+
+    const metadata = buildMessageMetadata(record);
+    const type = record.type;
+
+    if (type === "user") {
+      const { texts, toolResults } = extractUserContent(record);
+
+      for (const text of texts) {
+        if (!text.trim()) {
+          continue;
+        }
+        messages.push(
+          unifiedTranscriptMessageSchema.parse({
+            type: "user",
+            text: text.trim(),
+            id: record.uuid,
+            timestamp: metadata.timestamp,
+          }),
+        );
+      }
+
+      // Merge tool results back into tool calls
+      for (const result of toolResults) {
+        const linkedTool = result.callId ? toolCallById.get(result.callId) : undefined;
+        if (linkedTool) {
+          // Update the existing tool call with output/error
+          const toolCallMessage = messages[linkedTool.index] as (typeof messages)[number] & {
+            type: "tool-call";
+          };
+          toolCallMessage.output = result.output;
+          if (result.error) {
+            toolCallMessage.error = result.error;
+          }
+
+          // Re-sanitize after adding output
+          const sanitized = sanitizeToolCall(toolCallMessage, cwd);
+          messages[linkedTool.index] = sanitized;
+        }
+      }
+
+      continue;
+    }
+
+    if (type === "assistant") {
+      const content = record.message?.content;
+      if (!Array.isArray(content)) {
+        continue;
+      }
+
+      for (const part of content) {
+        if (!part || typeof part !== "object") {
+          continue;
+        }
+
+        const partObj = part as Record<string, unknown>;
+        if (partObj.type === "thinking" && typeof partObj.thinking === "string") {
+          messages.push(
+            unifiedTranscriptMessageSchema.parse({
+              type: "thinking",
+              text: partObj.thinking,
+              ...metadata,
+            }),
+          );
+          continue;
+        }
+
+        if (partObj.type === "text" && typeof partObj.text === "string") {
+          messages.push(
+            unifiedTranscriptMessageSchema.parse({
+              type: "agent",
+              text: partObj.text,
+              ...metadata,
+            }),
+          );
+          continue;
+        }
+
+        if (partObj.type === "tool_use") {
+          const callId = typeof partObj.id === "string" ? partObj.id : "";
+          const toolName = typeof partObj.name === "string" ? partObj.name : null;
+          const input = partObj.input ?? undefined;
+
+          // Build with type and toolName first for better readability
+          const toolCallMessage = {
+            type: "tool-call" as const,
+            toolName,
+            ...metadata,
+            input,
+          };
+
+          const parsed = unifiedTranscriptMessageSchema.parse(toolCallMessage);
+          const sanitized = sanitizeToolCall(parsed as UnifiedTranscriptMessage & { type: "tool-call" }, cwd);
+          messages.push(sanitized);
+
+          if (callId) {
+            toolCallById.set(callId, { index: messages.length - 1, toolName });
+          }
+        }
+      }
+    }
+  }
+
+  return messages;
+}
+
+type ExtractedUserContent = {
+  texts: string[];
+  toolResults: Array<{
+    callId?: string;
+    toolName?: string | null;
+    output?: unknown;
+    error?: string;
+    isError?: boolean;
+  }>;
+};
+
+function extractUserContent(record: ClaudeMessageRecord): ExtractedUserContent {
+  const payload = record.message;
+  if (!payload) {
+    return { texts: [], toolResults: [] };
+  }
+
+  const content = payload.content;
+  if (typeof content === "string") {
+    const normalized = collapseWhitespace(content);
+    return normalized ? { texts: [normalized], toolResults: [] } : { texts: [], toolResults: [] };
+  }
+
+  if (!Array.isArray(content)) {
+    return { texts: [], toolResults: [] };
+  }
+
+  const texts: string[] = [];
+  const toolResults: ExtractedUserContent["toolResults"] = [];
+
+  for (const part of content) {
+    if (!part || typeof part !== "object") {
+      continue;
+    }
+
+    if (typeof part === "string") {
+      const normalized = collapseWhitespace(part);
+      if (normalized) {
+        texts.push(normalized);
+      }
+      continue;
+    }
+
+    const recordPart = part as Record<string, unknown>;
+    const type = typeof recordPart.type === "string" ? recordPart.type : undefined;
+
+    if (type === "tool_result") {
+      const callId = typeof recordPart.tool_use_id === "string" ? recordPart.tool_use_id : undefined;
+      let output: unknown = recordPart.content;
+
+      const toolUseResult = (record.raw.toolUseResult ?? record.raw.tool_use_result) as
+        | Record<string, unknown>
+        | undefined;
+
+      if (toolUseResult) {
+        output = toolUseResult;
+      }
+
+      toolResults.push({
+        callId,
+        output,
+      });
+      continue;
+    }
+
+    if (type === "text" && typeof recordPart.text === "string") {
+      const normalized = collapseWhitespace(recordPart.text);
+      if (normalized) {
+        texts.push(normalized);
+      }
+      continue;
+    }
+
+    for (const key of ["content", "text"]) {
+      const value = recordPart[key];
+      if (typeof value === "string") {
+        const normalized = collapseWhitespace(value);
+        if (normalized) {
+          texts.push(normalized);
+        }
+      }
+    }
+  }
+
+  return { texts, toolResults };
+}
+
+function buildMessageMetadata(record: ClaudeMessageRecord): {
+  id?: string;
+  timestamp?: string;
+  model?: string;
+} {
+  return {
+    id: record.message?.id,
+    timestamp: record.timestamp,
+    model: record.message?.model,
+  };
+}
+
+/**
+ * Sanitize tool call by converting absolute paths to relative paths
+ * based on cwd for known file path fields
+ */
+function sanitizeToolCall(
+  toolCall: UnifiedTranscriptMessage & { type: "tool-call" },
+  cwd: string | undefined,
+): UnifiedTranscriptMessage {
+  if (!cwd) {
+    return toolCall;
+  }
+
+  // Normalize cwd to ensure it ends with /
+  const normalizedCwd = cwd.endsWith("/") ? cwd : `${cwd}/`;
+
+  // Helper to convert absolute path to relative
+  const toRelative = (absPath: string): string => {
+    if (absPath.startsWith(normalizedCwd)) {
+      const relativePath = absPath.slice(normalizedCwd.length);
+      return `./${relativePath}`;
+    }
+    return absPath;
+  };
+
+  const { toolName, input, output } = toolCall;
+
+  // Handle tool-specific path fields
+  switch (toolName) {
+    case "Write": {
+      const sanitizedInput =
+        input && typeof input === "object"
+          ? {
+              ...input,
+              file_path:
+                typeof (input as any).file_path === "string"
+                  ? toRelative((input as any).file_path)
+                  : (input as any).file_path,
+            }
+          : input;
+
+      // Remove content, filePath, and structuredPatch from output since they're redundant
+      const sanitizedOutput =
+        output && typeof output === "object"
+          ? Object.fromEntries(
+              Object.entries(output).filter(
+                ([key]) => key !== "content" && key !== "filePath" && key !== "structuredPatch",
+              ),
+            )
+          : output;
+
+      return { ...toolCall, input: sanitizedInput, output: sanitizedOutput };
+    }
+
+    case "Read": {
+      const sanitizedInput =
+        input && typeof input === "object"
+          ? {
+              ...input,
+              file_path:
+                typeof (input as any).file_path === "string"
+                  ? toRelative((input as any).file_path)
+                  : (input as any).file_path,
+            }
+          : input;
+
+      let sanitizedOutput = output;
+
+      if (output && typeof output === "object" && (output as any).file && typeof (output as any).file === "object") {
+        const originalFile = (output as any).file as Record<string, unknown>;
+        const file: Record<string, unknown> = { ...originalFile };
+
+        if (typeof file.filePath === "string") {
+          const relative = toRelative(file.filePath);
+          if (typeof file.path === "string" && file.path === file.filePath) {
+            file.path = relative;
+          }
+          delete file.filePath;
+        }
+
+        if (typeof file.path === "string") {
+          file.path = toRelative(file.path);
+        }
+
+        sanitizedOutput = {
+          ...output,
+          file,
+        };
+      }
+
+      return { ...toolCall, input: sanitizedInput, output: sanitizedOutput };
+    }
+
+    case "Edit": {
+      const sanitizedInput =
+        input && typeof input === "object"
+          ? {
+              ...input,
+              file_path:
+                typeof (input as any).file_path === "string"
+                  ? toRelative((input as any).file_path)
+                  : (input as any).file_path,
+            }
+          : input;
+
+      const sanitizedOutput =
+        output && typeof output === "object"
+          ? {
+              ...output,
+              filePath:
+                typeof (output as any).filePath === "string"
+                  ? toRelative((output as any).filePath)
+                  : (output as any).filePath,
+            }
+          : output;
+
+      return { ...toolCall, input: sanitizedInput, output: sanitizedOutput };
+    }
+
+    case "Glob": {
+      const sanitizedOutput =
+        output && typeof output === "object" && Array.isArray((output as any).filenames)
+          ? {
+              ...output,
+              filenames: (output as any).filenames.map((filename: unknown) =>
+                typeof filename === "string" ? toRelative(filename) : filename,
+              ),
+            }
+          : output;
+
+      return { ...toolCall, output: sanitizedOutput };
+    }
+
+    case "Grep": {
+      const sanitizedOutput =
+        output && typeof output === "object" && Array.isArray((output as any).filenames)
+          ? {
+              ...output,
+              filenames: (output as any).filenames.map((filename: unknown) =>
+                typeof filename === "string" ? toRelative(filename) : filename,
+              ),
+            }
+          : output;
+
+      return { ...toolCall, output: sanitizedOutput };
+    }
+
+    // Other tools don't have file paths we want to sanitize
+    default:
+      return toolCall;
+  }
+}
