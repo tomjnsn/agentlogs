@@ -16,6 +16,8 @@
     "start": "bun run src/index.ts",
     "build": "bun build ./src/index.ts --outdir ./dist --target node --external @napi-rs/keyring --production --define '__NODE_ENV__=\"production\"' --define 'process.env.SERVER_URL=\"https://vibeinsights.dev\"'",
     "prepublishOnly": "bun run build",
+    "test": "bun test",
+    "test:e2e": "bun test test/e2e/",
     "typecheck": "tsc --noEmit --project tsconfig.json"
   },
   "dependencies": {

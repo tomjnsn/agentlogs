@@ -7,14 +7,14 @@ const TEST_PORT = 8788;
 const TEST_SERVER_URL = `http://localhost:${TEST_PORT}`;
 const TEST_API_TOKEN = "dev_token"; // Must match API_TOKEN in packages/web/.dev.vars
 
-test("e2e: plugin hook uploads real transcript to real server with forked database", async () => {
+test("e2e: claudecode hook command uploads real transcript to real server with forked database", async () => {
   let serverProcess: any;
 
   try {
     console.log("📦 Setting up E2E test environment...");
 
     // 1. Fork: Copy dev database state to test state
-    const webDir = resolve(__dirname, "../../web");
+    const webDir = resolve(__dirname, "../../../web");
     const devStateDir = resolve(webDir, ".wrangler/state");
     const testStateDir = resolve(webDir, ".wrangler-test/state");
 
@@ -72,8 +72,8 @@ test("e2e: plugin hook uploads real transcript to real server with forked databa
     const hookInput: SessionEndHookInput = {
       hook_event_name: "SessionEnd",
       session_id: sessionId,
-      transcript_path: resolve(__dirname, "../../../fixtures/claudecode/crud.jsonl"),
-      cwd: resolve(__dirname, ".."),
+      transcript_path: resolve(__dirname, "../../../../fixtures/claudecode/crud.jsonl"),
+      cwd: resolve(__dirname, "../.."),
       reason: "exit",
     };
 
@@ -83,8 +83,8 @@ test("e2e: plugin hook uploads real transcript to real server with forked databa
     console.log("🔨 Invoking claudecode hook command...");
     console.log("   Hook input:", JSON.stringify(hookInput, null, 2));
 
-    const hook = Bun.spawn(["bun", "run", "packages/cli/src/index.ts", "claudecode", "hook"], {
-      cwd: resolve(__dirname, "../../.."),
+    const hook = Bun.spawn(["bun", "run", "./src/index.ts", "claudecode", "hook"], {
+      cwd: resolve(__dirname, "../.."),
       env: {
         ...process.env,
         VI_UPLOAD_ENABLED: "true",

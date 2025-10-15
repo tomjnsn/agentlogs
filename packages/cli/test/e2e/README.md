@@ -1,13 +1,13 @@
 # E2E Testing Guide
 
-This directory contains end-to-end tests for the Vibe Insights plugin.
+This directory contains end-to-end tests for the Vibe Insights CLI.
 
-## Test: `e2e-real.test.ts`
+## Test: `hook.test.ts`
 
 A **real, full-stack E2E test** that:
 
 - ✅ Uses real Claude Code transcript fixtures
-- ✅ Invokes the actual `session-end.ts` hook script
+- ✅ Invokes the actual `claudecode hook` command
 - ✅ Runs against a real Wrangler dev server
 - ✅ Verifies data in a real D1 database
 
@@ -50,8 +50,8 @@ A **real, full-stack E2E test** that:
 # From project root
 bun run test:e2e
 
-# Or from plugin directory
-cd packages/plugin
+# Or from CLI directory
+cd packages/cli
 bun run test:e2e
 ```
 
@@ -66,8 +66,9 @@ bun run test:e2e
 
 🧪 Running E2E test with session: abc-123-def...
 📄 Using fixture: crud.jsonl
-🔨 Invoking session-end hook...
-📤 Hook output: ✓ Uploaded 27 events to Vibe Insights (ID: xyz-789)
+🔨 Invoking claudecode hook command...
+↻ Uploading transcript from Claude Code hook…
+✓ Upload successful (25 events, transcript ID: xyz-789)
 ✅ Transcript uploaded with ID: xyz-789
 🔍 Verifying data in test database...
 ✅ Transcript found in database
@@ -143,7 +144,7 @@ cd packages/web
 bun db:setup
 
 # Run test (will fork fresh database)
-cd ../plugin
+cd ../cli
 bun run test:e2e
 ```
 
@@ -166,7 +167,7 @@ bun run test:e2e
 cd packages/web
 bun db:setup
 bun dev  # Start server, then Ctrl+C to stop
-cd ../plugin
+cd ../cli
 bun run test:e2e
 ```
 
@@ -222,10 +223,10 @@ bun run test:e2e
 Modify the test file to use different fixtures:
 
 ```typescript
-// In e2e-real.test.ts
-transcript_path: resolve(__dirname, "../../../fixtures/claudecode/todos.jsonl"),
+// In hook.test.ts
+transcript_path: resolve(__dirname, "../../../../fixtures/claudecode/todos.jsonl"),
 // or
-transcript_path: resolve(__dirname, "../../../fixtures/claudecode/compact.jsonl"),
+transcript_path: resolve(__dirname, "../../../../fixtures/claudecode/compact.jsonl"),
 ```
 
 ### Run Multiple Tests in Parallel
@@ -233,7 +234,7 @@ transcript_path: resolve(__dirname, "../../../fixtures/claudecode/compact.jsonl"
 Create multiple test files with different ports:
 
 ```typescript
-// e2e-real-2.test.ts
+// hook-2.test.ts
 const TEST_PORT = 8789; // Different port
 ```
 
@@ -279,11 +280,11 @@ jobs:
 
 ## What Gets Tested?
 
-✅ **Plugin Hook**
+✅ **CLI Hook Command**
 
-- Hook script executes without errors
-- Reads fixture file correctly
-- Parses JSONL events
+- `claudecode hook` command executes without errors
+- Reads stdin JSON input correctly
+- Reads transcript file from path
 - Extracts git repo metadata
 
 ✅ **HTTP Upload**
@@ -319,11 +320,11 @@ jobs:
 
 ```
 packages/
-├─ plugin/
+├─ cli/
 │  ├─ test/
-│  │  ├─ e2e-real.test.ts    # ← E2E test (NEW)
-│  │  ├─ README.md            # ← This file (NEW)
-│  │  └─ upload.test.ts       # Existing unit test
+│  │  └─ e2e/
+│  │     ├─ hook.test.ts     # ← E2E test (NEW)
+│  │     └─ README.md         # ← This file (NEW)
 │  └─ package.json            # Added test:e2e script
 │
 ├─ web/
@@ -331,16 +332,16 @@ packages/
 │  └─ .wrangler-test/         # Test database (NEW, gitignored)
 │
 ├─ .gitignore                 # Added .wrangler-test/
-└─ package.json               # Added test:e2e script
+└─ package.json               # Updated test:e2e script
 ```
 
 ---
 
 ## Summary
 
-This E2E test provides **high confidence** that your plugin works end-to-end:
+This E2E test provides **high confidence** that the CLI hook command works end-to-end:
 
-- Real hook execution
+- Real `claudecode hook` command execution
 - Real server ingestion
 - Real database persistence
 - Real analysis generation
