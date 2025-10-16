@@ -7,6 +7,7 @@ import {
   unifiedTokenUsageSchema,
   unifiedTranscriptMessageSchema,
   unifiedTranscriptSchema,
+  toolCallMessageWithShapesSchema,
 } from "./schemas";
 
 export type UnifiedTranscript = z.infer<typeof unifiedTranscriptSchema>;
@@ -1197,6 +1198,9 @@ function convertTranscriptToMessages(transcript: ClaudeMessageRecord[]): Unified
           if (result.error) {
             toolCallMessage.error = result.error;
           }
+          if (typeof result.isError !== "undefined") {
+            (toolCallMessage as typeof toolCallMessage & Record<string, unknown>).isError = result.isError;
+          }
 
           // Re-sanitize after adding output
           const sanitized = sanitizeToolCall(toolCallMessage, cwd);
@@ -1316,8 +1320,9 @@ function extractUserContent(record: ClaudeMessageRecord): ExtractedUserContent {
     const type = typeof recordPart.type === "string" ? recordPart.type : undefined;
 
     if (type === "tool_result") {
-      const callId = typeof recordPart.tool_use_id === "string" ? recordPart.tool_use_id : undefined;
-      let output: unknown = recordPart.content;
+      const recordPartObj = recordPart as Record<string, unknown>;
+      const callId = typeof recordPartObj.tool_use_id === "string" ? (recordPartObj.tool_use_id as string) : undefined;
+      let output: unknown = recordPartObj.content;
 
       const toolUseResult = (record.raw.toolUseResult ?? record.raw.tool_use_result) as
         | Record<string, unknown>
@@ -1327,9 +1332,17 @@ function extractUserContent(record: ClaudeMessageRecord): ExtractedUserContent {
         output = toolUseResult;
       }
 
+      const error = typeof recordPartObj.error === "string" ? (recordPartObj.error as string) : undefined;
+      const isError =
+        recordPartObj.is_error ??
+        recordPartObj.isError ??
+        (typeof recordPartObj.success === "boolean" ? !recordPartObj.success : undefined);
+
       toolResults.push({
         callId,
         output,
+        error,
+        isError,
       });
       continue;
     }
@@ -1392,130 +1405,359 @@ function sanitizeToolCall(
     return absPath;
   };
 
+  const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+    typeof value === "object" && value !== null && !Array.isArray(value);
+
+  const cloneObject = (value: unknown): Record<string, unknown> | undefined =>
+    isPlainObject(value) ? { ...value } : undefined;
+
+  const removeKeys = (source: Record<string, unknown>, keys: string[]): Record<string, unknown> => {
+    const copy = { ...source };
+    for (const key of keys) {
+      delete copy[key];
+    }
+    return copy;
+  };
+
+  const ensureRelativePath = (obj: Record<string, unknown>, key: string) => {
+    if (typeof obj[key] === "string") {
+      obj[key] = toRelative(obj[key] as string);
+    }
+  };
+
+  const toNumber = (value: unknown): number =>
+    typeof value === "number" && Number.isFinite(value) ? (value as number) : 0;
+
+  const stripActiveForm = (value: unknown): unknown => {
+    if (!Array.isArray(value)) {
+      return value;
+    }
+    return value.map((item) => {
+      if (isPlainObject(item)) {
+        const nextItem = { ...item };
+        delete nextItem.activeForm;
+        return nextItem;
+      }
+      return item;
+    });
+  };
+
   const { toolName, input, output } = toolCall;
 
-  // Handle tool-specific path fields
+  let sanitizedInput: unknown = input;
+  let sanitizedOutput: unknown = output;
+  let inputChanged = false;
+  let outputChanged = false;
+  let isErrorValue = (toolCall as Record<string, unknown>).isError;
+
   switch (toolName) {
     case "Write": {
-      const sanitizedInput =
-        input && typeof input === "object"
-          ? {
-              ...input,
-              file_path:
-                typeof (input as any).file_path === "string"
-                  ? toRelative((input as any).file_path)
-                  : (input as any).file_path,
-            }
-          : input;
+      const inputObj = cloneObject(input);
+      if (inputObj) {
+        ensureRelativePath(inputObj, "file_path");
+        sanitizedInput = inputObj;
+        inputChanged = true;
+      }
 
-      // Remove content, filePath, and structuredPatch from output since they're redundant
-      const sanitizedOutput =
-        output && typeof output === "object"
-          ? Object.fromEntries(
-              Object.entries(output).filter(
-                ([key]) => key !== "content" && key !== "filePath" && key !== "structuredPatch",
-              ),
-            )
-          : output;
-
-      return { ...toolCall, input: sanitizedInput, output: sanitizedOutput };
+      const outputObj = cloneObject(output);
+      if (outputObj) {
+        const next: Record<string, unknown> = {};
+        if (outputObj.type !== undefined) {
+          next.type = outputObj.type;
+        }
+        sanitizedOutput = next;
+        outputChanged = true;
+      }
+      break;
     }
 
     case "Read": {
-      const sanitizedInput =
-        input && typeof input === "object"
-          ? {
-              ...input,
-              file_path:
-                typeof (input as any).file_path === "string"
-                  ? toRelative((input as any).file_path)
-                  : (input as any).file_path,
-            }
-          : input;
-
-      let sanitizedOutput = output;
-
-      if (output && typeof output === "object" && (output as any).file && typeof (output as any).file === "object") {
-        const originalFile = (output as any).file as Record<string, unknown>;
-        const file: Record<string, unknown> = { ...originalFile };
-
-        if (typeof file.filePath === "string") {
-          const relative = toRelative(file.filePath);
-          if (typeof file.path === "string" && file.path === file.filePath) {
-            file.path = relative;
-          }
-          delete file.filePath;
-        }
-
-        if (typeof file.path === "string") {
-          file.path = toRelative(file.path);
-        }
-
-        sanitizedOutput = {
-          ...output,
-          file,
-        };
+      const inputObj = cloneObject(input);
+      if (inputObj) {
+        ensureRelativePath(inputObj, "file_path");
+        sanitizedInput = inputObj;
+        inputChanged = true;
       }
 
-      return { ...toolCall, input: sanitizedInput, output: sanitizedOutput };
+      const outputObj = cloneObject(output);
+      if (outputObj) {
+        const next: Record<string, unknown> = {};
+        if (typeof outputObj.type === "string") {
+          next.type = outputObj.type;
+        }
+
+        if (outputObj.file && isPlainObject(outputObj.file)) {
+          const fileObj = outputObj.file as Record<string, unknown>;
+          const file: Record<string, unknown> = {};
+          if (typeof fileObj.content === "string") {
+            file.content = fileObj.content;
+          }
+          if (typeof fileObj.numLines === "number") {
+            file.numLines = fileObj.numLines;
+          }
+          if (typeof fileObj.startLine === "number") {
+            file.startLine = fileObj.startLine;
+          }
+          if (typeof fileObj.totalLines === "number") {
+            file.totalLines = fileObj.totalLines;
+          }
+          if (Object.keys(file).length > 0) {
+            next.file = file;
+          }
+        }
+
+        sanitizedOutput = next;
+        outputChanged = true;
+      }
+      break;
     }
 
     case "Edit": {
-      const sanitizedInput =
-        input && typeof input === "object"
-          ? {
-              ...input,
-              file_path:
-                typeof (input as any).file_path === "string"
-                  ? toRelative((input as any).file_path)
-                  : (input as any).file_path,
-            }
-          : input;
+      const inputObj = cloneObject(input);
+      const outputObj = cloneObject(output);
 
-      const sanitizedOutput =
-        output && typeof output === "object"
-          ? {
-              ...output,
-              filePath:
-                typeof (output as any).filePath === "string"
-                  ? toRelative((output as any).filePath)
-                  : (output as any).filePath,
+      let diffString: string | undefined;
+      if (outputObj && Array.isArray(outputObj.structuredPatch)) {
+        const diffLines: string[] = [];
+        for (const hunk of outputObj.structuredPatch as unknown[]) {
+          if (isPlainObject(hunk) && Array.isArray(hunk.lines)) {
+            for (const line of hunk.lines as unknown[]) {
+              if (typeof line === "string") {
+                diffLines.push(line);
+              }
             }
-          : output;
+          }
+        }
+        if (diffLines.length > 0) {
+          diffString = `${diffLines.join("\n")}\n`;
+        }
+      }
 
-      return { ...toolCall, input: sanitizedInput, output: sanitizedOutput };
+      if (inputObj) {
+        ensureRelativePath(inputObj, "file_path");
+        const legacyOld =
+          typeof inputObj.old_string === "string"
+            ? (inputObj.old_string as string)
+            : typeof inputObj.oldString === "string"
+              ? (inputObj.oldString as string)
+              : undefined;
+        const legacyNew =
+          typeof inputObj.new_string === "string"
+            ? (inputObj.new_string as string)
+            : typeof inputObj.newString === "string"
+              ? (inputObj.newString as string)
+              : undefined;
+
+        const isErrorLike =
+          isErrorValue === true ||
+          isErrorValue === "true" ||
+          typeof output === "string" ||
+          (outputObj && typeof outputObj.type === "string" && outputObj.type === "error");
+
+        if (!diffString && !isErrorLike && legacyOld !== undefined && legacyNew !== undefined) {
+          const oldLines = legacyOld.split("\n");
+          const newLines = legacyNew.split("\n");
+          const diffParts: string[] = [];
+          for (const line of oldLines) {
+            diffParts.push(`-${line}`);
+          }
+          for (const line of newLines) {
+            diffParts.push(`+${line}`);
+          }
+          diffString = `${diffParts.join("\n")}\n`;
+        }
+
+        delete inputObj.old_string;
+        delete inputObj.new_string;
+        delete inputObj.oldString;
+        delete inputObj.newString;
+
+        if (diffString) {
+          inputObj.diff = diffString;
+        }
+
+        sanitizedInput = inputObj;
+        inputChanged = true;
+      }
+
+      if (outputObj) {
+        const reduced = removeKeys(outputObj, ["filePath", "newString", "oldString", "originalFile", "structuredPatch", "replaceAll"]);
+        sanitizedOutput = Object.keys(reduced).length > 0 ? reduced : undefined;
+        outputChanged = true;
+      }
+      break;
     }
 
-    case "Glob": {
-      const sanitizedOutput =
-        output && typeof output === "object" && Array.isArray((output as any).filenames)
-          ? {
-              ...output,
-              filenames: (output as any).filenames.map((filename: unknown) =>
-                typeof filename === "string" ? toRelative(filename) : filename,
-              ),
-            }
-          : output;
-
-      return { ...toolCall, output: sanitizedOutput };
-    }
-
+    case "Glob":
     case "Grep": {
-      const sanitizedOutput =
-        output && typeof output === "object" && Array.isArray((output as any).filenames)
-          ? {
-              ...output,
-              filenames: (output as any).filenames.map((filename: unknown) =>
-                typeof filename === "string" ? toRelative(filename) : filename,
-              ),
-            }
-          : output;
-
-      return { ...toolCall, output: sanitizedOutput };
+      const outputObj = cloneObject(output);
+      if (outputObj && Array.isArray(outputObj.filenames)) {
+        outputObj.filenames = (outputObj.filenames as unknown[]).map((filename) =>
+          typeof filename === "string" ? toRelative(filename) : filename,
+        );
+        delete outputObj.numFiles;
+        sanitizedOutput = outputObj;
+        outputChanged = true;
+      }
+      break;
     }
 
-    // Other tools don't have file paths we want to sanitize
+    case "Bash": {
+      const outputObj = cloneObject(output);
+      if (outputObj) {
+        delete outputObj.stdoutLines;
+        delete outputObj.stderrLines;
+        sanitizedOutput = outputObj;
+        outputChanged = true;
+      }
+      break;
+    }
+
+    case "Task": {
+      const inputObj = cloneObject(input);
+      if (inputObj) {
+        sanitizedInput = inputObj;
+        inputChanged = true;
+      }
+
+      const outputObj = cloneObject(output);
+      if (outputObj) {
+        const next: Record<string, unknown> = {};
+        for (const [key, value] of Object.entries(outputObj)) {
+          if (key === "usage" && isPlainObject(value)) {
+            const usageRecord = value as Record<string, unknown>;
+            const inputTokens = toNumber(usageRecord.input_tokens ?? usageRecord.inputTokens);
+            const cachedInputTokens =
+              toNumber(usageRecord.cached_input_tokens ?? usageRecord.cachedInputTokens) +
+              toNumber(usageRecord.cache_creation_input_tokens ?? usageRecord.cacheCreationInputTokens) +
+              toNumber(usageRecord.cache_read_input_tokens ?? usageRecord.cacheReadInputTokens);
+            const outputTokens = toNumber(usageRecord.output_tokens ?? usageRecord.outputTokens);
+            const reasoningOutputTokens = toNumber(
+              usageRecord.reasoning_output_tokens ?? usageRecord.reasoningOutputTokens,
+            );
+            const totalTokensSource = usageRecord.total_tokens ?? usageRecord.totalTokens;
+            const totalTokens =
+              typeof totalTokensSource === "number" && Number.isFinite(totalTokensSource)
+                ? (totalTokensSource as number)
+                : inputTokens + cachedInputTokens + outputTokens + reasoningOutputTokens;
+
+            next.usage = {
+              inputTokens,
+              cachedInputTokens,
+              outputTokens,
+              reasoningOutputTokens,
+              totalTokens,
+            };
+            continue;
+          }
+
+          if (key === "usage" || key === "totalTokens" || key === "prompt") {
+            continue;
+          }
+
+          next[key] = value;
+        }
+
+        sanitizedOutput = next;
+        outputChanged = true;
+      }
+      break;
+    }
+
+    case "TodoWrite": {
+      const inputObj = cloneObject(input);
+      if (inputObj) {
+        if (Array.isArray((inputObj as any).todos)) {
+          (inputObj as any).todos = stripActiveForm((inputObj as any).todos);
+        }
+        sanitizedInput = inputObj;
+        inputChanged = true;
+      }
+
+      const outputObj = cloneObject(output);
+      if (outputObj) {
+        const next = { ...outputObj };
+        let changed = false;
+        if (Array.isArray((next as any).newTodos)) {
+          (next as any).newTodos = stripActiveForm((next as any).newTodos);
+          changed = true;
+        }
+        if (Array.isArray((next as any).oldTodos)) {
+          (next as any).oldTodos = stripActiveForm((next as any).oldTodos);
+          changed = true;
+        }
+        sanitizedOutput = changed ? next : outputObj;
+        outputChanged = changed;
+      }
+      break;
+    }
+
+    case "BashOutput": {
+      const outputObj = cloneObject(output);
+      if (outputObj) {
+        delete outputObj.stdoutLines;
+        delete outputObj.stderrLines;
+        sanitizedOutput = outputObj;
+        outputChanged = true;
+      }
+      break;
+    }
+
     default:
-      return toolCall;
+      break;
   }
+
+  if (toolName === "KillShell" && typeof isErrorValue === "boolean") {
+    isErrorValue = String(isErrorValue);
+  }
+
+  const nextCall: Record<string, unknown> = {
+    ...toolCall,
+  };
+
+  if (inputChanged) {
+    if (typeof sanitizedInput === "undefined") {
+      delete nextCall.input;
+    } else {
+      nextCall.input = sanitizedInput;
+    }
+  }
+
+  if (outputChanged) {
+    if (typeof sanitizedOutput === "undefined") {
+      delete nextCall.output;
+    } else {
+      nextCall.output = sanitizedOutput;
+    }
+  }
+
+  if (typeof isErrorValue === "undefined") {
+    if (typeof nextCall.error === "string" && nextCall.error.trim()) {
+      isErrorValue = true;
+    } else if (typeof sanitizedOutput === "string" && /^error:/i.test(sanitizedOutput.trim())) {
+      isErrorValue = true;
+    }
+  }
+
+  if (typeof isErrorValue !== "undefined") {
+    nextCall.isError = isErrorValue;
+  }
+
+  const orderedCall: Record<string, unknown> = {};
+  const preferredOrder = ["id", "input", "model", "output", "timestamp", "toolName", "error", "isError", "type"];
+
+  for (const key of preferredOrder) {
+    if (Object.prototype.hasOwnProperty.call(nextCall, key)) {
+      orderedCall[key] = nextCall[key];
+    }
+  }
+
+  for (const key of Object.keys(nextCall)) {
+    if (!Object.prototype.hasOwnProperty.call(orderedCall, key)) {
+      orderedCall[key] = nextCall[key];
+    }
+  }
+
+  const parsedSanitized = toolCallMessageWithShapesSchema.parse(orderedCall);
+  return parsedSanitized as UnifiedTranscriptMessage;
 }

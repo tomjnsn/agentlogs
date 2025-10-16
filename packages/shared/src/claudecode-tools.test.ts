@@ -68,7 +68,6 @@ describe("Tool Call Input/Output Processing", () => {
     };
 
     const toolCall = processToolCall(toolUse, toolResult);
-
     expect(toolCall).toMatchInlineSnapshot(`
       {
         "id": "toolu_01QJVoGNGRGH9v9TNN9LQzK9",
@@ -205,37 +204,23 @@ describe("Tool Call Input/Output Processing", () => {
       {
         "id": "toolu_0198ui9CWP2HfDM9uYGahBxZ",
         "input": {
+          "diff": 
+      " # Why Don't Programmers Like Nature?
+       
+      -Because it has too many bugs!
+      +Because it has too many bugs! 🐛
+       
+      +**Alternative answer:** They prefer their trees to be binary!
+      +
+       ---
+       
+       *This joke brought to you by the Department of Computer Comedy. Remember, there are only 10 types of people in the world: those who understand binary and those who don't.*
+      "
+      ,
           "file_path": "./fixtures/claudecode/JOKE.md",
-          "new_string": "Because it has too many bugs! 🐛\\n\\n**Alternative answer:** They prefer their trees to be binary!",
-          "old_string": "Because it has too many bugs!",
         },
         "model": "claude-sonnet-4-5-20250929",
         "output": {
-          "filePath": "./fixtures/claudecode/JOKE.md",
-          "newString": "Because it has too many bugs! 🐛\\n\\n**Alternative answer:** They prefer their trees to be binary!",
-          "oldString": "Because it has too many bugs!",
-          "originalFile": "# Why Don't Programmers Like Nature?\\n\\nBecause it has too many bugs!\\n\\n---\\n\\n*This joke brought to you by the Department of Computer Comedy. Remember, there are only 10 types of people in the world: those who understand binary and those who don't.*\\n",
-          "replaceAll": false,
-          "structuredPatch": [
-            {
-              "lines": [
-                " # Why Don't Programmers Like Nature?",
-                " ",
-                "-Because it has too many bugs!",
-                "+Because it has too many bugs! 🐛",
-                " ",
-                "+**Alternative answer:** They prefer their trees to be binary!",
-                "+",
-                " ---",
-                " ",
-                " *This joke brought to you by the Department of Computer Comedy. Remember, there are only 10 types of people in the world: those who understand binary and those who don't.*",
-              ],
-              "newLines": 9,
-              "newStart": 1,
-              "oldLines": 7,
-              "oldStart": 1,
-            },
-          ],
           "userModified": false,
         },
         "timestamp": "2025-10-12T21:36:00.000Z",
@@ -352,17 +337,14 @@ describe("Tool Call Input/Output Processing", () => {
         "input": {
           "todos": [
             {
-              "activeForm": "Completing first task",
               "content": "Complete first task",
               "status": "pending",
             },
             {
-              "activeForm": "Completing second task",
               "content": "Complete second task",
               "status": "pending",
             },
             {
-              "activeForm": "Completing third task",
               "content": "Complete third task",
               "status": "pending",
             },
@@ -372,17 +354,14 @@ describe("Tool Call Input/Output Processing", () => {
         "output": {
           "newTodos": [
             {
-              "activeForm": "Completing first task",
               "content": "Complete first task",
               "status": "pending",
             },
             {
-              "activeForm": "Completing second task",
               "content": "Complete second task",
               "status": "pending",
             },
             {
-              "activeForm": "Completing third task",
               "content": "Complete third task",
               "status": "pending",
             },
@@ -463,21 +442,15 @@ describe("Tool Call Input/Output Processing", () => {
               "type": "text",
             },
           ],
-          "prompt": "Hey there! Just checking in - how are you doing today? \\n\\nPlease respond with how you're doing, and then return your response in your final message back to me. This is just a casual check-in, no coding work needed.",
           "status": "completed",
           "totalDurationMs": 4802,
-          "totalTokens": 12526,
           "totalToolUseCount": 0,
           "usage": {
-            "cache_creation": {
-              "ephemeral_1h_input_tokens": 0,
-              "ephemeral_5m_input_tokens": 12405,
-            },
-            "cache_creation_input_tokens": 12405,
-            "cache_read_input_tokens": 0,
-            "input_tokens": 4,
-            "output_tokens": 117,
-            "service_tier": "standard",
+            "cachedInputTokens": 12405,
+            "inputTokens": 4,
+            "outputTokens": 117,
+            "reasoningOutputTokens": 0,
+            "totalTokens": 12526,
           },
         },
         "timestamp": "2025-10-12T21:36:00.000Z",
@@ -523,7 +496,6 @@ describe("Tool Call Input/Output Processing", () => {
           "filenames": [
             "./packages/web/wrangler.jsonc",
           ],
-          "numFiles": 1,
           "truncated": false,
         },
         "timestamp": "2025-10-12T21:36:00.000Z",
@@ -567,7 +539,6 @@ describe("Tool Call Input/Output Processing", () => {
         "output": {
           "durationMs": 88,
           "filenames": [],
-          "numFiles": 0,
           "truncated": false,
         },
         "timestamp": "2025-10-12T21:36:00.000Z",
@@ -621,7 +592,6 @@ describe("Tool Call Input/Output Processing", () => {
             "./packages/web/README.md",
           ],
           "mode": "files_with_matches",
-          "numFiles": 3,
         },
         "timestamp": "2025-10-12T21:36:00.000Z",
         "toolName": "Grep",
@@ -674,7 +644,6 @@ describe("Tool Call Input/Output Processing", () => {
           "content": "/Users/philipp/dev/vibeinsights/packages/web/src/routes/__root.tsx:43:  const { data: session, isPending } = authClient.useSession();\\n/Users/philipp/dev/vibeinsights/packages/web/src/routes/__root.tsx:116:            ) : isPending ? (",
           "filenames": [],
           "mode": "content",
-          "numFiles": 0,
           "numLines": 2,
         },
         "timestamp": "2025-10-12T21:36:00.000Z",
@@ -710,6 +679,7 @@ describe("Tool Call Input/Output Processing", () => {
         "input": {
           "file_path": "./wrangler.jsonc",
         },
+        "isError": true,
         "model": "claude-sonnet-4-5-20250929",
         "output": "Error: File does not exist.",
         "timestamp": "2025-10-12T21:36:00.000Z",
@@ -749,6 +719,7 @@ describe("Tool Call Input/Output Processing", () => {
           "command": "bun run format:check",
           "description": "Check code formatting",
         },
+        "isError": true,
         "model": "claude-sonnet-4-5-20250929",
         "output": "Error: $ prettier --check .\\n[warn] packages/cli/src/commands/hook.ts\\n[warn] packages/cli/src/commands/upload.ts\\n[warn] packages/cli/src/config.ts\\n[warn] packages/cli/src/env-config.ts\\n[warn] packages/cli/src/index.ts\\n[warn] packages/cli/src/lib/perform-upload.ts\\n[warn] packages/web/wrangler.jsonc\\n[warn] Code style issues found in 7 files. Run Prettier with --write to fix.\\nerror: script \\"format:check\\" exited with code 1\\n\\nChecking formatting...",
         "timestamp": "2025-10-12T21:36:00.000Z",
@@ -853,9 +824,7 @@ describe("Tool Call Input/Output Processing", () => {
           "shellId": "bc7034",
           "status": "failed",
           "stderr": "(eval):cd:1: no such file or directory: packages/web",
-          "stderrLines": 1,
           "stdout": "",
-          "stdoutLines": 1,
           "timestamp": "2025-10-12T22:47:37.626Z",
         },
         "timestamp": "2025-10-12T21:36:00.000Z",
@@ -891,6 +860,7 @@ describe("Tool Call Input/Output Processing", () => {
         "input": {
           "shell_id": "42d965",
         },
+        "isError": "true",
         "model": "claude-sonnet-4-5-20250929",
         "output": "Error: Shell 42d965 is not running, so cannot be killed (status: killed)",
         "timestamp": "2025-10-12T21:36:00.000Z",
@@ -927,11 +897,15 @@ describe("Tool Call Input/Output Processing", () => {
       {
         "id": "toolu_01BNkRVXhbTP8FmVcADLGfhF",
         "input": {
+          "diff": 
+      "-  login                 Authenticate the CLI via GitHub device flow.
+      +  login                 Authenticate the CLI via device authorization flow.
+      "
+      ,
           "file_path": "./packages/cli/src/index.ts",
-          "new_string": "  login                 Authenticate the CLI via device authorization flow.",
-          "old_string": "  login                 Authenticate the CLI via GitHub device flow.",
           "replace_all": true,
         },
+        "isError": true,
         "model": "claude-sonnet-4-5-20250929",
         "output": "Error: File has not been read yet. Read it first before writing to it.",
         "timestamp": "2025-10-12T21:36:00.000Z",

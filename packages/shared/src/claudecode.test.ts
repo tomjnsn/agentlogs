@@ -98,22 +98,18 @@ describe("convertClaudeCodeFile", () => {
             "input": {
               "todos": [
                 {
-                  "activeForm": "Creating JOKE.md file with a joke, title, and footer",
                   "content": "Create JOKE.md file with a joke, title, and footer",
                   "status": "in_progress",
                 },
                 {
-                  "activeForm": "Reading the JOKE.md file",
                   "content": "Read the JOKE.md file",
                   "status": "pending",
                 },
                 {
-                  "activeForm": "Making changes to the JOKE.md file",
                   "content": "Make changes to the JOKE.md file",
                   "status": "pending",
                 },
                 {
-                  "activeForm": "Deleting the JOKE.md file",
                   "content": "Delete the JOKE.md file",
                   "status": "pending",
                 },
@@ -123,22 +119,18 @@ describe("convertClaudeCodeFile", () => {
             "output": {
               "newTodos": [
                 {
-                  "activeForm": "Creating JOKE.md file with a joke, title, and footer",
                   "content": "Create JOKE.md file with a joke, title, and footer",
                   "status": "in_progress",
                 },
                 {
-                  "activeForm": "Reading the JOKE.md file",
                   "content": "Read the JOKE.md file",
                   "status": "pending",
                 },
                 {
-                  "activeForm": "Making changes to the JOKE.md file",
                   "content": "Make changes to the JOKE.md file",
                   "status": "pending",
                 },
                 {
-                  "activeForm": "Deleting the JOKE.md file",
                   "content": "Delete the JOKE.md file",
                   "status": "pending",
                 },
@@ -184,22 +176,18 @@ describe("convertClaudeCodeFile", () => {
             "input": {
               "todos": [
                 {
-                  "activeForm": "Creating JOKE.md file with a joke, title, and footer",
                   "content": "Create JOKE.md file with a joke, title, and footer",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Reading the JOKE.md file",
                   "content": "Read the JOKE.md file",
                   "status": "in_progress",
                 },
                 {
-                  "activeForm": "Making changes to the JOKE.md file",
                   "content": "Make changes to the JOKE.md file",
                   "status": "pending",
                 },
                 {
-                  "activeForm": "Deleting the JOKE.md file",
                   "content": "Delete the JOKE.md file",
                   "status": "pending",
                 },
@@ -209,44 +197,36 @@ describe("convertClaudeCodeFile", () => {
             "output": {
               "newTodos": [
                 {
-                  "activeForm": "Creating JOKE.md file with a joke, title, and footer",
                   "content": "Create JOKE.md file with a joke, title, and footer",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Reading the JOKE.md file",
                   "content": "Read the JOKE.md file",
                   "status": "in_progress",
                 },
                 {
-                  "activeForm": "Making changes to the JOKE.md file",
                   "content": "Make changes to the JOKE.md file",
                   "status": "pending",
                 },
                 {
-                  "activeForm": "Deleting the JOKE.md file",
                   "content": "Delete the JOKE.md file",
                   "status": "pending",
                 },
               ],
               "oldTodos": [
                 {
-                  "activeForm": "Creating JOKE.md file with a joke, title, and footer",
                   "content": "Create JOKE.md file with a joke, title, and footer",
                   "status": "in_progress",
                 },
                 {
-                  "activeForm": "Reading the JOKE.md file",
                   "content": "Read the JOKE.md file",
                   "status": "pending",
                 },
                 {
-                  "activeForm": "Making changes to the JOKE.md file",
                   "content": "Make changes to the JOKE.md file",
                   "status": "pending",
                 },
                 {
-                  "activeForm": "Deleting the JOKE.md file",
                   "content": "Delete the JOKE.md file",
                   "status": "pending",
                 },
@@ -296,22 +276,18 @@ describe("convertClaudeCodeFile", () => {
             "input": {
               "todos": [
                 {
-                  "activeForm": "Creating JOKE.md file with a joke, title, and footer",
                   "content": "Create JOKE.md file with a joke, title, and footer",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Reading the JOKE.md file",
                   "content": "Read the JOKE.md file",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Making changes to the JOKE.md file",
                   "content": "Make changes to the JOKE.md file",
                   "status": "in_progress",
                 },
                 {
-                  "activeForm": "Deleting the JOKE.md file",
                   "content": "Delete the JOKE.md file",
                   "status": "pending",
                 },
@@ -321,44 +297,36 @@ describe("convertClaudeCodeFile", () => {
             "output": {
               "newTodos": [
                 {
-                  "activeForm": "Creating JOKE.md file with a joke, title, and footer",
                   "content": "Create JOKE.md file with a joke, title, and footer",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Reading the JOKE.md file",
                   "content": "Read the JOKE.md file",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Making changes to the JOKE.md file",
                   "content": "Make changes to the JOKE.md file",
                   "status": "in_progress",
                 },
                 {
-                  "activeForm": "Deleting the JOKE.md file",
                   "content": "Delete the JOKE.md file",
                   "status": "pending",
                 },
               ],
               "oldTodos": [
                 {
-                  "activeForm": "Creating JOKE.md file with a joke, title, and footer",
                   "content": "Create JOKE.md file with a joke, title, and footer",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Reading the JOKE.md file",
                   "content": "Read the JOKE.md file",
                   "status": "in_progress",
                 },
                 {
-                  "activeForm": "Making changes to the JOKE.md file",
                   "content": "Make changes to the JOKE.md file",
                   "status": "pending",
                 },
                 {
-                  "activeForm": "Deleting the JOKE.md file",
                   "content": "Delete the JOKE.md file",
                   "status": "pending",
                 },
@@ -378,54 +346,23 @@ describe("convertClaudeCodeFile", () => {
           {
             "id": "msg_01MwBdz2tFJGVscNoMYjucr1",
             "input": {
-              "file_path": "./JOKE.md",
-              "new_string": 
-      "Because it has too many bugs! 🐛
-
-      **Alternative answer:** They prefer their trees to be binary!"
+              "diff": 
+      " # Why Don't Programmers Like Nature?
+       
+      -Because it has too many bugs!
+      +Because it has too many bugs! 🐛
+       
+      +**Alternative answer:** They prefer their trees to be binary!
+      +
+       ---
+       
+       *This joke brought to you by the Department of Computer Comedy. Remember, there are only 10 types of people in the world: those who understand binary and those who don't.*
+      "
       ,
-              "old_string": "Because it has too many bugs!",
+              "file_path": "./JOKE.md",
             },
             "model": "claude-sonnet-4-5-20250929",
             "output": {
-              "filePath": "./JOKE.md",
-              "newString": 
-      "Because it has too many bugs! 🐛
-
-      **Alternative answer:** They prefer their trees to be binary!"
-      ,
-              "oldString": "Because it has too many bugs!",
-              "originalFile": 
-      "# Why Don't Programmers Like Nature?
-
-      Because it has too many bugs!
-
-      ---
-
-      *This joke brought to you by the Department of Computer Comedy. Remember, there are only 10 types of people in the world: those who understand binary and those who don't.*
-      "
-      ,
-              "replaceAll": false,
-              "structuredPatch": [
-                {
-                  "lines": [
-                    " # Why Don't Programmers Like Nature?",
-                    " ",
-                    "-Because it has too many bugs!",
-                    "+Because it has too many bugs! 🐛",
-                    " ",
-                    "+**Alternative answer:** They prefer their trees to be binary!",
-                    "+",
-                    " ---",
-                    " ",
-                    " *This joke brought to you by the Department of Computer Comedy. Remember, there are only 10 types of people in the world: those who understand binary and those who don't.*",
-                  ],
-                  "newLines": 9,
-                  "newStart": 1,
-                  "oldLines": 7,
-                  "oldStart": 1,
-                },
-              ],
               "userModified": false,
             },
             "timestamp": "2025-10-12T21:36:21.679Z",
@@ -437,22 +374,18 @@ describe("convertClaudeCodeFile", () => {
             "input": {
               "todos": [
                 {
-                  "activeForm": "Creating JOKE.md file with a joke, title, and footer",
                   "content": "Create JOKE.md file with a joke, title, and footer",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Reading the JOKE.md file",
                   "content": "Read the JOKE.md file",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Making changes to the JOKE.md file",
                   "content": "Make changes to the JOKE.md file",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Deleting the JOKE.md file",
                   "content": "Delete the JOKE.md file",
                   "status": "in_progress",
                 },
@@ -462,44 +395,36 @@ describe("convertClaudeCodeFile", () => {
             "output": {
               "newTodos": [
                 {
-                  "activeForm": "Creating JOKE.md file with a joke, title, and footer",
                   "content": "Create JOKE.md file with a joke, title, and footer",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Reading the JOKE.md file",
                   "content": "Read the JOKE.md file",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Making changes to the JOKE.md file",
                   "content": "Make changes to the JOKE.md file",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Deleting the JOKE.md file",
                   "content": "Delete the JOKE.md file",
                   "status": "in_progress",
                 },
               ],
               "oldTodos": [
                 {
-                  "activeForm": "Creating JOKE.md file with a joke, title, and footer",
                   "content": "Create JOKE.md file with a joke, title, and footer",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Reading the JOKE.md file",
                   "content": "Read the JOKE.md file",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Making changes to the JOKE.md file",
                   "content": "Make changes to the JOKE.md file",
                   "status": "in_progress",
                 },
                 {
-                  "activeForm": "Deleting the JOKE.md file",
                   "content": "Delete the JOKE.md file",
                   "status": "pending",
                 },
@@ -522,6 +447,7 @@ describe("convertClaudeCodeFile", () => {
               "command": "rm /Users/philipp/dev/vibeinsights/fixtures/claudecode/JOKE.md",
               "description": "Delete JOKE.md file",
             },
+            "isError": false,
             "model": "claude-sonnet-4-5-20250929",
             "output": {
               "interrupted": false,
@@ -538,22 +464,18 @@ describe("convertClaudeCodeFile", () => {
             "input": {
               "todos": [
                 {
-                  "activeForm": "Creating JOKE.md file with a joke, title, and footer",
                   "content": "Create JOKE.md file with a joke, title, and footer",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Reading the JOKE.md file",
                   "content": "Read the JOKE.md file",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Making changes to the JOKE.md file",
                   "content": "Make changes to the JOKE.md file",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Deleting the JOKE.md file",
                   "content": "Delete the JOKE.md file",
                   "status": "completed",
                 },
@@ -563,44 +485,36 @@ describe("convertClaudeCodeFile", () => {
             "output": {
               "newTodos": [
                 {
-                  "activeForm": "Creating JOKE.md file with a joke, title, and footer",
                   "content": "Create JOKE.md file with a joke, title, and footer",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Reading the JOKE.md file",
                   "content": "Read the JOKE.md file",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Making changes to the JOKE.md file",
                   "content": "Make changes to the JOKE.md file",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Deleting the JOKE.md file",
                   "content": "Delete the JOKE.md file",
                   "status": "completed",
                 },
               ],
               "oldTodos": [
                 {
-                  "activeForm": "Creating JOKE.md file with a joke, title, and footer",
                   "content": "Create JOKE.md file with a joke, title, and footer",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Reading the JOKE.md file",
                   "content": "Read the JOKE.md file",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Making changes to the JOKE.md file",
                   "content": "Make changes to the JOKE.md file",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Deleting the JOKE.md file",
                   "content": "Delete the JOKE.md file",
                   "status": "in_progress",
                 },
@@ -725,25 +639,15 @@ describe("convertClaudeCodeFile", () => {
                   "type": "text",
                 },
               ],
-              "prompt": 
-      "Hey there! Just checking in - how are you doing today? 
-
-      Please respond with how you're doing, and then return your response in your final message back to me. This is just a casual check-in, no coding work needed."
-      ,
               "status": "completed",
               "totalDurationMs": 4802,
-              "totalTokens": 12526,
               "totalToolUseCount": 0,
               "usage": {
-                "cache_creation": {
-                  "ephemeral_1h_input_tokens": 0,
-                  "ephemeral_5m_input_tokens": 12405,
-                },
-                "cache_creation_input_tokens": 12405,
-                "cache_read_input_tokens": 0,
-                "input_tokens": 4,
-                "output_tokens": 117,
-                "service_tier": "standard",
+                "cachedInputTokens": 12405,
+                "inputTokens": 4,
+                "outputTokens": 117,
+                "reasoningOutputTokens": 0,
+                "totalTokens": 12526,
               },
             },
             "timestamp": "2025-10-10T21:55:09.367Z",
@@ -833,17 +737,14 @@ describe("convertClaudeCodeFile", () => {
             "input": {
               "todos": [
                 {
-                  "activeForm": "Completing first task",
                   "content": "Complete first task",
                   "status": "pending",
                 },
                 {
-                  "activeForm": "Completing second task",
                   "content": "Complete second task",
                   "status": "pending",
                 },
                 {
-                  "activeForm": "Completing third task",
                   "content": "Complete third task",
                   "status": "pending",
                 },
@@ -853,17 +754,14 @@ describe("convertClaudeCodeFile", () => {
             "output": {
               "newTodos": [
                 {
-                  "activeForm": "Completing first task",
                   "content": "Complete first task",
                   "status": "pending",
                 },
                 {
-                  "activeForm": "Completing second task",
                   "content": "Complete second task",
                   "status": "pending",
                 },
                 {
-                  "activeForm": "Completing third task",
                   "content": "Complete third task",
                   "status": "pending",
                 },
@@ -886,17 +784,14 @@ describe("convertClaudeCodeFile", () => {
             "input": {
               "todos": [
                 {
-                  "activeForm": "Completing first task",
                   "content": "Complete first task",
                   "status": "in_progress",
                 },
                 {
-                  "activeForm": "Completing second task",
                   "content": "Complete second task",
                   "status": "pending",
                 },
                 {
-                  "activeForm": "Completing third task",
                   "content": "Complete third task",
                   "status": "pending",
                 },
@@ -906,34 +801,28 @@ describe("convertClaudeCodeFile", () => {
             "output": {
               "newTodos": [
                 {
-                  "activeForm": "Completing first task",
                   "content": "Complete first task",
                   "status": "in_progress",
                 },
                 {
-                  "activeForm": "Completing second task",
                   "content": "Complete second task",
                   "status": "pending",
                 },
                 {
-                  "activeForm": "Completing third task",
                   "content": "Complete third task",
                   "status": "pending",
                 },
               ],
               "oldTodos": [
                 {
-                  "activeForm": "Completing first task",
                   "content": "Complete first task",
                   "status": "pending",
                 },
                 {
-                  "activeForm": "Completing second task",
                   "content": "Complete second task",
                   "status": "pending",
                 },
                 {
-                  "activeForm": "Completing third task",
                   "content": "Complete third task",
                   "status": "pending",
                 },
@@ -955,17 +844,14 @@ describe("convertClaudeCodeFile", () => {
             "input": {
               "todos": [
                 {
-                  "activeForm": "Completing first task",
                   "content": "Complete first task",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Completing second task",
                   "content": "Complete second task",
                   "status": "in_progress",
                 },
                 {
-                  "activeForm": "Completing third task",
                   "content": "Complete third task",
                   "status": "pending",
                 },
@@ -975,34 +861,28 @@ describe("convertClaudeCodeFile", () => {
             "output": {
               "newTodos": [
                 {
-                  "activeForm": "Completing first task",
                   "content": "Complete first task",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Completing second task",
                   "content": "Complete second task",
                   "status": "in_progress",
                 },
                 {
-                  "activeForm": "Completing third task",
                   "content": "Complete third task",
                   "status": "pending",
                 },
               ],
               "oldTodos": [
                 {
-                  "activeForm": "Completing first task",
                   "content": "Complete first task",
                   "status": "in_progress",
                 },
                 {
-                  "activeForm": "Completing second task",
                   "content": "Complete second task",
                   "status": "pending",
                 },
                 {
-                  "activeForm": "Completing third task",
                   "content": "Complete third task",
                   "status": "pending",
                 },
@@ -1024,17 +904,14 @@ describe("convertClaudeCodeFile", () => {
             "input": {
               "todos": [
                 {
-                  "activeForm": "Completing first task",
                   "content": "Complete first task",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Completing second task",
                   "content": "Complete second task",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Completing third task",
                   "content": "Complete third task",
                   "status": "in_progress",
                 },
@@ -1044,34 +921,28 @@ describe("convertClaudeCodeFile", () => {
             "output": {
               "newTodos": [
                 {
-                  "activeForm": "Completing first task",
                   "content": "Complete first task",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Completing second task",
                   "content": "Complete second task",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Completing third task",
                   "content": "Complete third task",
                   "status": "in_progress",
                 },
               ],
               "oldTodos": [
                 {
-                  "activeForm": "Completing first task",
                   "content": "Complete first task",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Completing second task",
                   "content": "Complete second task",
                   "status": "in_progress",
                 },
                 {
-                  "activeForm": "Completing third task",
                   "content": "Complete third task",
                   "status": "pending",
                 },
@@ -1093,17 +964,14 @@ describe("convertClaudeCodeFile", () => {
             "input": {
               "todos": [
                 {
-                  "activeForm": "Completing first task",
                   "content": "Complete first task",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Completing second task",
                   "content": "Complete second task",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Completing third task",
                   "content": "Complete third task",
                   "status": "completed",
                 },
@@ -1113,34 +981,28 @@ describe("convertClaudeCodeFile", () => {
             "output": {
               "newTodos": [
                 {
-                  "activeForm": "Completing first task",
                   "content": "Complete first task",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Completing second task",
                   "content": "Complete second task",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Completing third task",
                   "content": "Complete third task",
                   "status": "completed",
                 },
               ],
               "oldTodos": [
                 {
-                  "activeForm": "Completing first task",
                   "content": "Complete first task",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Completing second task",
                   "content": "Complete second task",
                   "status": "completed",
                 },
                 {
-                  "activeForm": "Completing third task",
                   "content": "Complete third task",
                   "status": "in_progress",
                 },
