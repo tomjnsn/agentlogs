@@ -3,12 +3,11 @@ import { resolve } from "path";
 import type { UploadPayload, UploadResponse } from "./types";
 
 const DEFAULT_SERVER_URL = "http://localhost:3000";
-const DEFAULT_API_TOKEN = "dev_token";
 const DEFAULT_TIMEOUT_MS = 10_000;
 
 export interface UploadOptions {
   serverUrl?: string;
-  apiToken?: string;
+  authToken?: string;
   timeoutMs?: number;
 }
 
@@ -21,17 +20,32 @@ export async function uploadTranscript(
   options: UploadOptions = {},
 ): Promise<{ success: boolean; transcriptId?: string }> {
   const serverUrl = options.serverUrl ?? process.env.VI_SERVER_URL ?? DEFAULT_SERVER_URL;
-  const apiToken = options.apiToken ?? process.env.VI_API_TOKEN ?? DEFAULT_API_TOKEN;
+  const authToken = options.authToken ?? null;
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+
+  const formData = new FormData();
+  const filename = `${payload.transcriptId || "transcript"}.jsonl`;
+
+  formData.set("repoId", payload.repoId);
+  formData.set("transcriptId", payload.transcriptId);
+  formData.set("sha256", payload.sha256);
+  formData.set(
+    "transcript",
+    new Blob([payload.rawTranscript], {
+      type: "application/jsonl",
+    }),
+    filename,
+  );
 
   try {
     const response = await fetch(`${serverUrl}/api/ingest`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiToken}`,
+        ...(authToken && {
+          Authorization: `Bearer ${authToken}`,
+        }),
       },
-      body: JSON.stringify(payload),
+      body: formData,
       signal: AbortSignal.timeout(timeoutMs),
     });
 
@@ -91,10 +105,11 @@ export function getRepoMetadata(cwd: string): {
       stdio: ["pipe", "pipe", "ignore"],
     }).trim();
 
-    const repoName = remoteUrl.split("/").pop()?.replace(".git", "") || "unknown";
+    const sanitizedRepoId = sanitizeRemote(remoteUrl);
+    const repoName = sanitizedRepoId.split("/").pop() || "unknown";
 
     return {
-      repoId: remoteUrl,
+      repoId: sanitizedRepoId,
       repoName,
     };
   } catch {
@@ -103,5 +118,20 @@ export function getRepoMetadata(cwd: string): {
       repoId: `file://${resolvedCwd}`,
       repoName,
     };
+  }
+}
+
+function sanitizeRemote(remoteUrl: string): string {
+  const sshPattern = /^(?<user>[^@]+)@(?<host>[^:]+):(?<path>.+)$/;
+  const sshMatch = remoteUrl.match(sshPattern);
+  if (sshMatch?.groups) {
+    return `${sshMatch.groups.host}/${sshMatch.groups.path.replace(/\.git$/i, "")}`;
+  }
+
+  try {
+    const url = new URL(remoteUrl);
+    return `${url.host}${url.pathname.replace(/\.git$/i, "").replace(/^\//, "")}`;
+  } catch {
+    return remoteUrl.replace(/\.git$/i, "");
   }
 }

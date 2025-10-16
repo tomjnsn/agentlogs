@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { z } from "zod";
+import type { LiteLLMModelPricing } from "./pricing";
 import {
   toolCallMessageWithShapesSchema,
   unifiedGitContextSchema,
@@ -16,22 +17,6 @@ export type UnifiedTokenUsage = z.infer<typeof unifiedTokenUsageSchema>;
 
 export type UnifiedModelUsage = z.infer<typeof unifiedModelUsageSchema>;
 export type UnifiedGitContext = z.infer<typeof unifiedGitContextSchema>;
-
-export type LiteLLMModelPricing = {
-  input_cost_per_token?: number;
-  output_cost_per_token?: number;
-  cache_creation_input_token_cost?: number;
-  cache_read_input_token_cost?: number;
-  max_tokens?: number;
-  max_input_tokens?: number;
-  max_output_tokens?: number;
-  input_cost_per_token_above_200k_tokens?: number;
-  output_cost_per_token_above_200k_tokens?: number;
-  cache_creation_input_token_cost_above_200k_tokens?: number;
-  cache_read_input_token_cost_above_200k_tokens?: number;
-  input_cost_per_token_above_128k_tokens?: number;
-  output_cost_per_token_above_128k_tokens?: number;
-};
 
 export type ConvertClaudeCodeOptions = {
   pricing?: Record<string, LiteLLMModelPricing>;
@@ -195,8 +180,8 @@ export function convertClaudeCodeTranscript(
   const timestamp = parseDate(leaf.timestamp) ?? options.now ?? new Date();
   const sessionId = findSessionId(transcriptChain);
   const primaryModel = selectPrimaryModel(modelUsageMap);
-  // For in-memory processing, we can't reliably do async git operations
-  const gitContext = null;
+  // Extract git context from transcript records (synchronous)
+  const gitContext = extractGitContextFromRecords(transcriptChain);
   const messages = convertTranscriptToMessages(transcriptChain);
 
   const transcriptCandidate = {
@@ -707,6 +692,50 @@ function deriveWorkingDirectory(transcript: ClaudeMessageRecord[]): string | und
     }
   }
   return undefined;
+}
+
+function extractGitContextFromRecords(transcript: ClaudeMessageRecord[]): UnifiedGitContext {
+  const cwd = deriveWorkingDirectory(transcript);
+  const gitBranch = transcript.find((r) => r.gitBranch)?.gitBranch;
+
+  // Try to extract repo from cwd path
+  // Looking for patterns like: /Users/user/dev/repo or /path/to/repo
+  let repo: string | null = null;
+  let relativeCwd: string | null = null;
+
+  if (cwd) {
+    // Try to find git repo name from path
+    const pathParts = cwd.split("/").filter(Boolean);
+
+    // Common patterns: /Users/user/dev/orgname/reponame or /home/user/projects/reponame
+    // We'll look for known hosting patterns or just take last 2-3 segments
+    const lastParts = pathParts.slice(-3);
+
+    // Check if path contains github.com, gitlab.com, etc.
+    const hostingIndex = pathParts.findIndex(
+      (part) => part.includes("github") || part.includes("gitlab") || part.includes("bitbucket"),
+    );
+
+    if (hostingIndex >= 0 && pathParts.length > hostingIndex + 2) {
+      // Pattern: .../github/org/repo/...
+      const org = pathParts[hostingIndex + 1];
+      const repoName = pathParts[hostingIndex + 2];
+      repo = `github.com/${org}/${repoName}`;
+      relativeCwd = pathParts.slice(hostingIndex + 3).join("/") || ".";
+    } else if (lastParts.length >= 2) {
+      // Assume last 2 parts are org/repo
+      const org = lastParts[lastParts.length - 2];
+      const repoName = lastParts[lastParts.length - 1];
+      repo = `${org}/${repoName}`;
+      relativeCwd = ".";
+    }
+  }
+
+  return unifiedGitContextSchema.parse({
+    relativeCwd,
+    branch: gitBranch ?? null,
+    repo,
+  });
 }
 
 async function resolveGitContext(cwd: string | undefined, gitBranch: string | undefined): Promise<UnifiedGitContext> {
@@ -1332,14 +1361,14 @@ function extractUserContent(record: ClaudeMessageRecord): ExtractedUserContent {
       }
 
       const error = typeof recordPartObj.error === "string" ? (recordPartObj.error as string) : undefined;
+      const rawIsError =
+        (recordPartObj as { is_error?: unknown }).is_error ?? (recordPartObj as { isError?: unknown }).isError;
       const isError =
-        typeof recordPartObj.is_error === "boolean"
-          ? recordPartObj.is_error
-          : typeof recordPartObj.isError === "boolean"
-            ? recordPartObj.isError
-            : typeof recordPartObj.success === "boolean"
-              ? !recordPartObj.success
-              : undefined;
+        typeof rawIsError === "boolean"
+          ? rawIsError
+          : typeof (recordPartObj as { success?: unknown }).success === "boolean"
+            ? !(recordPartObj as { success: boolean }).success
+            : undefined;
 
       toolResults.push({
         callId,

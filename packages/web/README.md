@@ -44,7 +44,6 @@ BETTER_AUTH_SECRET=your_secret_here
 WEB_URL=http://localhost:3000
 
 # API token for Claude Code plugin
-API_TOKEN=dev_token
 ```
 
 ### 3. Set Up GitHub OAuth
@@ -150,7 +149,6 @@ The application supports two authentication methods:
 
 2. **API Token** (for Claude Code plugin)
    - Use `Authorization: Bearer <token>` header
-   - Token configured via `API_TOKEN` environment variable
    - Associates data with a special "plugin-user" account
 
 ## Project Structure
@@ -218,7 +216,6 @@ bun db:migrate:remote
 ### 3. Set Secrets
 
 ```bash
-wrangler secret put API_TOKEN
 wrangler secret put GITHUB_CLIENT_ID
 wrangler secret put GITHUB_CLIENT_SECRET
 wrangler secret put BETTER_AUTH_SECRET

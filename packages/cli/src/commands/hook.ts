@@ -29,9 +29,6 @@ interface ClaudeHookInput {
   [key: string]: unknown;
 }
 
-const SESSION_END_REASON_FALLBACK = "claude-session-end";
-const STOP_REASON_FALLBACK = "claude-stop";
-
 export async function hookCommand(_args: string[] = []): Promise<void> {
   const startTime = Date.now();
   let eventName: string | undefined;
@@ -107,17 +104,21 @@ async function handleSessionEnd(hookInput: ClaudeHookInput): Promise<void> {
   const config = readConfig();
   const serverUrl =
     process.env.VI_SERVER_URL ?? process.env.VIBEINSIGHTS_BASE_URL ?? config.baseURL ?? "http://localhost:3000";
-  const apiToken = process.env.VI_API_TOKEN ?? getToken() ?? undefined;
+  const authToken = getToken();
+
+  if (!authToken) {
+    logger.error("SessionEnd: no auth token found. Run the CLI login flow first.", { sessionId });
+    return;
+  }
 
   const options: UploadOptions = {};
   if (serverUrl) options.serverUrl = serverUrl;
-  if (apiToken) options.apiToken = apiToken;
+  options.authToken = authToken;
 
   try {
     const result = await performUpload(
       {
         transcriptPath,
-        reason: hookInput.reason ?? SESSION_END_REASON_FALLBACK,
         sessionId: hookInput.session_id,
         cwdOverride: hookInput.cwd,
       },
@@ -158,17 +159,21 @@ async function handleStop(hookInput: ClaudeHookInput): Promise<void> {
   const config = readConfig();
   const serverUrl =
     process.env.VI_SERVER_URL ?? process.env.VIBEINSIGHTS_BASE_URL ?? config.baseURL ?? "http://localhost:3000";
-  const apiToken = process.env.VI_API_TOKEN ?? getToken() ?? undefined;
+  const authToken = getToken();
+
+  if (!authToken) {
+    logger.error("Stop: no auth token found. Run the CLI login flow first.", { sessionId });
+    return;
+  }
 
   const options: UploadOptions = {};
   if (serverUrl) options.serverUrl = serverUrl;
-  if (apiToken) options.apiToken = apiToken;
+  options.authToken = authToken;
 
   try {
     const result = await performUpload(
       {
         transcriptPath,
-        reason: hookInput.reason ?? STOP_REASON_FALLBACK,
         sessionId: hookInput.session_id,
         cwdOverride: hookInput.cwd,
       },

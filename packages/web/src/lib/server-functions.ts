@@ -72,13 +72,16 @@ export const getTranscriptsByRepo = createServerFn()
     const userId = await getAuthenticatedUserId();
     const transcripts = await queries.getTranscriptsByRepo(db, userId, repoId);
 
-    // Transform to simplified view (exclude full events)
+    // Transform to simplified view
     return transcripts.map((t) => ({
       id: t.id,
       repoId: t.repoId,
-      sessionId: t.sessionId,
+      transcriptId: t.transcriptId,
+      preview: t.preview,
       createdAt: t.createdAt,
       analyzed: t.analyzed,
+      messageCount: t.messageCount,
+      costUsd: t.costUsd,
     }));
   });
 
@@ -96,10 +99,34 @@ export const getTranscript = createServerFn({ method: "GET" })
       throw new Error("Transcript not found");
     }
 
-    // Parse JSON fields
+    // Fetch unified transcript from R2
+    const r2Bucket = env.BUCKET;
+    const repo = transcript.repo;
+    if (!repo) {
+      throw new Error("Transcript repo not found");
+    }
+
+    const r2Key = `${repo.repo}/${transcript.transcriptId}.json`;
+    logger.debug("Fetching unified transcript from R2", { key: r2Key });
+
+    const r2Object = await r2Bucket.get(r2Key);
+    if (!r2Object) {
+      logger.error("Unified transcript not found in R2", { key: r2Key });
+      throw new Error("Transcript content not found");
+    }
+
+    const unifiedJson = await r2Object.text();
+    const unifiedTranscript = JSON.parse(unifiedJson);
+
+    // Return transcript with metadata and unified content
     return {
-      ...transcript,
-      events: JSON.parse(transcript.events),
+      id: transcript.id,
+      repoId: transcript.repoId,
+      transcriptId: transcript.transcriptId,
+      preview: transcript.preview,
+      createdAt: transcript.createdAt,
+      analyzed: transcript.analyzed,
+      unifiedTranscript,
       analysis: transcript.analysis
         ? {
             ...transcript.analysis,

@@ -135,7 +135,6 @@ GITHUB_CLIENT_SECRET=your_client_secret
 BETTER_AUTH_SECRET=your_secret  # openssl rand -base64 32
 BETTER_AUTH_URL=http://localhost:8787
 WEB_URL=http://localhost:8787
-API_TOKEN=dev_token
 ```
 
 ## Deployment
@@ -153,7 +152,6 @@ bun db:migrate:remote
 wrangler secret put GITHUB_CLIENT_ID
 wrangler secret put GITHUB_CLIENT_SECRET
 wrangler secret put BETTER_AUTH_SECRET
-wrangler secret put API_TOKEN
 
 # Deploy
 bun run deploy

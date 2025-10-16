@@ -12,7 +12,7 @@
     "cf-typegen": "test -f .env || cp .env.example .env; wrangler types",
     "db:setup": "bun run db:generate && bun run db:migrate:local",
     "db:generate": "drizzle-kit generate",
-    "db:migrate:local": "wrangler d1 migrations apply vibeinsights --local",
+    "db:migrate": "wrangler d1 migrations apply vibeinsights --local",
     "db:migrate:remote": "wrangler d1 migrations apply vibeinsights --remote",
     "db:studio": "DB_LOCAL_PATH=$(find $PWD/.wrangler/state/v3/d1/miniflare-D1DatabaseObject -type f -name '*.sqlite' -print -quit 2>/dev/null) bunx drizzle-kit studio --port 4983",
     "db:studio:test": "DB_LOCAL_PATH=$(find $PWD/.wrangler-test/state/v3/d1/miniflare-D1DatabaseObject -type f -name '*.sqlite' -print -quit 2>/dev/null) bunx drizzle-kit studio --port 4984",
@@ -20,6 +20,7 @@
     "typecheck": "tsc --noEmit --project tsconfig.json"
   },
   "dependencies": {
+    "@paralleldrive/cuid2": "^2.2.2",
     "@radix-ui/react-slot": "^1.2.3",
     "@tanstack/react-router": "^1.132.0",
     "@tanstack/react-start": "^1.132.56",

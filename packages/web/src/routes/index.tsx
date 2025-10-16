@@ -110,7 +110,7 @@ function IndexComponent() {
                   <TableRow key={repo.id}>
                     <TableCell>
                       <div>
-                        <div className="font-medium">{repo.name}</div>
+                        <div className="font-medium">{repo.repo}</div>
                         <div className="text-muted-foreground text-sm">{repo.id}</div>
                       </div>
                     </TableCell>

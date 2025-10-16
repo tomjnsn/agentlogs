@@ -3,7 +3,7 @@
 # Toggle Vibe Insights Plugin Development Mode
 #
 # This script automatically detects the current plugin mode and switches to the opposite:
-# - Production → Local Development: Sets VI_CLI_PATH, VI_SERVER_URL, VI_API_TOKEN
+# - Production → Local Development: Sets VI_CLI_PATH and VI_SERVER_URL
 # - Local Development → Production: Removes environment variables from shell RC
 #
 # The script updates your shell configuration file (.zshrc or .bashrc) to persist

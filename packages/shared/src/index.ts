@@ -4,3 +4,4 @@ export * from "./logger";
 export * from "./upload";
 export * from "./paths";
 export * from "./claudecode";
+export * from "./pricing";

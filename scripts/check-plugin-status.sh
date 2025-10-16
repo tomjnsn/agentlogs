@@ -18,7 +18,6 @@ if [ -n "$VI_CLI_PATH" ]; then
   echo "Configuration:"
   echo "  VI_CLI_PATH=$VI_CLI_PATH"
   echo "  VI_SERVER_URL=${VI_SERVER_URL:-<not set>}"
-  echo "  VI_API_TOKEN=${VI_API_TOKEN:+<set>}${VI_API_TOKEN:-<not set>}"
   echo
   echo "Testing CLI access:"
   # Test with empty stdin - CLI should exit with warning about empty stdin

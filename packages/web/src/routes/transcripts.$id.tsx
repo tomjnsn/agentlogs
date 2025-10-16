@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import type { TranscriptEvent } from "@vibeinsights/shared";
+import type { UnifiedTranscriptMessage } from "@vibeinsights/shared/claudecode";
+import { unifiedTranscriptSchema } from "@vibeinsights/shared/schemas";
 import { getTranscript } from "../lib/server-functions";
 
 export const Route = createFileRoute("/transcripts/$id")({
@@ -19,8 +20,8 @@ type AntiPattern = {
 };
 
 function TranscriptDetailComponent() {
-  const transcript = Route.useLoaderData();
-  const analysis = transcript.analysis;
+  const data = Route.useLoaderData();
+  const analysis = data.analysis;
   const antiPatterns = (analysis?.antiPatterns ?? []) as AntiPattern[];
   const recommendations = (analysis?.recommendations ?? []) as string[];
   const severityVariantMap: Record<AntiPattern["severity"], BadgeProps["variant"]> = {
@@ -29,15 +30,24 @@ function TranscriptDetailComponent() {
     low: "outline",
   };
 
+  // Parse and validate the unified transcript
+  const unifiedTranscript = unifiedTranscriptSchema.parse(data.unifiedTranscript);
+
   return (
     <div className="space-y-6">
       <div className="space-y-2">
         <Button variant="ghost" size="sm" asChild>
-          <Link to="/repos/$id" params={{ id: transcript.repoId }}>
+          <Link to="/repos/$id" params={{ id: data.repoId }}>
             ← Back to Repository
           </Link>
         </Button>
-        <h2 className="text-2xl font-bold tracking-tight">Transcript</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold tracking-tight">Transcript</h2>
+          <div className="text-muted-foreground text-sm">
+            {unifiedTranscript.messageCount} messages • ${unifiedTranscript.costUsd.toFixed(4)}
+          </div>
+        </div>
+        {unifiedTranscript.preview && <p className="text-muted-foreground text-sm">{unifiedTranscript.preview}</p>}
       </div>
 
       {analysis && (
@@ -84,68 +94,89 @@ function TranscriptDetailComponent() {
       )}
 
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Events</h3>
-        {transcript.events.map((event: TranscriptEvent, i: number) => (
-          <EventCard key={i} event={event} index={i} />
+        <h3 className="text-lg font-semibold">Messages</h3>
+        {unifiedTranscript.messages.map((message, i) => (
+          <MessageCard key={i} message={message} index={i} />
         ))}
       </div>
     </div>
   );
 }
 
-function EventCard({ event, index }: { event: TranscriptEvent; index: number }) {
-  return (
-    <Card
-      className={cn(
-        "border-l-4",
-        event.type === "user" && "border-l-blue-500 bg-blue-50/50",
-        event.type === "assistant" && "border-l-green-500 bg-green-50/50",
-        event.type === "tool_use" && "border-l-purple-500 bg-purple-50/50",
-        event.type === "tool_result" && event.error
+function MessageCard({ message, index }: { message: UnifiedTranscriptMessage; index: number }) {
+  const getTypeColor = () => {
+    switch (message.type) {
+      case "user":
+        return "border-l-blue-500 bg-blue-50/50";
+      case "agent":
+        return "border-l-green-500 bg-green-50/50";
+      case "thinking":
+        return "border-l-yellow-500 bg-yellow-50/50";
+      case "tool-call":
+        return message.error || message.isError
           ? "border-l-red-500 bg-red-50/50"
-          : "border-l-gray-500 bg-gray-50/50",
-      )}
-    >
+          : "border-l-purple-500 bg-purple-50/50";
+      default:
+        return "border-l-gray-500 bg-gray-50/50";
+    }
+  };
+
+  return (
+    <Card className={cn("border-l-4", getTypeColor())}>
       <CardContent className="pt-6">
         <div className="mb-3 flex items-center justify-between">
           <Badge variant="outline">
-            #{index + 1} {event.type}
+            #{index + 1} {message.type}
           </Badge>
-          <span className="text-muted-foreground text-xs">{new Date(event.timestamp).toLocaleTimeString()}</span>
+          {message.timestamp && (
+            <span className="text-muted-foreground text-xs">{new Date(message.timestamp).toLocaleTimeString()}</span>
+          )}
         </div>
 
-        {event.type === "user" && (
-          <pre className="bg-background/50 whitespace-pre-wrap rounded border p-3 text-sm">
-            {typeof event.message.content === "string"
-              ? event.message.content
-              : JSON.stringify(event.message.content, null, 2)}
-          </pre>
+        {message.type === "user" && (
+          <pre className="bg-background/50 whitespace-pre-wrap rounded border p-3 text-sm">{message.text}</pre>
         )}
 
-        {event.type === "assistant" && (
-          <div className="bg-background/50 whitespace-pre-wrap rounded border p-3 text-sm">
-            {event.message.content.map((c) => c.text || "").join("")}
+        {message.type === "agent" && (
+          <div className="bg-background/50 whitespace-pre-wrap rounded border p-3 text-sm">{message.text}</div>
+        )}
+
+        {message.type === "thinking" && (
+          <div className="bg-background/50 text-muted-foreground whitespace-pre-wrap rounded border p-3 text-sm italic">
+            {message.text}
           </div>
         )}
 
-        {event.type === "tool_use" && (
+        {message.type === "tool-call" && (
           <>
-            <div className="mb-2 text-sm font-medium">Tool: {event.tool_name}</div>
-            <pre className="bg-background/50 overflow-x-auto whitespace-pre-wrap rounded border p-3 text-xs">
-              {JSON.stringify(event.tool_input, null, 2)}
-            </pre>
-          </>
-        )}
-
-        {event.type === "tool_result" && (
-          <>
-            <div className="mb-2 text-sm font-medium">Result: {event.tool_name}</div>
-            {event.error ? (
-              <div className="text-destructive bg-background/50 rounded border p-3 text-sm">Error: {event.error}</div>
-            ) : (
-              <pre className="bg-background/50 overflow-x-auto whitespace-pre-wrap rounded border p-3 text-xs">
-                {JSON.stringify(event.tool_response, null, 2)}
-              </pre>
+            <div className="mb-2 text-sm font-medium">
+              Tool: {message.toolName ?? "Unknown"}
+              {message.isError && (
+                <Badge className="ml-2" variant="destructive">
+                  Error
+                </Badge>
+              )}
+            </div>
+            {message.input && (
+              <div className="mb-2">
+                <div className="text-muted-foreground mb-1 text-xs font-semibold">Input:</div>
+                <pre className="bg-background/50 overflow-x-auto whitespace-pre-wrap rounded border p-3 text-xs">
+                  {JSON.stringify(message.input, null, 2)}
+                </pre>
+              </div>
+            )}
+            {message.output && (
+              <div>
+                <div className="text-muted-foreground mb-1 text-xs font-semibold">Output:</div>
+                <pre className="bg-background/50 overflow-x-auto whitespace-pre-wrap rounded border p-3 text-xs">
+                  {JSON.stringify(message.output, null, 2)}
+                </pre>
+              </div>
+            )}
+            {message.error && (
+              <div className="text-destructive bg-background/50 mt-2 rounded border p-3 text-sm">
+                Error: {message.error}
+              </div>
             )}
           </>
         )}

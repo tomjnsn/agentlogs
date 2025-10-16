@@ -3,103 +3,21 @@ import type { DrizzleDB } from ".";
 import { analysis, repos, transcripts } from "./schema";
 
 /**
- * Upsert a repository (insert or update if exists)
- */
-export async function upsertRepo(db: DrizzleDB, userId: string, id: string, name: string, url: string) {
-  await db
-    .insert(repos)
-    .values({
-      id,
-      name,
-      url,
-      userId,
-      lastActivity: new Date().toISOString(),
-    })
-    .onConflictDoUpdate({
-      target: repos.id,
-      set: {
-        lastActivity: new Date().toISOString(),
-      },
-    });
-}
-
-/**
  * Get all repos for a user with computed transcript count
  */
 export async function getRepos(db: DrizzleDB, userId: string) {
   return await db
     .select({
       id: repos.id,
-      name: repos.name,
-      url: repos.url,
+      repo: repos.repo,
       lastActivity: repos.lastActivity,
-      userId: repos.userId,
       createdAt: repos.createdAt,
       transcriptCount: sql<number>`CAST(COUNT(${transcripts.id}) AS INTEGER)`.as("transcript_count"),
     })
     .from(repos)
-    .leftJoin(transcripts, eq(transcripts.repoId, repos.id))
-    .where(eq(repos.userId, userId))
+    .leftJoin(transcripts, and(eq(transcripts.repoId, repos.id), eq(transcripts.userId, userId)))
     .groupBy(repos.id)
     .orderBy(desc(repos.lastActivity));
-}
-
-/**
- * Upsert transcript with race-condition-safe logic.
- * Returns the action taken: "inserted", "updated", or "skipped".
- */
-export async function upsertTranscript(
-  db: DrizzleDB,
-  id: string,
-  userId: string,
-  repoId: string,
-  sessionId: string,
-  events: string,
-): Promise<{ action: "inserted" | "updated" | "skipped"; id: string; oldEventCount?: number }> {
-  const insertResult = await db
-    .insert(transcripts)
-    .values({
-      id,
-      repoId,
-      sessionId,
-      events,
-      userId,
-    })
-    .onConflictDoNothing()
-    .returning({ id: transcripts.id });
-
-  if (insertResult.length > 0) {
-    return { action: "inserted", id: insertResult[0].id };
-  }
-
-  const existing = await db.query.transcripts.findFirst({
-    where: and(eq(transcripts.sessionId, sessionId), eq(transcripts.userId, userId)),
-  });
-
-  if (!existing) {
-    // Another request may still be committing; retry once before falling back.
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    const retry = await db.query.transcripts.findFirst({
-      where: and(eq(transcripts.sessionId, sessionId), eq(transcripts.userId, userId)),
-    });
-
-    if (!retry) {
-      return { action: "inserted", id };
-    }
-
-    return { action: "inserted", id: retry.id };
-  }
-
-  const existingEvents = JSON.parse(existing.events) as unknown[];
-  const existingCount = existingEvents.length;
-  const newEventCount = (JSON.parse(events) as unknown[]).length;
-
-  if (newEventCount > existingCount) {
-    await db.update(transcripts).set({ events }).where(eq(transcripts.id, existing.id));
-    return { action: "updated", id: existing.id, oldEventCount: existingCount };
-  }
-
-  return { action: "skipped", id: existing.id, oldEventCount: existingCount };
 }
 
 /**

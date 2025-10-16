@@ -29,9 +29,10 @@ function RepoDetailComponent() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Session</TableHead>
-                <TableHead>Events</TableHead>
-                <TableHead>Health Score</TableHead>
+                <TableHead>Transcript ID</TableHead>
+                <TableHead>Preview</TableHead>
+                <TableHead>Messages</TableHead>
+                <TableHead>Cost</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -40,10 +41,13 @@ function RepoDetailComponent() {
               {transcripts.map((transcript) => (
                 <TableRow key={transcript.id}>
                   <TableCell>
-                    <code className="font-mono text-sm">{transcript.sessionId?.slice(0, 8) || "N/A"}...</code>
+                    <code className="font-mono text-sm">{transcript.transcriptId?.slice(0, 8) || "N/A"}...</code>
                   </TableCell>
-                  <TableCell>N/A</TableCell>
-                  <TableCell>{transcript.analyzed ? "Analyzed" : "Pending"}</TableCell>
+                  <TableCell className="text-muted-foreground max-w-md truncate">
+                    {transcript.preview || "No preview"}
+                  </TableCell>
+                  <TableCell>{transcript.messageCount ?? "N/A"}</TableCell>
+                  <TableCell>${transcript.costUsd?.toFixed(4) ?? "0.0000"}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {new Date(transcript.createdAt).toLocaleString()}
                   </TableCell>

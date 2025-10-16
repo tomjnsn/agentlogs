@@ -2,8 +2,6 @@ import type { UploadOptions } from "@vibeinsights/shared/upload";
 import { getToken } from "../config";
 import { performUpload, resolveTranscriptPath } from "../lib/perform-upload";
 
-const MANUAL_UPLOAD_REASON = "manual-cli-upload";
-
 export async function uploadCommand(args: string[]): Promise<void> {
   const [transcriptArg] = args;
 
@@ -20,22 +18,24 @@ export async function uploadCommand(args: string[]): Promise<void> {
   }
 
   const serverUrl = process.env.SERVER_URL ?? "http://localhost:3000";
-  const apiToken = process.env.VI_API_TOKEN ?? getToken() ?? undefined;
+  const authToken = getToken();
+
+  if (!authToken) {
+    console.error("You must be logged in to upload transcripts. Run `bun run src/index.ts login` first.");
+    process.exit(1);
+  }
 
   const options: UploadOptions = {};
   if (serverUrl) {
     options.serverUrl = serverUrl;
   }
-  if (apiToken) {
-    options.apiToken = apiToken;
-  }
+  options.authToken = authToken;
 
   try {
     console.log(`Uploading events from ${transcriptPath} to Vibe Insights...`);
     const result = await performUpload(
       {
         transcriptPath,
-        reason: MANUAL_UPLOAD_REASON,
       },
       options,
     );

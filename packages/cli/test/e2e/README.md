@@ -272,7 +272,6 @@ jobs:
       - name: Run E2E tests
         run: bun run test:e2e
         env:
-          API_TOKEN: test_token
           BETTER_AUTH_SECRET: test_secret_key_for_ci
 ```
 
