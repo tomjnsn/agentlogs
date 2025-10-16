@@ -15,6 +15,30 @@ const TEST_PRICING = {
   },
 };
 
+// Git contexts for each fixture
+const FIXTURE_GIT_CONTEXTS: Record<string, { repo: string; branch: string; relativeCwd: string }> = {
+  "compact.jsonl": {
+    repo: "github.com/tailwindlabs/tailwind-studio",
+    branch: "main",
+    relativeCwd: ".",
+  },
+  "crud.jsonl": {
+    repo: "github.com/vibeinsights/vibeinsights",
+    branch: "main",
+    relativeCwd: "fixtures/claudecode",
+  },
+  "subagent.jsonl": {
+    repo: "github.com/tailwindlabs/tailwind-studio",
+    branch: "main",
+    relativeCwd: ".",
+  },
+  "todos.jsonl": {
+    repo: "github.com/vibeinsights/vibeinsights",
+    branch: "main",
+    relativeCwd: "fixtures/claudecode",
+  },
+};
+
 describe("convertClaudeCodeFile", () => {
   test("compact.jsonl", async () => {
     const serialized = await loadSerializedTranscript("compact.jsonl");
@@ -1053,6 +1077,7 @@ async function loadSerializedTranscript(fileName: string) {
   const transcript = await convertClaudeCodeFile(path.join(FIXTURE_DIR, fileName), {
     pricing: TEST_PRICING,
     now: TEST_NOW,
+    gitContext: FIXTURE_GIT_CONTEXTS[fileName] ?? null,
   });
 
   expect(transcript).not.toBeNull();

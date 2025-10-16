@@ -21,6 +21,7 @@ export type UnifiedGitContext = z.infer<typeof unifiedGitContextSchema>;
 export type ConvertClaudeCodeOptions = {
   pricing?: Record<string, LiteLLMModelPricing>;
   now?: Date;
+  gitContext?: UnifiedGitContext | null;
 };
 
 type ClaudeUsage = {
@@ -247,7 +248,8 @@ export async function convertClaudeCodeFile(
   const sessionId = findSessionId(transcriptChain);
   const primaryModel = selectPrimaryModel(modelUsageMap);
   const cwd = deriveWorkingDirectory(transcriptChain);
-  const gitContext = await resolveGitContext(cwd, leaf.gitBranch);
+  const gitContext =
+    options.gitContext !== undefined ? options.gitContext : await resolveGitContext(cwd, leaf.gitBranch);
   const messages = convertTranscriptToMessages(transcriptChain);
 
   const transcriptCandidate = {
@@ -696,45 +698,54 @@ function deriveWorkingDirectory(transcript: ClaudeMessageRecord[]): string | und
 
 function extractGitContextFromRecords(transcript: ClaudeMessageRecord[]): UnifiedGitContext {
   const cwd = deriveWorkingDirectory(transcript);
-  const gitBranch = transcript.find((r) => r.gitBranch)?.gitBranch;
+  const gitBranch = transcript.find((r) => r.gitBranch)?.gitBranch ?? null;
 
-  // Try to extract repo from cwd path
-  // Looking for patterns like: /Users/user/dev/repo or /path/to/repo
-  let repo: string | null = null;
-  let relativeCwd: string | null = null;
+  if (!cwd) {
+    return unifiedGitContextSchema.parse({
+      relativeCwd: null,
+      branch: gitBranch,
+      repo: null,
+    });
+  }
 
-  if (cwd) {
-    // Try to find git repo name from path
-    const pathParts = cwd.split("/").filter(Boolean);
+  const pathParts = cwd.split(/[\\/]+/).filter(Boolean);
+  if (pathParts.length === 0) {
+    return unifiedGitContextSchema.parse({
+      relativeCwd: null,
+      branch: gitBranch,
+      repo: null,
+    });
+  }
 
-    // Common patterns: /Users/user/dev/orgname/reponame or /home/user/projects/reponame
-    // We'll look for known hosting patterns or just take last 2-3 segments
-    const lastParts = pathParts.slice(-3);
+  const hostingIndex = pathParts.findIndex((part) => {
+    const normalized = part.toLowerCase();
+    return normalized.includes("github") || normalized.includes("gitlab") || normalized.includes("bitbucket");
+  });
 
-    // Check if path contains github.com, gitlab.com, etc.
-    const hostingIndex = pathParts.findIndex(
-      (part) => part.includes("github") || part.includes("gitlab") || part.includes("bitbucket"),
-    );
+  if (hostingIndex >= 0) {
+    const hostSegment = pathParts[hostingIndex]?.toLowerCase() ?? "";
+    const host = hostSegment.includes("gitlab")
+      ? "gitlab.com"
+      : hostSegment.includes("bitbucket")
+        ? "bitbucket.org"
+        : "github.com";
 
-    if (hostingIndex >= 0 && pathParts.length > hostingIndex + 2) {
-      // Pattern: .../github/org/repo/...
-      const org = pathParts[hostingIndex + 1];
-      const repoName = pathParts[hostingIndex + 2];
-      repo = `github.com/${org}/${repoName}`;
-      relativeCwd = pathParts.slice(hostingIndex + 3).join("/") || ".";
-    } else if (lastParts.length >= 2) {
-      // Assume last 2 parts are org/repo
-      const org = lastParts[lastParts.length - 2];
-      const repoName = lastParts[lastParts.length - 1];
-      repo = `${org}/${repoName}`;
-      relativeCwd = ".";
+    const org = pathParts[hostingIndex + 1];
+    const repoName = pathParts[hostingIndex + 2]?.replace(/\.git$/i, "");
+    if (org && repoName) {
+      const relativeSegments = pathParts.slice(hostingIndex + 3);
+      return unifiedGitContextSchema.parse({
+        relativeCwd: relativeSegments.length > 0 ? relativeSegments.join("/") : ".",
+        branch: gitBranch,
+        repo: `${host}/${org}/${repoName}`,
+      });
     }
   }
 
   return unifiedGitContextSchema.parse({
-    relativeCwd,
-    branch: gitBranch ?? null,
-    repo,
+    relativeCwd: null,
+    branch: gitBranch,
+    repo: null,
   });
 }
 
