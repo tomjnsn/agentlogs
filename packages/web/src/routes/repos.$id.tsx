@@ -4,13 +4,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { getTranscriptsByRepo } from "../lib/server-functions";
 
+type RepoTranscripts = Awaited<ReturnType<typeof getTranscriptsByRepo>>;
+
 export const Route = createFileRoute("/repos/$id")({
   loader: ({ params }) => getTranscriptsByRepo({ data: params.id }),
   component: RepoDetailComponent,
 });
 
 function RepoDetailComponent() {
-  const transcripts = Route.useLoaderData();
+  const transcripts = Route.useLoaderData() as RepoTranscripts;
   const { id } = Route.useParams();
 
   return (

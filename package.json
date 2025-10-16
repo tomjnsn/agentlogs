@@ -23,7 +23,10 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check": "bun run lint && bun run format:check",
-    "typecheck": "bun run --workspaces typecheck"
+    "typecheck": "bun run --workspaces typecheck",
+    "plugin:switch-dev": "bash scripts/toggle-plugin-dev.sh",
+    "plugin:switch-prod": "bash scripts/toggle-plugin-dev.sh",
+    "plugin:status": "bash scripts/check-plugin-status.sh"
   },
   "devDependencies": {
     "@ianvs/prettier-plugin-sort-imports": "^4.7.0",

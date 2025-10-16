@@ -1,6 +1,23 @@
+import { dirname, resolve } from "path";
+import { fileURLToPath } from "url";
+import { createLogger } from "@vibeinsights/shared/logger";
 import type { UploadOptions } from "@vibeinsights/shared/upload";
 import { getToken, readConfig } from "../config";
 import { performUpload } from "../lib/perform-upload";
+
+// Create logger for CLI hook commands with explicit log path
+// Use the file's location to find the monorepo root, not the working directory
+// File location: /agentic-engineering-insights/packages/cli/src/commands/hook.ts
+// Target: /agentic-engineering-insights/logs/dev.log
+// Relative path: ../../../../logs/dev.log
+function getDevLogPath(): string {
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
+  return resolve(__dirname, "../../../../logs/dev.log");
+}
+
+const logPath = getDevLogPath();
+const logger = createLogger("cli", { logFilePath: logPath, logToFile: true });
 
 interface ClaudeHookInput {
   session_id?: string;
@@ -16,43 +33,74 @@ const SESSION_END_REASON_FALLBACK = "claude-session-end";
 const STOP_REASON_FALLBACK = "claude-stop";
 
 export async function hookCommand(_args: string[] = []): Promise<void> {
-  const stdinPayload = await readStdin();
-
-  if (!stdinPayload.trim()) {
-    console.error("No hook input received on stdin. Exiting.");
-    return;
-  }
-
-  let hookInput: ClaudeHookInput;
+  const startTime = Date.now();
+  let eventName: string | undefined;
+  let sessionId: string | undefined;
 
   try {
-    hookInput = JSON.parse(stdinPayload) as ClaudeHookInput;
+    // Read stdin
+    const stdinPayload = await readStdin();
+
+    // Log hook invocation with stdin size
+    logger.info(`Hook invoked (stdin: ${stdinPayload.length} bytes)`);
+
+    // Guard: empty stdin
+    if (!stdinPayload.trim()) {
+      logger.warn("Hook received empty stdin - ignoring");
+      process.exit(0);
+    }
+
+    // Parse JSON
+    let hookInput: ClaudeHookInput;
+    try {
+      hookInput = JSON.parse(stdinPayload) as ClaudeHookInput;
+    } catch (error) {
+      logger.error("Hook failed to parse stdin JSON", { error: error instanceof Error ? error.message : error });
+      process.exit(1);
+    }
+
+    eventName = hookInput.hook_event_name;
+    sessionId = hookInput.session_id || "unknown";
+
+    // Guard: missing event name
+    if (!eventName) {
+      logger.error("Hook missing event name", { sessionId });
+      process.exit(1);
+    }
+
+    // Log event details
+    logger.info(`Hook: ${eventName} (session: ${sessionId.substring(0, 8)}...)`);
+
+    // Process event
+    if (eventName === "SessionEnd") {
+      await handleSessionEnd(hookInput);
+    } else if (eventName === "Stop") {
+      await handleStop(hookInput);
+    } else {
+      logger.debug(`Hook: skipping unsupported event ${eventName}`);
+    }
+
+    // Log successful completion
+    const duration = Date.now() - startTime;
+    logger.info(`Hook completed: ${eventName} (${duration}ms)`, { sessionId: sessionId.substring(0, 8) });
+    process.exit(0);
   } catch (error) {
-    console.error("Failed to parse hook input as JSON:", error instanceof Error ? error.message : error);
-    return;
-  }
-
-  const eventName = hookInput.hook_event_name;
-
-  if (!eventName) {
-    console.error("Hook input did not include hook_event_name.");
-    return;
-  }
-
-  if (eventName === "SessionEnd") {
-    await handleSessionEnd(hookInput);
-  } else if (eventName === "Stop") {
-    await handleStop(hookInput);
-  } else {
-    console.log(`Skipping unsupported hook event "${eventName}".`);
+    // Log error and exit with failure code
+    const duration = Date.now() - startTime;
+    logger.error(`Hook failed: ${eventName || "unknown"} (${duration}ms)`, {
+      sessionId: sessionId?.substring(0, 8),
+      error: error instanceof Error ? error.message : String(error),
+    });
+    process.exit(1);
   }
 }
 
 async function handleSessionEnd(hookInput: ClaudeHookInput): Promise<void> {
   const transcriptPath = hookInput.transcript_path;
+  const sessionId = hookInput.session_id || "unknown";
 
   if (!transcriptPath) {
-    console.error("SessionEnd hook did not provide transcript_path.");
+    logger.error("SessionEnd: missing transcript_path", { sessionId });
     return;
   }
 
@@ -62,15 +110,10 @@ async function handleSessionEnd(hookInput: ClaudeHookInput): Promise<void> {
   const apiToken = process.env.VI_API_TOKEN ?? getToken() ?? undefined;
 
   const options: UploadOptions = {};
-  if (serverUrl) {
-    options.serverUrl = serverUrl;
-  }
-  if (apiToken) {
-    options.apiToken = apiToken;
-  }
+  if (serverUrl) options.serverUrl = serverUrl;
+  if (apiToken) options.apiToken = apiToken;
 
   try {
-    console.log("↻ Uploading transcript from Claude Code hook…");
     const result = await performUpload(
       {
         transcriptPath,
@@ -82,30 +125,33 @@ async function handleSessionEnd(hookInput: ClaudeHookInput): Promise<void> {
     );
 
     if (result.success) {
-      console.log(
-        `✓ Upload successful (${result.eventCount} events${
-          result.transcriptId ? `, transcript ID: ${result.transcriptId}` : ""
-        })`,
-      );
+      logger.info(`SessionEnd: uploaded ${result.eventCount} events`, {
+        transcriptId: result.transcriptId,
+        sessionId: sessionId.substring(0, 8),
+      });
     } else {
-      console.error("✗ Failed to upload transcript to Vibe Insights server.");
+      logger.error("SessionEnd: upload failed", { sessionId });
     }
   } catch (error) {
-    console.error("✗ Hook upload error:", error instanceof Error ? error.message : error);
+    logger.error("SessionEnd: upload error", {
+      sessionId,
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 }
 
 async function handleStop(hookInput: ClaudeHookInput): Promise<void> {
   const transcriptPath = hookInput.transcript_path;
+  const sessionId = hookInput.session_id || "unknown";
 
   if (!transcriptPath) {
-    console.error("Stop hook did not provide transcript_path.");
+    logger.error("Stop: missing transcript_path", { sessionId });
     return;
   }
 
   // Skip if stop_hook_active is true to avoid infinite loops
   if (hookInput.stop_hook_active) {
-    console.log("Skipping Stop hook (stop_hook_active is true).");
+    logger.debug("Stop: skipped (stop_hook_active=true)", { sessionId });
     return;
   }
 
@@ -115,15 +161,10 @@ async function handleStop(hookInput: ClaudeHookInput): Promise<void> {
   const apiToken = process.env.VI_API_TOKEN ?? getToken() ?? undefined;
 
   const options: UploadOptions = {};
-  if (serverUrl) {
-    options.serverUrl = serverUrl;
-  }
-  if (apiToken) {
-    options.apiToken = apiToken;
-  }
+  if (serverUrl) options.serverUrl = serverUrl;
+  if (apiToken) options.apiToken = apiToken;
 
   try {
-    console.log("↻ Uploading transcript from Claude Code Stop hook…");
     const result = await performUpload(
       {
         transcriptPath,
@@ -135,16 +176,18 @@ async function handleStop(hookInput: ClaudeHookInput): Promise<void> {
     );
 
     if (result.success) {
-      console.log(
-        `✓ Upload successful (${result.eventCount} events${
-          result.transcriptId ? `, transcript ID: ${result.transcriptId}` : ""
-        })`,
-      );
+      logger.info(`Stop: uploaded ${result.eventCount} events`, {
+        transcriptId: result.transcriptId,
+        sessionId: sessionId.substring(0, 8),
+      });
     } else {
-      console.error("✗ Failed to upload transcript to Vibe Insights server.");
+      logger.error("Stop: upload failed", { sessionId });
     }
   } catch (error) {
-    console.error("✗ Hook upload error:", error instanceof Error ? error.message : error);
+    logger.error("Stop: upload error", {
+      sessionId,
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 }
 

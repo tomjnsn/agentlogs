@@ -66,6 +66,50 @@ bun run format       # Format code
 bun run typecheck    # Type check
 ```
 
+## Local Plugin Development
+
+### Prerequisites
+
+- Clone plugin repo: `git clone https://github.com/vibeinsights/claude-code ../vibeinsights-claude-code-plugin`
+- Install plugin locally: `claude plugins install ../vibeinsights-claude-code-plugin`
+
+### Setup
+
+```bash
+# Switch to local development mode
+bun run plugin:switch-dev
+# Opens browser for authentication once
+# Sets VI_CLI_PATH and VI_SERVER_URL in shell RC
+
+# Start local server
+bun run dev
+
+# Test with Claude
+claude -p "test"
+# Transcripts auto-upload to http://localhost:3000
+```
+
+### Switch Modes
+
+```bash
+bun run plugin:switch-prod  # Use published npm package
+bun run plugin:switch-dev   # Use local CLI
+bun run plugin:status       # Check current mode
+```
+
+### Debugging
+
+```bash
+# View hook execution logs
+tail -f logs/dev.log
+
+# Check authentication
+bun run cli status
+
+# Re-authenticate
+bun run cli login
+```
+
 ## CLI Usage
 
 ```bash
@@ -117,15 +161,15 @@ bun run deploy
 
 ## Database Schema
 
-**Core Tables**: `repos`, `transcripts`, `analysis`  
+**Core Tables**: `repos`, `transcripts`, `analysis`
 **Auth Tables**: `user`, `session`, `account`, `verification`, `device_code`
 
 All data scoped by `userId` for multi-tenant isolation.
 
 ## Troubleshooting
 
-**Database issues**: `cd packages/web && bun db:reset`  
-**Auth issues**: Verify callback URL and clear cookies  
+**Database issues**: `cd packages/web && bun db:reset`
+**Auth issues**: Verify callback URL and clear cookies
 **Build errors**: `bun install && bun run typecheck`
 
 ## License

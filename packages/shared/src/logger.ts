@@ -149,13 +149,17 @@ class Logger {
  * Factory function to create a logger instance for a component
  *
  * @param component - Component name (e.g., "web", "plugin", "cli")
+ * @param options - Optional logger configuration (logToFile, logFilePath)
  * @returns Logger instance
  *
  * @example
  *   const logger = createLogger("web");
  *   logger.info("Server started on port 8787");
  *   logger.error("Database connection failed", { error: err });
+ *
+ *   // With explicit log path
+ *   const cliLogger = createLogger("cli", { logFilePath: "/path/to/dev.log" });
  */
-export function createLogger(component: string): Logger {
-  return new Logger({ component });
+export function createLogger(component: string, options?: Partial<Omit<LoggerOptions, "component">>): Logger {
+  return new Logger({ component, ...options });
 }

@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as TranscriptsIdRouteImport } from './routes/transcripts.$id'
 import { Route as ReposIdRouteImport } from './routes/repos.$id'
 import { Route as ApiIngestRouteImport } from './routes/api/ingest'
+import { Route as ApiTranscriptsClearRouteImport } from './routes/api/transcripts/clear'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth.$'
 
 const SignInRoute = SignInRouteImport.update({
@@ -47,6 +48,11 @@ const ApiIngestRoute = ApiIngestRouteImport.update({
   path: '/api/ingest',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTranscriptsClearRoute = ApiTranscriptsClearRouteImport.update({
+  id: '/api/transcripts/clear',
+  path: '/api/transcripts/clear',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -61,6 +67,7 @@ export interface FileRoutesByFullPath {
   '/repos/$id': typeof ReposIdRoute
   '/transcripts/$id': typeof TranscriptsIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/transcripts/clear': typeof ApiTranscriptsClearRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -70,6 +77,7 @@ export interface FileRoutesByTo {
   '/repos/$id': typeof ReposIdRoute
   '/transcripts/$id': typeof TranscriptsIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/transcripts/clear': typeof ApiTranscriptsClearRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -80,6 +88,7 @@ export interface FileRoutesById {
   '/repos/$id': typeof ReposIdRoute
   '/transcripts/$id': typeof TranscriptsIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/transcripts/clear': typeof ApiTranscriptsClearRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -91,6 +100,7 @@ export interface FileRouteTypes {
     | '/repos/$id'
     | '/transcripts/$id'
     | '/api/auth/$'
+    | '/api/transcripts/clear'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -100,6 +110,7 @@ export interface FileRouteTypes {
     | '/repos/$id'
     | '/transcripts/$id'
     | '/api/auth/$'
+    | '/api/transcripts/clear'
   id:
     | '__root__'
     | '/'
@@ -109,6 +120,7 @@ export interface FileRouteTypes {
     | '/repos/$id'
     | '/transcripts/$id'
     | '/api/auth/$'
+    | '/api/transcripts/clear'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -119,6 +131,7 @@ export interface RootRouteChildren {
   ReposIdRoute: typeof ReposIdRoute
   TranscriptsIdRoute: typeof TranscriptsIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiTranscriptsClearRoute: typeof ApiTranscriptsClearRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -165,6 +178,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiIngestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/transcripts/clear': {
+      id: '/api/transcripts/clear'
+      path: '/api/transcripts/clear'
+      fullPath: '/api/transcripts/clear'
+      preLoaderRoute: typeof ApiTranscriptsClearRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -183,6 +203,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReposIdRoute: ReposIdRoute,
   TranscriptsIdRoute: TranscriptsIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiTranscriptsClearRoute: ApiTranscriptsClearRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

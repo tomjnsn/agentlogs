@@ -105,16 +105,43 @@ export const Route = createFileRoute("/api/ingest")({
         logger.info("Ingest processing", { userId, repoId, repoName, sessionId, eventCount: events.length });
 
         try {
-          // Generate transcript ID
-          const transcriptId = crypto.randomUUID();
-
-          // Upsert repository
+          // Upsert repository first
           await queries.upsertRepo(db, userId, repoId, repoName, repoId);
           logger.debug("Repository upserted", { repoId });
 
-          // Insert transcript
-          await queries.insertTranscript(db, userId, transcriptId, repoId, sessionId, JSON.stringify(events));
-          logger.debug("Transcript inserted", { transcriptId, eventCount: events.length });
+          // Use upsert with event count comparison to handle race conditions
+          const transcriptId = crypto.randomUUID();
+          const result = await queries.upsertTranscript(
+            db,
+            transcriptId,
+            userId,
+            repoId,
+            sessionId,
+            JSON.stringify(events),
+          );
+
+          if (result.action === "inserted") {
+            logger.info("Transcript inserted", { transcriptId: result.id, eventCount: events.length });
+          } else if (result.action === "updated") {
+            logger.info("Transcript updated (more events)", {
+              transcriptId: result.id,
+              oldEventCount: result.oldEventCount,
+              newEventCount: events.length,
+            });
+          } else {
+            logger.info("Transcript duplicate skipped", {
+              transcriptId: result.id,
+              existingEventCount: result.oldEventCount,
+              newEventCount: events.length,
+            });
+            return json({
+              success: true,
+              transcriptId: result.id,
+              eventsReceived: events.length,
+              skipped: true,
+              reason: "Duplicate or older transcript",
+            });
+          }
 
           // Analyze transcript asynchronously (don't block response)
           // Note: In TanStack Start, we can use setImmediate or a background job queue
@@ -123,7 +150,7 @@ export const Route = createFileRoute("/api/ingest")({
               const analysis = analyzeTranscript(events);
               await queries.insertAnalysis(
                 db,
-                transcriptId,
+                result.id,
                 analysis.metrics.retries,
                 analysis.metrics.errors,
                 analysis.metrics.toolCalls > 0 ? analysis.metrics.errors / analysis.metrics.toolCalls : 0,
@@ -132,16 +159,16 @@ export const Route = createFileRoute("/api/ingest")({
                 JSON.stringify(analysis.antiPatterns),
                 JSON.stringify(analysis.recommendations),
               );
-              logger.debug("Analysis completed", { transcriptId, healthScore: analysis.healthScore });
+              logger.debug("Analysis completed", { transcriptId: result.id, healthScore: analysis.healthScore });
             } catch (error: unknown) {
-              logger.error("Failed to analyze transcript", { transcriptId, error });
+              logger.error("Failed to analyze transcript", { transcriptId: result.id, error });
             }
           });
 
-          logger.info("Ingest succeeded", { transcriptId, eventCount: events.length });
+          logger.info("Ingest succeeded", { transcriptId: result.id, eventCount: events.length });
           return json({
             success: true,
-            transcriptId,
+            transcriptId: result.id,
             eventsReceived: events.length,
           });
         } catch (error: unknown) {

@@ -1,8 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useRouter } from "@tanstack/react-router";
+import { useState } from "react";
 import { getRepos, getSession } from "../lib/server-functions";
+
+type ReposData = Awaited<ReturnType<typeof getRepos>>;
 
 export const Route = createFileRoute("/")({
   beforeLoad: async () => {
@@ -41,11 +44,51 @@ function ErrorComponent({ error }: { error: Error }) {
 }
 
 function IndexComponent() {
-  const repos = Route.useLoaderData();
+  const repos = Route.useLoaderData() as ReposData;
+  const router = useRouter();
+  const [isClearing, setIsClearing] = useState(false);
+
+  const handleClearAll = async () => {
+    if (!confirm("Are you sure you want to delete ALL transcripts? This action cannot be undone.")) {
+      return;
+    }
+
+    setIsClearing(true);
+    try {
+      const response = await fetch("/api/transcripts/clear", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to clear transcripts");
+      }
+
+      const data = (await response.json()) as {
+        success: boolean;
+        deletedCount: number;
+      };
+      alert(`Successfully deleted ${data.deletedCount} transcripts`);
+
+      // Reload the page to refresh the data
+      router.invalidate();
+    } catch (error) {
+      alert("Failed to clear transcripts: " + (error instanceof Error ? error.message : "Unknown error"));
+    } finally {
+      setIsClearing(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold tracking-tight">Repositories</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold tracking-tight">Repositories</h2>
+        <Button variant="destructive" size="sm" onClick={handleClearAll} disabled={isClearing}>
+          {isClearing ? "Clearing..." : "Clear All Transcripts"}
+        </Button>
+      </div>
 
       {repos.length === 0 ? (
         <p className="text-muted-foreground">No repositories yet. Start capturing transcripts!</p>
