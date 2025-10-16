@@ -2,12 +2,12 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import type { z } from "zod";
 import {
+  toolCallMessageWithShapesSchema,
   unifiedGitContextSchema,
   unifiedModelUsageSchema,
   unifiedTokenUsageSchema,
   unifiedTranscriptMessageSchema,
   unifiedTranscriptSchema,
-  toolCallMessageWithShapesSchema,
 } from "./schemas";
 
 export type UnifiedTranscript = z.infer<typeof unifiedTranscriptSchema>;
@@ -195,7 +195,6 @@ export function convertClaudeCodeTranscript(
   const timestamp = parseDate(leaf.timestamp) ?? options.now ?? new Date();
   const sessionId = findSessionId(transcriptChain);
   const primaryModel = selectPrimaryModel(modelUsageMap);
-  const cwd = deriveWorkingDirectory(transcriptChain);
   // For in-memory processing, we can't reliably do async git operations
   const gitContext = null;
   const messages = convertTranscriptToMessages(transcriptChain);
@@ -1334,9 +1333,13 @@ function extractUserContent(record: ClaudeMessageRecord): ExtractedUserContent {
 
       const error = typeof recordPartObj.error === "string" ? (recordPartObj.error as string) : undefined;
       const isError =
-        recordPartObj.is_error ??
-        recordPartObj.isError ??
-        (typeof recordPartObj.success === "boolean" ? !recordPartObj.success : undefined);
+        typeof recordPartObj.is_error === "boolean"
+          ? recordPartObj.is_error
+          : typeof recordPartObj.isError === "boolean"
+            ? recordPartObj.isError
+            : typeof recordPartObj.success === "boolean"
+              ? !recordPartObj.success
+              : undefined;
 
       toolResults.push({
         callId,
@@ -1581,7 +1584,14 @@ function sanitizeToolCall(
       }
 
       if (outputObj) {
-        const reduced = removeKeys(outputObj, ["filePath", "newString", "oldString", "originalFile", "structuredPatch", "replaceAll"]);
+        const reduced = removeKeys(outputObj, [
+          "filePath",
+          "newString",
+          "oldString",
+          "originalFile",
+          "structuredPatch",
+          "replaceAll",
+        ]);
         sanitizedOutput = Object.keys(reduced).length > 0 ? reduced : undefined;
         outputChanged = true;
       }

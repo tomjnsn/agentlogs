@@ -241,10 +241,11 @@ const globToolCallSchema = baseToolCallShapeSchema.extend({
 const grepToolCallSchema = baseToolCallShapeSchema.extend({
   toolName: z.literal("Grep"),
   input: z.unknown().optional(),
-  output: filenamesOutputSchema.extend({
-    mode: z.string().optional(),
-    numMatches: z.number().optional(),
-  })
+  output: filenamesOutputSchema
+    .extend({
+      mode: z.string().optional(),
+      numMatches: z.number().optional(),
+    })
     .passthrough()
     .optional(),
 });
