@@ -17,18 +17,13 @@ console.log("🟡 START.TS: After logger import");
 console.log("🚀 start.ts module loaded - direct console.log");
 logger.info("start.ts module loaded");
 
-const loggingMiddleware = createMiddleware().server(async ({ next, data }) => {
-  console.log("🔵 Request received", data.request.method, data.request.url);
-  logger.info("Request received", {
-    url: data.request.url,
-    method: data.request.method,
-  });
+const loggingMiddleware = createMiddleware().server(async ({ next }) => {
+  console.log("🔵 Request received");
+  logger.info("Request received");
   try {
     const response = await next();
-    console.log("🟢 Request completed", response.status);
-    logger.info("Request completed", {
-      status: response.status,
-    });
+    console.log("🟢 Request completed");
+    logger.info("Request completed");
     return response;
   } catch (error) {
     console.error("🔴 Request failed in middleware", error);
