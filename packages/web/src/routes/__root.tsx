@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 import { Button } from "@/components/ui/button";
+import { wrapCreateRootRouteWithSentry } from "@sentry/tanstackstart-react";
 import { createRootRoute, HeadContent, Link, Outlet, Scripts, useRouter } from "@tanstack/react-router";
 import React, { type ReactNode } from "react";
 import { authClient } from "../lib/auth-client";
@@ -7,7 +8,7 @@ import { initializeClientLogger } from "../lib/client-logger";
 import { getSession } from "../lib/server-functions";
 import appCss from "../styles/globals.css?url";
 
-export const Route = createRootRoute({
+export const Route = wrapCreateRootRouteWithSentry(createRootRoute)({
   beforeLoad: async () => {
     const session = await getSession();
     return { session };
