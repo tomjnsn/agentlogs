@@ -10,8 +10,6 @@ import { logger } from "../lib/logger";
 import { getSession } from "../lib/server-functions";
 import appCss from "../styles/globals.css?url";
 
-console.log("🟡 __ROOT.TSX: Module loading");
-
 export const Route = createRootRoute({
   beforeLoad: async () => {
     try {
