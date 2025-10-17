@@ -130,7 +130,7 @@ function MessageCard({ message, index }: { message: UnifiedTranscriptMessage; in
     return (
       <Card className={cn("border-l-4", getTypeColor())}>
         <CardContent className="pt-6">
-          <div className="flex items-center justify-between mb-3">
+          <div className="mb-3 flex items-center justify-between">
             <Badge variant="outline">
               #{index + 1} {message.type}
             </Badge>
@@ -157,7 +157,7 @@ function MessageCard({ message, index }: { message: UnifiedTranscriptMessage; in
       <CardContent className="pt-6">
         <Collapsible defaultOpen={false}>
           <CollapsibleTrigger asChild>
-            <div className="flex items-center justify-between mb-3 cursor-pointer hover:bg-accent/50 rounded -m-2 p-2 w-full">
+            <div className="hover:bg-accent/50 -m-2 mb-3 flex w-full cursor-pointer items-center justify-between rounded p-2">
               <div className="flex items-center gap-2">
                 <Badge variant="outline">
                   #{index + 1} {message.type}
@@ -172,14 +172,14 @@ function MessageCard({ message, index }: { message: UnifiedTranscriptMessage; in
 
                 {/* Show preview for collapsed thinking blocks */}
                 {message.type === "thinking" && (
-                  <span className="text-sm text-muted-foreground">
-                    {message.text.slice(0, 60)}...
-                  </span>
+                  <span className="text-muted-foreground text-sm">{message.text.slice(0, 60)}...</span>
                 )}
               </div>
 
               {message.timestamp && (
-                <span className="text-muted-foreground text-xs">{new Date(message.timestamp).toLocaleTimeString()}</span>
+                <span className="text-muted-foreground text-xs">
+                  {new Date(message.timestamp).toLocaleTimeString()}
+                </span>
               )}
             </div>
           </CollapsibleTrigger>

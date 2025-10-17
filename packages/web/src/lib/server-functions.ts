@@ -107,8 +107,6 @@ export const getTranscript = createServerFn({ method: "GET" })
     }
 
     const r2Key = `${repo.repo}/${transcript.transcriptId}.json`;
-    logger.debug("Fetching unified transcript from R2", { key: r2Key });
-
     const r2Object = await r2Bucket.get(r2Key);
     if (!r2Object) {
       logger.error("Unified transcript not found in R2", { key: r2Key });
