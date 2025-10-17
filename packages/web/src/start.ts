@@ -1,6 +1,17 @@
+// DEBUGGING: Direct console.log at the very top before any imports
+console.log("🟡 START.TS: Top of file, before imports");
+
 import * as Sentry from "@sentry/tanstackstart-react";
+
+console.log("🟡 START.TS: After Sentry import");
+
 import { createMiddleware, createStart } from "@tanstack/react-start";
+
+console.log("🟡 START.TS: After TanStack import");
+
 import { logger } from "./lib/logger";
+
+console.log("🟡 START.TS: After logger import");
 
 // Log at module initialization to verify code is running (using both console and logger)
 console.log("🚀 start.ts module loaded - direct console.log");
@@ -29,7 +40,11 @@ const loggingMiddleware = createMiddleware().server(async ({ next, data }) => {
   }
 });
 
+console.log("🟡 START.TS: Before creating sentryMiddleware");
+
 const sentryMiddleware = createMiddleware().server(Sentry.sentryGlobalServerMiddlewareHandler());
+
+console.log("🟡 START.TS: After creating sentryMiddleware");
 
 export const startInstance = createStart(() => {
   console.log("⚡ createStart called");
