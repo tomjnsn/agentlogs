@@ -31,26 +31,35 @@ async function getAuthenticatedUserId() {
  * Returns null if not authenticated
  */
 export const getSession = createServerFn({ method: "GET" }).handler(async () => {
-  const auth = createAuth();
-  const session = await auth.api.getSession({
-    headers: getRequestHeaders(),
-  });
+  try {
+    const auth = createAuth();
+    const session = await auth.api.getSession({
+      headers: getRequestHeaders(),
+    });
 
-  if (!session?.user) {
-    return null;
+    if (!session?.user) {
+      return null;
+    }
+
+    return {
+      user: {
+        id: session.user.id,
+        email: session.user.email,
+        name: session.user.name,
+      },
+      session: {
+        id: session.session.id,
+        expiresAt: session.session.expiresAt,
+      },
+    };
+  } catch (error) {
+    logger.error("getSession failed", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    // Re-throw to let the caller handle it
+    throw error;
   }
-
-  return {
-    user: {
-      id: session.user.id,
-      email: session.user.email,
-      name: session.user.name,
-    },
-    session: {
-      id: session.session.id,
-      expiresAt: session.session.expiresAt,
-    },
-  };
 });
 
 /**

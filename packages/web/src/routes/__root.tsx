@@ -5,13 +5,23 @@ import { createRootRoute, HeadContent, Link, Outlet, Scripts, useRouter } from "
 import React, { type ReactNode } from "react";
 import { authClient } from "../lib/auth-client";
 import { initializeClientLogger } from "../lib/client-logger";
+import { logger } from "../lib/logger";
 import { getSession } from "../lib/server-functions";
 import appCss from "../styles/globals.css?url";
 
 export const Route = wrapCreateRootRouteWithSentry(createRootRoute)({
   beforeLoad: async () => {
-    const session = await getSession();
-    return { session };
+    try {
+      const session = await getSession();
+      return { session };
+    } catch (error) {
+      logger.error("Failed to get session in beforeLoad", {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+      // Return null session on error to prevent 500s
+      return { session: null };
+    }
   },
   head: () => ({
     meta: [
