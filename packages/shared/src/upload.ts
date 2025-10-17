@@ -130,7 +130,8 @@ function sanitizeRemote(remoteUrl: string): string {
 
   try {
     const url = new URL(remoteUrl);
-    return `${url.host}${url.pathname.replace(/\.git$/i, "").replace(/^\//, "")}`;
+    const cleanPath = url.pathname.replace(/\.git$/i, "").replace(/^\//, "");
+    return `${url.host}/${cleanPath}`;
   } catch {
     return remoteUrl.replace(/\.git$/i, "");
   }
