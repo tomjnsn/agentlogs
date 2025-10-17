@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 import { Button } from "@/components/ui/button";
-import { wrapCreateRootRouteWithSentry } from "@sentry/tanstackstart-react";
+// TEMPORARILY DISABLED: Sentry wrapper might be causing issues
+// import { wrapCreateRootRouteWithSentry } from "@sentry/tanstackstart-react";
 import { createRootRoute, HeadContent, Link, Outlet, Scripts, useRouter } from "@tanstack/react-router";
 import React, { type ReactNode } from "react";
 import { authClient } from "../lib/auth-client";
@@ -9,7 +10,9 @@ import { logger } from "../lib/logger";
 import { getSession } from "../lib/server-functions";
 import appCss from "../styles/globals.css?url";
 
-export const Route = wrapCreateRootRouteWithSentry(createRootRoute)({
+console.log("🟡 __ROOT.TSX: Module loading");
+
+export const Route = createRootRoute({
   beforeLoad: async () => {
     try {
       const session = await getSession();

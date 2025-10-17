@@ -1,9 +1,10 @@
 // DEBUGGING: Direct console.log at the very top before any imports
 console.log("🟡 START.TS: Top of file, before imports");
 
-import * as Sentry from "@sentry/tanstackstart-react";
+// TEMPORARILY DISABLED: Sentry is not compatible with Cloudflare Workers when using @sentry/tanstackstart-react
+// import * as Sentry from "@sentry/tanstackstart-react";
 
-console.log("🟡 START.TS: After Sentry import");
+console.log("🟡 START.TS: After Sentry import (disabled)");
 
 import { createMiddleware, createStart } from "@tanstack/react-start";
 
@@ -35,16 +36,12 @@ const loggingMiddleware = createMiddleware().server(async ({ next }) => {
   }
 });
 
-console.log("🟡 START.TS: Before creating sentryMiddleware");
-
-const sentryMiddleware = createMiddleware().server(Sentry.sentryGlobalServerMiddlewareHandler());
-
-console.log("🟡 START.TS: After creating sentryMiddleware");
+console.log("🟡 START.TS: Sentry middleware disabled");
 
 export const startInstance = createStart(() => {
   console.log("⚡ createStart called");
   logger.info("createStart called");
   return {
-    requestMiddleware: [loggingMiddleware, sentryMiddleware],
+    requestMiddleware: [loggingMiddleware],
   };
 });
