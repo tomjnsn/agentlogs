@@ -203,6 +203,7 @@ export const Route = createFileRoute("/api/ingest")({
           totalTokens: validatedTranscript.tokenUsage.totalTokens,
           relativeCwd: validatedTranscript.git?.relativeCwd ?? null,
           branch: validatedTranscript.git?.branch ?? null,
+          createdAt: validatedTranscript.timestamp,
         };
 
         // Insert or update transcript

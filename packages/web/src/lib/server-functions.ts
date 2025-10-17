@@ -88,6 +88,7 @@ export const getTranscriptsByRepo = createServerFn()
       transcriptId: t.transcriptId,
       preview: t.preview,
       createdAt: t.createdAt,
+      updatedAt: t.updatedAt,
       analyzed: t.analyzed,
       messageCount: t.messageCount,
       costUsd: t.costUsd,
@@ -132,6 +133,7 @@ export const getTranscript = createServerFn({ method: "GET" })
       transcriptId: transcript.transcriptId,
       preview: transcript.preview,
       createdAt: transcript.createdAt,
+      updatedAt: transcript.updatedAt,
       analyzed: transcript.analyzed,
       unifiedTranscript,
       analysis: transcript.analysis

@@ -50,6 +50,14 @@ function TranscriptDetailComponent() {
           </div>
         </div>
         {unifiedTranscript.preview && <p className="text-muted-foreground text-sm">{unifiedTranscript.preview}</p>}
+        <div className="text-muted-foreground flex gap-4 text-sm">
+          <div>
+            <span className="font-medium">Conversation:</span> {new Date(data.createdAt).toLocaleString()}
+          </div>
+          <div>
+            <span className="font-medium">Last Updated:</span> {new Date(data.updatedAt).toLocaleString()}
+          </div>
+        </div>
       </div>
 
       {analysis && (

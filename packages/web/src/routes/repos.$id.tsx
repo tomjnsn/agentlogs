@@ -33,7 +33,8 @@ function RepoDetailComponent() {
                 <TableHead>Preview</TableHead>
                 <TableHead>Messages</TableHead>
                 <TableHead>Cost</TableHead>
-                <TableHead>Created</TableHead>
+                <TableHead>Conversation Date</TableHead>
+                <TableHead>Last Updated</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -50,6 +51,9 @@ function RepoDetailComponent() {
                   <TableCell>${transcript.costUsd?.toFixed(4) ?? "0.0000"}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {new Date(transcript.createdAt).toLocaleString()}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {new Date(transcript.updatedAt).toLocaleString()}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="sm" asChild>
