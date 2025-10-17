@@ -13,7 +13,7 @@
     "dev": "bun --filter @vibeinsights/web dev",
     "build": "bun --filter @vibeinsights/web build",
     "start": "bun --filter @vibeinsights/web start",
-    "cli": "bun --filter @vibeinsights/cli start",
+    "cli": "bun --cwd packages/cli start",
     "db:setup": "bun --filter @vibeinsights/web db:setup",
     "db:generate": "bun --filter @vibeinsights/web db:generate",
     "db:migrate": "bun --filter @vibeinsights/web db:migrate",

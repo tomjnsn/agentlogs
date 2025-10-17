@@ -1,78 +1,71 @@
 #!/usr/bin/env node
-import { parseArgs } from "util";
+import { Command } from "commander";
 import { hookCommand } from "./commands/hook";
 import { loginCommand } from "./commands/login";
 import { logoutCommand } from "./commands/logout";
 import { statusCommand } from "./commands/status";
+import { syncCommand } from "./commands/sync";
 import { uploadCommand } from "./commands/upload";
 
-type CommandHandler = (args: string[]) => Promise<void> | void;
+const program = new Command();
 
-const printHelp = () => {
-  console.log(`Usage:
-  bun run src/index.ts <command> [options]
+program
+  .name("vibeinsights")
+  .description("CLI tools for working with Vibe Insights accounts and Claude Code transcripts");
 
-Commands:
-  login                 Authenticate with VibeInsights using device authorization
-  status                Check your current login status
-  logout                Log out and clear stored credentials
-  claudecode upload <transcript>
-                        Upload a transcript JSONL file to Vibe Insights
-  claudecode hook       Process Claude Code hook input from stdin
-`);
-};
+program
+  .command("login")
+  .description("Authenticate with Vibe Insights using device authorization")
+  .action(async () => {
+    await loginCommand();
+  });
 
-const claudecodeCommands: Record<string, CommandHandler> = {
-  upload: uploadCommand,
-  hook: hookCommand,
-};
+program
+  .command("status")
+  .description("Check your current login status")
+  .action(async () => {
+    await statusCommand();
+  });
 
-const commands: Record<string, CommandHandler> = {
-  login: loginCommand,
-  status: statusCommand,
-  logout: logoutCommand,
-  claudecode: (args) => {
-    const [subcommand, ...subcommandArgs] = args;
+program
+  .command("logout")
+  .description("Log out and clear stored credentials")
+  .action(async () => {
+    await logoutCommand();
+  });
 
-    if (!subcommand) {
-      console.error('The "claudecode" command expects a subcommand.');
-      printHelp();
-      process.exit(1);
-    }
+const claudecode = program.command("claudecode").description("Claude Code transcript utilities for Vibe Insights");
 
-    const handler = claudecodeCommands[subcommand];
+claudecode
+  .command("upload")
+  .argument("<transcript>", "Path or alias for a transcript JSONL file")
+  .description("Upload a transcript JSONL file to Vibe Insights")
+  .action(async (transcript: string) => {
+    await uploadCommand(transcript);
+  });
 
-    if (!handler) {
-      console.error(`Unknown claudecode subcommand "${subcommand}".`);
-      printHelp();
-      process.exit(1);
-    }
+claudecode
+  .command("hook")
+  .description("Process Claude Code hook input from stdin")
+  .action(async () => {
+    await hookCommand();
+  });
 
-    return handler(subcommandArgs);
-  },
-};
+claudecode
+  .command("sync")
+  .argument("[claudeDir]", "Optional Claude data directory (defaults to ~/.claude)")
+  .option("-r, --repo <repoId>", "Only sync transcripts for the provided repo identifier")
+  .description("Upload all local Claude Code transcripts that are missing or outdated on the server")
+  .action(async (claudeDir: string | undefined, options: { repo?: string }) => {
+    await syncCommand({
+      claudeDir,
+      repoFilter: options.repo,
+    });
+  });
 
-const main = async () => {
-  const { positionals } = parseArgs({ allowPositionals: true });
-  const [command, ...commandArgs] = positionals;
+program.showHelpAfterError("(add --help for additional information)");
 
-  if (!command) {
-    printHelp();
-    process.exit(1);
-  }
-
-  const handler = commands[command];
-
-  if (!handler) {
-    console.error(`Unknown command "${command}".`);
-    printHelp();
-    process.exit(1);
-  }
-
-  await handler(commandArgs);
-};
-
-main().catch((error) => {
+program.parseAsync().catch((error) => {
   console.error("CLI encountered an unexpected error.");
   console.error(error);
   process.exit(1);

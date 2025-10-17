@@ -20,7 +20,8 @@
     "typecheck": "tsc --noEmit --project tsconfig.json"
   },
   "dependencies": {
-    "@napi-rs/keyring": "^1.2.0"
+    "@napi-rs/keyring": "^1.2.0",
+    "commander": "^14.0.0"
   },
   "devDependencies": {
     "@vibeinsights/shared": "workspace:*",

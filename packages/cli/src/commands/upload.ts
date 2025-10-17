@@ -2,9 +2,7 @@ import type { UploadOptions } from "@vibeinsights/shared/upload";
 import { getToken } from "../config";
 import { performUpload, resolveTranscriptPath } from "../lib/perform-upload";
 
-export async function uploadCommand(args: string[]): Promise<void> {
-  const [transcriptArg] = args;
-
+export async function uploadCommand(transcriptArg: string): Promise<void> {
   if (!transcriptArg) {
     console.error("The upload command expects a <transcript> argument.");
     process.exit(1);

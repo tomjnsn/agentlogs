@@ -1,0 +1,234 @@
+import { createHash } from "crypto";
+import { promises as fs } from "fs";
+import { homedir } from "os";
+import { basename, extname, join, relative, resolve } from "path";
+import { fetchTranscriptMetadata, getRepoMetadata } from "@vibeinsights/shared";
+import { getToken } from "../config";
+import { performUpload } from "../lib/perform-upload";
+
+interface LocalTranscriptInfo {
+  transcriptId: string;
+  path: string;
+  sha256: string;
+  cwd: string | null;
+  repoId: string | null;
+  displayPath: string;
+}
+
+const DEFAULT_CLAUDE_HOME = join(homedir(), ".claude");
+
+export interface SyncCommandOptions {
+  repoFilter?: string;
+  claudeDir?: string;
+}
+
+export async function syncCommand(options: SyncCommandOptions = {}): Promise<void> {
+  const { repoFilter, claudeDir } = options;
+
+  const authToken = getToken();
+  if (!authToken) {
+    console.error("You must be logged in to sync transcripts. Run `bun run src/index.ts login` first.");
+    process.exit(1);
+  }
+
+  const serverUrl = process.env.SERVER_URL ?? "http://localhost:3000";
+  const claudeHome = claudeDir ? resolve(claudeDir) : (process.env.CLAUDE_HOME ?? DEFAULT_CLAUDE_HOME);
+  const projectsRoot = join(claudeHome, "projects");
+
+  const localTranscripts = await discoverLocalTranscripts(projectsRoot);
+
+  if (localTranscripts.length === 0) {
+    console.log(`No local Claude Code transcripts were found under ${projectsRoot}. Nothing to sync.`);
+    return;
+  }
+
+  const candidateLocalTranscripts = repoFilter
+    ? localTranscripts.filter((item) => item.repoId === repoFilter)
+    : localTranscripts;
+
+  if (repoFilter && candidateLocalTranscripts.length === 0) {
+    const unknownCount = localTranscripts.filter((item) => item.repoId === null).length;
+    console.log(`No local Claude Code transcripts matched repo ${repoFilter}.`);
+    if (unknownCount > 0) {
+      console.log(`${unknownCount} transcript(s) were skipped because their repo could not be determined.`);
+    }
+    return;
+  }
+
+  const remoteTranscripts = await fetchTranscriptMetadata({
+    serverUrl,
+    authToken,
+  });
+
+  const relevantRemoteTranscripts = repoFilter
+    ? remoteTranscripts.filter((transcript) => transcript.repoId === repoFilter)
+    : remoteTranscripts;
+
+  const remoteShaById = new Map<string, string>();
+  for (const transcript of relevantRemoteTranscripts) {
+    remoteShaById.set(transcript.transcriptId, transcript.sha256);
+  }
+
+  const transcriptsToUpload = candidateLocalTranscripts.filter((transcript) => {
+    const remoteSha = remoteShaById.get(transcript.transcriptId);
+    return !remoteSha || remoteSha !== transcript.sha256;
+  });
+
+  if (transcriptsToUpload.length === 0) {
+    console.log("All local Claude Code transcripts are up to date on the server.");
+    return;
+  }
+
+  console.log(
+    `Preparing to upload ${transcriptsToUpload.length} transcript(s) out of ${candidateLocalTranscripts.length} matching local transcript(s).`,
+  );
+
+  let successCount = 0;
+  let failureCount = 0;
+  const failures: Array<{ transcriptId: string; displayPath: string; reason: string }> = [];
+
+  for (const [index, transcript] of transcriptsToUpload.entries()) {
+    const label = `${index + 1}/${transcriptsToUpload.length}`;
+    const repoSuffix = transcript.repoId ? ` • ${transcript.repoId}` : "";
+    const context = `${transcript.transcriptId} – ${transcript.displayPath}${repoSuffix}`;
+    try {
+      const result = await performUpload(
+        {
+          transcriptPath: transcript.path,
+          sessionId: transcript.transcriptId,
+          cwdOverride: transcript.cwd ?? undefined,
+        },
+        {
+          serverUrl,
+          authToken,
+        },
+      );
+
+      if (result.success) {
+        successCount += 1;
+        console.log(
+          `[${label}] ✓ ${context} • ${result.eventCount} events${result.transcriptId ? ` → ${result.transcriptId}` : ""}`,
+        );
+      } else {
+        failureCount += 1;
+        const reason = "Upload returned unsuccessful response.";
+        console.error(`[${label}] ✗ ${context} • ${reason}`);
+        failures.push({ transcriptId: transcript.transcriptId, displayPath: transcript.displayPath, reason });
+      }
+    } catch (error) {
+      failureCount += 1;
+      const reason = error instanceof Error ? error.message : String(error);
+      console.error(`[${label}] ✗ ${context} • ${reason}`);
+      failures.push({ transcriptId: transcript.transcriptId, displayPath: transcript.displayPath, reason });
+    }
+  }
+
+  console.log(`Sync complete. Successful uploads: ${successCount}. Failed uploads: ${failureCount}.`);
+
+  if (failures.length > 0) {
+    console.error("Failed transcript details:");
+    for (const failure of failures.slice(0, 10)) {
+      console.error(`  - ${failure.transcriptId} (${failure.displayPath}): ${failure.reason}`);
+    }
+    if (failures.length > 10) {
+      console.error(`  …and ${failures.length - 10} more failures.`);
+    }
+  }
+
+  if (failureCount > 0) {
+    process.exit(1);
+  }
+}
+
+async function discoverLocalTranscripts(projectsRoot: string): Promise<LocalTranscriptInfo[]> {
+  if (!(await isDirectory(projectsRoot))) {
+    return [];
+  }
+
+  const projectEntries = await fs.readdir(projectsRoot, { withFileTypes: true });
+  const collected: LocalTranscriptInfo[] = [];
+
+  for (const projectEntry of projectEntries) {
+    if (!projectEntry.isDirectory()) {
+      continue;
+    }
+
+    const projectPath = join(projectsRoot, projectEntry.name);
+    const transcriptFiles = await fs.readdir(projectPath, { withFileTypes: true });
+
+    for (const file of transcriptFiles) {
+      if (!file.isFile() || extname(file.name) !== ".jsonl") {
+        continue;
+      }
+
+      const filePath = join(projectPath, file.name);
+      const transcriptId = basename(file.name, ".jsonl");
+
+      try {
+        const raw = await fs.readFile(filePath, "utf8");
+        const sha256 = createHash("sha256").update(raw).digest("hex");
+        const cwd = extractCwdFromTranscript(raw);
+        const repoId = await resolveRepoIdFromCwd(cwd);
+
+        collected.push({
+          transcriptId,
+          path: filePath,
+          sha256,
+          cwd,
+          repoId,
+          displayPath: relative(projectsRoot, filePath) || file.name,
+        });
+      } catch (error) {
+        console.warn(`Skipped transcript at ${filePath}: ${(error as Error).message}`);
+      }
+    }
+  }
+
+  return collected;
+}
+
+async function isDirectory(path: string): Promise<boolean> {
+  try {
+    const stat = await fs.stat(path);
+    return stat.isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+function extractCwdFromTranscript(rawTranscript: string): string | null {
+  const lines = rawTranscript.split(/\r?\n/);
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      continue;
+    }
+
+    try {
+      const record = JSON.parse(trimmed) as Record<string, unknown>;
+      const cwd = record?.cwd;
+      if (typeof cwd === "string" && cwd.length > 0) {
+        return cwd;
+      }
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
+async function resolveRepoIdFromCwd(cwd: string | null): Promise<string | null> {
+  if (!cwd) {
+    return null;
+  }
+
+  if (!(await isDirectory(cwd))) {
+    return null;
+  }
+
+  try {
+    return getRepoMetadata(cwd).repoId;
+  } catch {
+    return null;
+  }
+}

@@ -29,7 +29,7 @@ interface ClaudeHookInput {
   [key: string]: unknown;
 }
 
-export async function hookCommand(_args: string[] = []): Promise<void> {
+export async function hookCommand(): Promise<void> {
   const startTime = Date.now();
   let eventName: string | undefined;
   let sessionId: string | undefined;

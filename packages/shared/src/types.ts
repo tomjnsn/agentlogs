@@ -13,6 +13,12 @@ export interface UploadResponse {
   eventsReceived: number;
 }
 
+export interface TranscriptMetadata {
+  transcriptId: string;
+  sha256: string;
+  repoId: string;
+}
+
 // Analysis Results
 
 export interface AnalysisResult {
