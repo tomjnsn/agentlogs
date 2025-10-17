@@ -1,3 +1,6 @@
+import { createMiddleware, createStart } from "@tanstack/react-start";
+import { logger } from "./lib/logger";
+
 // DEBUGGING: Direct console.log at the very top before any imports
 console.log("🟡 START.TS: Top of file, before imports");
 
@@ -6,11 +9,7 @@ console.log("🟡 START.TS: Top of file, before imports");
 
 console.log("🟡 START.TS: After Sentry import (disabled)");
 
-import { createMiddleware, createStart } from "@tanstack/react-start";
-
 console.log("🟡 START.TS: After TanStack import");
-
-import { logger } from "./lib/logger";
 
 console.log("🟡 START.TS: After logger import");
 
