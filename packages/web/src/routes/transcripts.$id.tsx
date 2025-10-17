@@ -2,10 +2,12 @@ import { StatCard } from "@/components/stat-card";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import type { UnifiedTranscriptMessage } from "@vibeinsights/shared/claudecode";
 import { unifiedTranscriptSchema } from "@vibeinsights/shared/schemas";
+import { getToolSummary } from "../lib/message-utils";
 import { getTranscript } from "../lib/server-functions";
 
 export const Route = createFileRoute("/transcripts/$id")({
@@ -104,6 +106,8 @@ function TranscriptDetailComponent() {
 }
 
 function MessageCard({ message, index }: { message: UnifiedTranscriptMessage; index: number }) {
+  const shouldCollapse = message.type === "tool-call" || message.type === "thinking";
+
   const getTypeColor = () => {
     switch (message.type) {
       case "user":
@@ -121,65 +125,107 @@ function MessageCard({ message, index }: { message: UnifiedTranscriptMessage; in
     }
   };
 
+  // For non-collapsible messages (user/agent), render directly
+  if (!shouldCollapse) {
+    return (
+      <Card className={cn("border-l-4", getTypeColor())}>
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between mb-3">
+            <Badge variant="outline">
+              #{index + 1} {message.type}
+            </Badge>
+            {message.timestamp && (
+              <span className="text-muted-foreground text-xs">{new Date(message.timestamp).toLocaleTimeString()}</span>
+            )}
+          </div>
+
+          {message.type === "user" && (
+            <pre className="bg-background/50 whitespace-pre-wrap rounded border p-3 text-sm">{message.text}</pre>
+          )}
+
+          {message.type === "agent" && (
+            <div className="bg-background/50 whitespace-pre-wrap rounded border p-3 text-sm">{message.text}</div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // For collapsible messages (tool-call/thinking), use Collapsible component
   return (
     <Card className={cn("border-l-4", getTypeColor())}>
       <CardContent className="pt-6">
-        <div className="mb-3 flex items-center justify-between">
-          <Badge variant="outline">
-            #{index + 1} {message.type}
-          </Badge>
-          {message.timestamp && (
-            <span className="text-muted-foreground text-xs">{new Date(message.timestamp).toLocaleTimeString()}</span>
-          )}
-        </div>
-
-        {message.type === "user" && (
-          <pre className="bg-background/50 whitespace-pre-wrap rounded border p-3 text-sm">{message.text}</pre>
-        )}
-
-        {message.type === "agent" && (
-          <div className="bg-background/50 whitespace-pre-wrap rounded border p-3 text-sm">{message.text}</div>
-        )}
-
-        {message.type === "thinking" && (
-          <div className="bg-background/50 text-muted-foreground whitespace-pre-wrap rounded border p-3 text-sm italic">
-            {message.text}
-          </div>
-        )}
-
-        {message.type === "tool-call" && (
-          <>
-            <div className="mb-2 text-sm font-medium">
-              Tool: {message.toolName ?? "Unknown"}
-              {message.isError && (
-                <Badge className="ml-2" variant="destructive">
-                  Error
+        <Collapsible defaultOpen={false}>
+          <CollapsibleTrigger asChild>
+            <div className="flex items-center justify-between mb-3 cursor-pointer hover:bg-accent/50 rounded -m-2 p-2 w-full">
+              <div className="flex items-center gap-2">
+                <Badge variant="outline">
+                  #{index + 1} {message.type}
                 </Badge>
+
+                {/* Show summary for collapsed tool calls */}
+                {message.type === "tool-call" && (
+                  <span className="text-sm">
+                    {message.toolName} • {getToolSummary(message)}
+                  </span>
+                )}
+
+                {/* Show preview for collapsed thinking blocks */}
+                {message.type === "thinking" && (
+                  <span className="text-sm text-muted-foreground">
+                    {message.text.slice(0, 60)}...
+                  </span>
+                )}
+              </div>
+
+              {message.timestamp && (
+                <span className="text-muted-foreground text-xs">{new Date(message.timestamp).toLocaleTimeString()}</span>
               )}
             </div>
-            {message.input && (
-              <div className="mb-2">
-                <div className="text-muted-foreground mb-1 text-xs font-semibold">Input:</div>
-                <pre className="bg-background/50 overflow-x-auto whitespace-pre-wrap rounded border p-3 text-xs">
-                  {JSON.stringify(message.input, null, 2)}
-                </pre>
+          </CollapsibleTrigger>
+
+          <CollapsibleContent className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0">
+            {message.type === "thinking" && (
+              <div className="bg-background/50 text-muted-foreground whitespace-pre-wrap rounded border p-3 text-sm italic">
+                {message.text}
               </div>
             )}
-            {message.output && (
-              <div>
-                <div className="text-muted-foreground mb-1 text-xs font-semibold">Output:</div>
-                <pre className="bg-background/50 overflow-x-auto whitespace-pre-wrap rounded border p-3 text-xs">
-                  {JSON.stringify(message.output, null, 2)}
-                </pre>
-              </div>
+
+            {message.type === "tool-call" && (
+              <>
+                <div className="mb-2 text-sm font-medium">
+                  Tool: {message.toolName ?? "Unknown"}
+                  {message.isError && (
+                    <Badge className="ml-2" variant="destructive">
+                      Error
+                    </Badge>
+                  )}
+                </div>
+                {message.input && (
+                  <div className="mb-2">
+                    <div className="text-muted-foreground mb-1 text-xs font-semibold">Input:</div>
+                    <pre className="bg-background/50 overflow-x-auto whitespace-pre-wrap rounded border p-3 text-xs">
+                      {JSON.stringify(message.input, null, 2)}
+                    </pre>
+                  </div>
+                )}
+                {message.output && (
+                  <div>
+                    <div className="text-muted-foreground mb-1 text-xs font-semibold">Output:</div>
+                    <pre className="bg-background/50 overflow-x-auto whitespace-pre-wrap rounded border p-3 text-xs">
+                      {JSON.stringify(message.output, null, 2)}
+                    </pre>
+                  </div>
+                )}
+                {message.error && (
+                  <div className="text-destructive bg-background/50 mt-2 rounded border p-3 text-sm">
+                    Error: {message.error}
+                  </div>
+                )}
+              </>
             )}
-            {message.error && (
-              <div className="text-destructive bg-background/50 mt-2 rounded border p-3 text-sm">
-                Error: {message.error}
-              </div>
-            )}
-          </>
-        )}
+          </CollapsibleContent>
+        </Collapsible>
       </CardContent>
     </Card>
   );
