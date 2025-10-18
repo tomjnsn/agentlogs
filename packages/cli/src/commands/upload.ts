@@ -1,8 +1,9 @@
+import type { TranscriptSource } from "@vibeinsights/shared";
 import type { UploadOptions } from "@vibeinsights/shared/upload";
 import { getToken } from "../config";
 import { performUpload, resolveTranscriptPath } from "../lib/perform-upload";
 
-export async function uploadCommand(transcriptArg: string): Promise<void> {
+export async function uploadCommand(transcriptArg: string, source: TranscriptSource = "claude-code"): Promise<void> {
   if (!transcriptArg) {
     console.error("The upload command expects a <transcript> argument.");
     process.exit(1);
@@ -30,10 +31,12 @@ export async function uploadCommand(transcriptArg: string): Promise<void> {
   options.authToken = authToken;
 
   try {
-    console.log(`Uploading events from ${transcriptPath} to Vibe Insights...`);
+    const sourceLabel = source === "codex" ? "Codex" : "Claude Code";
+    console.log(`Uploading ${sourceLabel} transcript events from ${transcriptPath} to Vibe Insights...`);
     const result = await performUpload(
       {
         transcriptPath,
+        source,
       },
       options,
     );

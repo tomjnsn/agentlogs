@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -14,6 +15,16 @@ export const Route = createFileRoute("/repos/$id")({
 function RepoDetailComponent() {
   const transcripts = Route.useLoaderData() as RepoTranscripts;
   const { id } = Route.useParams();
+  const formatSource = (source: RepoTranscripts[number]["source"]) => {
+    switch (source) {
+      case "claude-code":
+        return "Claude Code";
+      case "codex":
+        return "Codex";
+      default:
+        return "Unknown";
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -30,6 +41,7 @@ function RepoDetailComponent() {
             <TableHeader>
               <TableRow>
                 <TableHead>Transcript ID</TableHead>
+                <TableHead>Source</TableHead>
                 <TableHead>Preview</TableHead>
                 <TableHead>Messages</TableHead>
                 <TableHead>Cost</TableHead>
@@ -43,6 +55,9 @@ function RepoDetailComponent() {
                 <TableRow key={transcript.id}>
                   <TableCell>
                     <code className="font-mono text-sm">{transcript.transcriptId?.slice(0, 8) || "N/A"}...</code>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{formatSource(transcript.source)}</Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground max-w-md truncate">
                     {transcript.preview || "No preview"}

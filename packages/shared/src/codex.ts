@@ -11,7 +11,6 @@ import type { LiteLLMModelPricing } from "./pricing";
 import {
   unifiedGitContextSchema,
   unifiedModelUsageSchema,
-  unifiedTokenUsageSchema,
   unifiedTranscriptMessageSchema,
   unifiedTranscriptSchema,
 } from "./schemas";

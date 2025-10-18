@@ -1,10 +1,13 @@
 // API Payloads
 
+export type TranscriptSource = "claude-code" | "codex";
+
 export interface UploadPayload {
   repoId: string;
   transcriptId: string;
   sha256: string;
   rawTranscript: string;
+  source: TranscriptSource;
 }
 
 export interface UploadResponse {

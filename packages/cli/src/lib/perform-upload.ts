@@ -1,8 +1,9 @@
 import { createHash } from "crypto";
 import { existsSync, readFileSync } from "fs";
 import { dirname, isAbsolute, resolve } from "path";
-import type { UploadPayload } from "@vibeinsights/shared";
+import type { TranscriptSource, UploadPayload } from "@vibeinsights/shared";
 import { convertClaudeCodeTranscript, type UnifiedTranscript } from "@vibeinsights/shared/claudecode";
+import { convertCodexTranscript } from "@vibeinsights/shared/codex";
 import { getRepoMetadata, uploadTranscript } from "@vibeinsights/shared/upload";
 import type { UploadOptions } from "@vibeinsights/shared/upload";
 
@@ -10,6 +11,7 @@ export interface PerformUploadParams {
   transcriptPath: string;
   sessionId?: string;
   cwdOverride?: string;
+  source?: TranscriptSource;
 }
 
 export interface PerformUploadResult {
@@ -21,13 +23,14 @@ export interface PerformUploadResult {
   cwd: string;
   unifiedTranscript: UnifiedTranscript;
   sha256: string;
+  source: TranscriptSource;
 }
 
 export async function performUpload(
   params: PerformUploadParams,
   options: UploadOptions = {},
 ): Promise<PerformUploadResult> {
-  const { transcriptPath, sessionId, cwdOverride } = params;
+  const { transcriptPath, sessionId, cwdOverride, source = "claude-code" } = params;
 
   if (!transcriptPath) {
     throw new Error("No transcript path provided.");
@@ -66,9 +69,9 @@ export async function performUpload(
     throw new Error("No transcript events found in the specified file.");
   }
 
-  const unifiedTranscript = convertClaudeCodeTranscript(records);
+  const unifiedTranscript = source === "codex" ? convertCodexTranscript(records) : convertClaudeCodeTranscript(records);
   if (!unifiedTranscript) {
-    throw new Error("Unable to convert transcript to unified format.");
+    throw new Error(`Unable to convert ${source} transcript to unified format.`);
   }
 
   const finalSessionId = sessionId ?? unifiedTranscript.id;
@@ -93,6 +96,7 @@ export async function performUpload(
     transcriptId: finalSessionId,
     sha256,
     rawTranscript: rawContent,
+    source,
   };
 
   const result = await uploadTranscript(payload, options);
@@ -105,6 +109,7 @@ export async function performUpload(
     cwd: transcriptCwd,
     unifiedTranscript,
     sha256,
+    source,
   };
 }
 

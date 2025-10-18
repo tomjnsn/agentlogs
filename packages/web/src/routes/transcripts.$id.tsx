@@ -34,6 +34,16 @@ function TranscriptDetailComponent() {
 
   // Parse and validate the unified transcript
   const unifiedTranscript = unifiedTranscriptSchema.parse(data.unifiedTranscript);
+  const sourceLabel = (() => {
+    switch (data.source) {
+      case "codex":
+        return "Codex";
+      case "claude-code":
+        return "Claude Code";
+      default:
+        return "Unknown";
+    }
+  })();
 
   return (
     <div className="space-y-6">
@@ -56,6 +66,9 @@ function TranscriptDetailComponent() {
           </div>
           <div>
             <span className="font-medium">Last Updated:</span> {new Date(data.updatedAt).toLocaleString()}
+          </div>
+          <div>
+            <span className="font-medium">Source:</span> {sourceLabel}
           </div>
         </div>
       </div>

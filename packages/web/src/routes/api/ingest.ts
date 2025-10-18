@@ -1,7 +1,9 @@
 import { createDrizzle } from "@/db";
 import { createFileRoute } from "@tanstack/react-router";
 import { json } from "@tanstack/react-start";
+import type { TranscriptSource } from "@vibeinsights/shared";
 import { convertClaudeCodeTranscript } from "@vibeinsights/shared/claudecode";
+import { convertCodexTranscript } from "@vibeinsights/shared/codex";
 import { LiteLLMPricingFetcher } from "@vibeinsights/shared/pricing";
 import { unifiedTranscriptSchema } from "@vibeinsights/shared/schemas";
 import { env } from "cloudflare:workers";
@@ -54,6 +56,7 @@ export const Route = createFileRoute("/api/ingest")({
         const transcriptIdField = formData.get("transcriptId");
         const sha256 = formData.get("sha256");
         const transcriptPart = formData.get("transcript");
+        const sourceField = formData.get("source");
 
         if (
           typeof repoId !== "string" ||
@@ -67,6 +70,8 @@ export const Route = createFileRoute("/api/ingest")({
           });
           return json({ error: "Invalid form data" }, { status: 400 });
         }
+
+        const source: TranscriptSource = sourceField === "codex" ? "codex" : "claude-code";
 
         const transcriptContent =
           typeof transcriptPart === "string" ? transcriptPart : await (transcriptPart as File).text();
@@ -88,13 +93,18 @@ export const Route = createFileRoute("/api/ingest")({
         const pricingData = await pricingFetcher.fetchModelPricing();
         const pricing = Object.fromEntries(pricingData);
 
-        const unifiedTranscript = convertClaudeCodeTranscript(rawRecords, {
+        const converterOptions = {
           pricing,
-        });
+        };
+        const unifiedTranscript =
+          source === "codex"
+            ? convertCodexTranscript(rawRecords, converterOptions)
+            : convertClaudeCodeTranscript(rawRecords, converterOptions);
         if (!unifiedTranscript) {
           logger.error("Ingest conversion failed: unified transcript could not be generated", {
             userId,
             repoId,
+            source,
           });
           return json({ error: "Failed to convert transcript" }, { status: 422 });
         }
@@ -113,6 +123,7 @@ export const Route = createFileRoute("/api/ingest")({
           userId,
           repoId,
           transcriptId: unifiedTranscript.id,
+          source,
           unifiedTranscript,
         });
 
@@ -129,6 +140,7 @@ export const Route = createFileRoute("/api/ingest")({
           userId,
           repoId,
           transcriptId: unifiedTranscript.id,
+          source,
           preview: unifiedTranscript.preview,
           messageCount: unifiedTranscript.messageCount,
         });
@@ -149,6 +161,7 @@ export const Route = createFileRoute("/api/ingest")({
             userId,
             repoId,
             transcriptId: transcriptIdField,
+            source,
             sha256,
           });
           return json({

@@ -29,6 +29,7 @@ export async function uploadTranscript(
   formData.set("repoId", payload.repoId);
   formData.set("transcriptId", payload.transcriptId);
   formData.set("sha256", payload.sha256);
+  formData.set("source", payload.source);
   formData.set(
     "transcript",
     new Blob([payload.rawTranscript], {

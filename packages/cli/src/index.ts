@@ -11,7 +11,7 @@ const program = new Command();
 
 program
   .name("vibeinsights")
-  .description("CLI tools for working with Vibe Insights accounts and Claude Code transcripts");
+  .description("CLI tools for working with Vibe Insights accounts and transcripts from Claude Code and Codex");
 
 program
   .command("login")
@@ -41,7 +41,7 @@ claudecode
   .argument("<transcript>", "Path or alias for a transcript JSONL file")
   .description("Upload a transcript JSONL file to Vibe Insights")
   .action(async (transcript: string) => {
-    await uploadCommand(transcript);
+    await uploadCommand(transcript, "claude-code");
   });
 
 claudecode
@@ -49,6 +49,16 @@ claudecode
   .description("Process Claude Code hook input from stdin")
   .action(async () => {
     await hookCommand();
+  });
+
+const codex = program.command("codex").description("Codex transcript utilities for Vibe Insights");
+
+codex
+  .command("upload")
+  .argument("<transcript>", "Path or alias for a Codex transcript JSONL file")
+  .description("Upload a Codex transcript JSONL file to Vibe Insights")
+  .action(async (transcript: string) => {
+    await uploadCommand(transcript, "codex");
   });
 
 claudecode
