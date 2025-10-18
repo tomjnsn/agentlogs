@@ -1,5 +1,6 @@
 import { execSync } from "child_process";
 import { resolve } from "path";
+import { formatCwdWithTilde } from "./paths";
 import type { UploadPayload, UploadResponse } from "./types";
 
 const DEFAULT_SERVER_URL = "http://localhost:3000";
@@ -24,12 +25,10 @@ export async function uploadTranscript(
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
   const formData = new FormData();
-  const filename = `${payload.transcriptId || "transcript"}.jsonl`;
+  const filename = `${payload.unifiedTranscript.id || "transcript"}.jsonl`;
 
-  formData.set("repoId", payload.repoId);
-  formData.set("transcriptId", payload.transcriptId);
   formData.set("sha256", payload.sha256);
-  formData.set("source", payload.source);
+  formData.set("unifiedTranscript", JSON.stringify(payload.unifiedTranscript));
   formData.set(
     "transcript",
     new Blob([payload.rawTranscript], {
@@ -90,13 +89,15 @@ function isUploadResponse(data: unknown): data is UploadResponse {
 
 /**
  * Get repository metadata from git.
- * Falls back to local path if not a git repo.
+ * Returns null repoId if not a git repo.
  */
 export function getRepoMetadata(cwd: string): {
-  repoId: string;
+  repoId: string | null;
   repoName: string;
+  cwd: string;
 } {
   const resolvedCwd = resolve(cwd);
+  const formattedCwd = formatCwdWithTilde(resolvedCwd);
 
   try {
     const remoteUrl = execSync("git remote get-url origin", {
@@ -112,12 +113,14 @@ export function getRepoMetadata(cwd: string): {
     return {
       repoId: sanitizedRepoId,
       repoName,
+      cwd: formattedCwd,
     };
   } catch {
     const repoName = resolvedCwd.split("/").pop() || "unknown";
     return {
-      repoId: `file://${resolvedCwd}`,
+      repoId: null,
       repoName,
+      cwd: formattedCwd,
     };
   }
 }

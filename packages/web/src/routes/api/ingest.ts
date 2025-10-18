@@ -2,9 +2,6 @@ import { createDrizzle } from "@/db";
 import { createFileRoute } from "@tanstack/react-router";
 import { json } from "@tanstack/react-start";
 import type { TranscriptSource } from "@vibeinsights/shared";
-import { convertClaudeCodeTranscript } from "@vibeinsights/shared/claudecode";
-import { convertCodexTranscript } from "@vibeinsights/shared/codex";
-import { LiteLLMPricingFetcher } from "@vibeinsights/shared/pricing";
 import { unifiedTranscriptSchema } from "@vibeinsights/shared/schemas";
 import { env } from "cloudflare:workers";
 import { and, eq } from "drizzle-orm";
@@ -12,23 +9,6 @@ import { analysis, repos, transcripts } from "../../db/schema";
 import { analyzeTranscript } from "../../lib/analyzer";
 import { createAuth } from "../../lib/auth";
 import { logger } from "../../lib/logger";
-
-// Global pricing fetcher instance to cache pricing data across requests
-let globalPricingFetcher: LiteLLMPricingFetcher | null = null;
-
-function getPricingFetcher(): LiteLLMPricingFetcher {
-  if (!globalPricingFetcher) {
-    globalPricingFetcher = new LiteLLMPricingFetcher({
-      logger: {
-        debug: (...args: unknown[]) => logger.debug("PricingFetcher", ...args),
-        info: (...args: unknown[]) => logger.info("PricingFetcher", ...args),
-        warn: (...args: unknown[]) => logger.warn("PricingFetcher", ...args),
-        error: (...args: unknown[]) => logger.error("PricingFetcher", ...args),
-      },
-    });
-  }
-  return globalPricingFetcher;
-}
 
 export const Route = createFileRoute("/api/ingest")({
   server: {
@@ -52,26 +32,17 @@ export const Route = createFileRoute("/api/ingest")({
 
         // Parse multipart form data (raw transcript upload)
         const formData = await request.formData();
-        const repoId = formData.get("repoId");
-        const transcriptIdField = formData.get("transcriptId");
         const sha256 = formData.get("sha256");
         const transcriptPart = formData.get("transcript");
-        const sourceField = formData.get("source");
+        const unifiedTranscriptField = formData.get("unifiedTranscript");
 
-        if (
-          typeof repoId !== "string" ||
-          typeof transcriptIdField !== "string" ||
-          typeof sha256 !== "string" ||
-          !transcriptPart
-        ) {
+        if (typeof sha256 !== "string" || !transcriptPart || typeof unifiedTranscriptField !== "string") {
           logger.error("Ingest validation failed: missing required form fields", {
             userId,
             receivedKeys: Array.from(formData.keys()),
           });
           return json({ error: "Invalid form data" }, { status: 400 });
         }
-
-        const source: TranscriptSource = sourceField === "codex" ? "codex" : "claude-code";
 
         const transcriptContent =
           typeof transcriptPart === "string" ? transcriptPart : await (transcriptPart as File).text();
@@ -86,38 +57,39 @@ export const Route = createFileRoute("/api/ingest")({
           return json({ error: "Transcript hash mismatch" }, { status: 400 });
         }
 
+        // Parse and validate the unified transcript sent by the client
+        let unifiedTranscript;
+        try {
+          unifiedTranscript = JSON.parse(unifiedTranscriptField);
+        } catch (error) {
+          logger.error("Ingest validation failed: could not parse unified transcript", {
+            userId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+          return json({ error: "Invalid unified transcript JSON" }, { status: 400 });
+        }
+
+        // Validate unified transcript with Zod schema
+        try {
+          unifiedTranscript = unifiedTranscriptSchema.parse(unifiedTranscript);
+        } catch (error) {
+          logger.error("Ingest validation failed: unified transcript schema validation failed", {
+            userId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+          return json({ error: "Unified transcript schema validation failed" }, { status: 400 });
+        }
+
+        // Extract fields from unifiedTranscript
+        const transcriptId = unifiedTranscript.id;
+        const repoId = unifiedTranscript.git?.repo ?? null;
+        const source: TranscriptSource =
+          unifiedTranscript.source === "codex" || unifiedTranscript.source === "claude-code"
+            ? unifiedTranscript.source
+            : "claude-code";
+        const cwd = unifiedTranscript.cwd ?? "";
+
         const rawRecords = parseJsonlRecords(transcriptContent);
-
-        // Fetch pricing data for cost calculation
-        const pricingFetcher = getPricingFetcher();
-        const pricingData = await pricingFetcher.fetchModelPricing();
-        const pricing = Object.fromEntries(pricingData);
-
-        const converterOptions = {
-          pricing,
-        };
-        const unifiedTranscript =
-          source === "codex"
-            ? convertCodexTranscript(rawRecords, converterOptions)
-            : convertClaudeCodeTranscript(rawRecords, converterOptions);
-        if (!unifiedTranscript) {
-          logger.error("Ingest conversion failed: unified transcript could not be generated", {
-            userId,
-            repoId,
-            source,
-          });
-          return json({ error: "Failed to convert transcript" }, { status: 422 });
-        }
-
-        if (unifiedTranscript.id !== transcriptIdField) {
-          logger.warn("Ingest transcript ID mismatch", {
-            userId,
-            repoId,
-            provided: transcriptIdField,
-            derived: unifiedTranscript.id,
-          });
-          return json({ error: "Transcript ID mismatch" }, { status: 400 });
-        }
 
         logger.debug("Ingest unified transcript payload", {
           userId,
@@ -128,17 +100,19 @@ export const Route = createFileRoute("/api/ingest")({
         });
 
         const eventCount = rawRecords.length;
-        const repoName = deriveRepoName(repoId);
+        const repoName = repoId ? deriveRepoName(repoId) : null;
 
         logger.debug("Ingest raw transcript parsed", {
           userId,
           repoId,
+          cwd,
           sample: rawRecords.slice(0, 3),
         });
 
         logger.info("Ingest unified transcript generated", {
           userId,
           repoId,
+          cwd,
           transcriptId: unifiedTranscript.id,
           source,
           preview: unifiedTranscript.preview,
@@ -146,27 +120,41 @@ export const Route = createFileRoute("/api/ingest")({
         });
 
         // Check if transcript already exists with same sha256
-        const existingTranscript = await db.query.repos.findFirst({
-          where: eq(repos.repo, repoId),
-          with: {
-            transcripts: {
-              where: and(eq(transcripts.transcriptId, transcriptIdField), eq(transcripts.userId, userId)),
+        let existingTranscript;
+        if (repoId) {
+          existingTranscript = await db.query.repos.findFirst({
+            where: eq(repos.repo, repoId),
+            with: {
+              transcripts: {
+                where: and(eq(transcripts.transcriptId, transcriptId), eq(transcripts.userId, userId)),
+              },
             },
-          },
-        });
+          });
+        } else {
+          // For private transcripts (no repo), check by transcriptId and userId only
+          const existingPrivateTranscript = await db.query.transcripts.findFirst({
+            where: and(eq(transcripts.transcriptId, transcriptId), eq(transcripts.userId, userId)),
+          });
+          if (existingPrivateTranscript) {
+            existingTranscript = {
+              transcripts: [existingPrivateTranscript],
+            };
+          }
+        }
 
         // If transcript exists and SHA-256 matches, return OK
         if (existingTranscript?.transcripts?.[0] && existingTranscript.transcripts[0].sha256 === sha256) {
           logger.info("Ingest skipped: transcript exists with same sha256", {
             userId,
             repoId,
-            transcriptId: transcriptIdField,
+            cwd,
+            transcriptId,
             source,
             sha256,
           });
           return json({
             success: true,
-            transcriptId: transcriptIdField,
+            transcriptId,
             eventsReceived: eventCount,
             sha256,
             status: "unchanged",
@@ -176,47 +164,51 @@ export const Route = createFileRoute("/api/ingest")({
         logger.info("Ingest processing", {
           userId,
           repoId,
+          cwd,
           repoName,
-          transcriptId: transcriptIdField,
+          transcriptId,
           eventCount,
           sha256,
         });
 
-        // Create or get repo record
-        const repoRecord = await db
-          .insert(repos)
-          .values({
-            repo: repoId,
-            lastActivity: new Date().toISOString(),
-          })
-          .onConflictDoUpdate({
-            target: repos.repo,
-            set: {
+        // Create or get repo record (only if repoId is provided)
+        let repoDbId: string | null = null;
+        if (repoId) {
+          const repoRecord = await db
+            .insert(repos)
+            .values({
+              repo: repoId,
               lastActivity: new Date().toISOString(),
-            },
-          })
-          .returning({ id: repos.id });
+            })
+            .onConflictDoUpdate({
+              target: repos.repo,
+              set: {
+                lastActivity: new Date().toISOString(),
+              },
+            })
+            .returning({ id: repos.id });
 
-        const repoDbId = repoRecord[0].id;
-
-        // Validate unified transcript with Zod before storing
-        const validatedTranscript = unifiedTranscriptSchema.parse(unifiedTranscript);
+          repoDbId = repoRecord[0].id;
+        }
 
         // Compute metadata from unified transcript
+        // Use cwd from form data (already formatted by CLI) not from re-converted transcript
+        // because backend might be in different environment (e.g., Cloudflare Workers)
         const metadata = {
-          preview: validatedTranscript.preview,
-          model: validatedTranscript.model,
-          costUsd: validatedTranscript.costUsd,
-          blendedTokens: validatedTranscript.blendedTokens,
-          messageCount: validatedTranscript.messageCount,
-          inputTokens: validatedTranscript.tokenUsage.inputTokens,
-          cachedInputTokens: validatedTranscript.tokenUsage.cachedInputTokens,
-          outputTokens: validatedTranscript.tokenUsage.outputTokens,
-          reasoningOutputTokens: validatedTranscript.tokenUsage.reasoningOutputTokens,
-          totalTokens: validatedTranscript.tokenUsage.totalTokens,
-          relativeCwd: validatedTranscript.git?.relativeCwd ?? null,
-          branch: validatedTranscript.git?.branch ?? null,
-          createdAt: validatedTranscript.timestamp,
+          preview: unifiedTranscript.preview,
+          model: unifiedTranscript.model,
+          costUsd: unifiedTranscript.costUsd,
+          blendedTokens: unifiedTranscript.blendedTokens,
+          messageCount: unifiedTranscript.messageCount,
+          inputTokens: unifiedTranscript.tokenUsage.inputTokens,
+          cachedInputTokens: unifiedTranscript.tokenUsage.cachedInputTokens,
+          outputTokens: unifiedTranscript.tokenUsage.outputTokens,
+          reasoningOutputTokens: unifiedTranscript.tokenUsage.reasoningOutputTokens,
+          totalTokens: unifiedTranscript.tokenUsage.totalTokens,
+          relativeCwd: unifiedTranscript.git?.relativeCwd ?? null,
+          branch: unifiedTranscript.git?.branch ?? null,
+          cwd: cwd ?? "",
+          createdAt: unifiedTranscript.timestamp,
         };
 
         // Insert or update transcript
@@ -226,14 +218,15 @@ export const Route = createFileRoute("/api/ingest")({
             repoId: repoDbId,
             userId,
             sha256,
-            transcriptId: transcriptIdField,
-            source: validatedTranscript.source,
+            transcriptId,
+            source: unifiedTranscript.source,
             ...metadata,
           })
           .onConflictDoUpdate({
-            target: [transcripts.repoId, transcripts.transcriptId],
+            target: [transcripts.userId, transcripts.transcriptId],
             set: {
               sha256,
+              repoId: repoDbId,
               ...metadata,
             },
           })
@@ -244,7 +237,7 @@ export const Route = createFileRoute("/api/ingest")({
         // Analyze transcript
         const analysisResult = analyzeTranscript(unifiedTranscript);
         logger.debug("Ingest analysis complete", {
-          transcriptId: transcriptIdField,
+          transcriptId,
           metrics: analysisResult.metrics,
           healthScore: analysisResult.healthScore,
           antiPatterns: analysisResult.antiPatterns,
@@ -288,7 +281,8 @@ export const Route = createFileRoute("/api/ingest")({
 
         // Upload to R2
         const r2Bucket = env.BUCKET;
-        const r2KeyPrefix = `${repoId}/${transcriptIdField}`;
+        // For private transcripts (no repo), use "private/<userId>" as prefix
+        const r2KeyPrefix = repoId ? `${repoId}/${transcriptId}` : `private/${userId}/${transcriptId}`;
 
         // Upload unified transcript as JSON
         const unifiedJson = JSON.stringify(unifiedTranscript);
@@ -317,7 +311,7 @@ export const Route = createFileRoute("/api/ingest")({
 
         return json({
           success: true,
-          transcriptId: transcriptIdField,
+          transcriptId,
           eventsReceived: eventCount,
           sha256,
           status: existingTranscript ? "updated" : "created",

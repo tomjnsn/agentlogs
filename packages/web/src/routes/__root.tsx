@@ -1,28 +1,16 @@
 /// <reference types="vite/client" />
 import { Button } from "@/components/ui/button";
-// TEMPORARILY DISABLED: Sentry wrapper might be causing issues
-// import { wrapCreateRootRouteWithSentry } from "@sentry/tanstackstart-react";
 import { createRootRoute, HeadContent, Link, Outlet, Scripts, useRouter } from "@tanstack/react-router";
 import React, { type ReactNode } from "react";
 import { authClient } from "../lib/auth-client";
 import { initializeClientLogger } from "../lib/client-logger";
-import { logger } from "../lib/logger";
 import { getSession } from "../lib/server-functions";
 import appCss from "../styles/globals.css?url";
 
 export const Route = createRootRoute({
   beforeLoad: async () => {
-    try {
-      const session = await getSession();
-      return { session };
-    } catch (error) {
-      logger.error("Failed to get session in beforeLoad", {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-      });
-      // Return null session on error to prevent 500s
-      return { session: null };
-    }
+    const session = await getSession();
+    return { session };
   },
   head: () => ({
     meta: [
@@ -89,46 +77,11 @@ function AppContent() {
   };
 
   const handleSignOut = async () => {
-    try {
-      await authClient.signOut({
-        fetchOptions: {
-          onSuccess: () => {
-            router.invalidate(); // Invalidate router to clear cached data
-          },
-          onError: (ctx) => {
-            console.error("Sign out error:", ctx.error);
-            const error = ctx.error as any;
-
-            // Check if it's a CORS or origin error
-            if (error?.status === 403) {
-              const currentPort = window.location.port;
-              const expectedPort = "3000";
-
-              if (currentPort !== expectedPort) {
-                alert(
-                  `Port mismatch detected!\n\n` +
-                    `You're accessing the app on port ${currentPort}, but it should be on port ${expectedPort}.\n\n` +
-                    `Please access the app at: http://localhost:${expectedPort}\n\n` +
-                    `This is configured in WEB_PORT in your .env file and WEB_URL in packages/server/.dev.vars`,
-                );
-              } else {
-                alert(
-                  `Authentication error (403 Forbidden)\n\n` +
-                    `This might be a CORS or trusted origins issue.\n\n` +
-                    `Check that:\n` +
-                    `1. The API server is running on http://localhost:8787\n` +
-                    `2. WEB_URL in packages/server/.dev.vars matches your current URL\n` +
-                    `3. Both servers were restarted after configuration changes`,
-                );
-              }
-            }
-          },
-        },
-      });
-    } catch (error) {
-      console.error("Unexpected sign out error:", error);
-      alert(`Failed to sign out: ${error instanceof Error ? error.message : "Unknown error"}`);
-    }
+    await authClient.signOut({
+      fetchOptions: {
+        onSuccess: () => router.invalidate(),
+      },
+    });
   };
 
   return (

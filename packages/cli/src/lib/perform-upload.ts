@@ -4,7 +4,8 @@ import { dirname, isAbsolute, resolve } from "path";
 import type { TranscriptSource, UploadPayload } from "@vibeinsights/shared";
 import { convertClaudeCodeTranscript, type UnifiedTranscript } from "@vibeinsights/shared/claudecode";
 import { convertCodexTranscript } from "@vibeinsights/shared/codex";
-import { getRepoMetadata, uploadTranscript } from "@vibeinsights/shared/upload";
+import { LiteLLMPricingFetcher } from "@vibeinsights/shared/pricing";
+import { uploadTranscript } from "@vibeinsights/shared/upload";
 import type { UploadOptions } from "@vibeinsights/shared/upload";
 
 export interface PerformUploadParams {
@@ -30,7 +31,7 @@ export async function performUpload(
   params: PerformUploadParams,
   options: UploadOptions = {},
 ): Promise<PerformUploadResult> {
-  const { transcriptPath, sessionId, cwdOverride, source = "claude-code" } = params;
+  const { transcriptPath, sessionId, source = "claude-code" } = params;
 
   if (!transcriptPath) {
     throw new Error("No transcript path provided.");
@@ -69,7 +70,18 @@ export async function performUpload(
     throw new Error("No transcript events found in the specified file.");
   }
 
-  const unifiedTranscript = source === "codex" ? convertCodexTranscript(records) : convertClaudeCodeTranscript(records);
+  const pricingFetcher = new LiteLLMPricingFetcher();
+  const pricingData = await pricingFetcher.fetchModelPricing();
+  const pricing = Object.fromEntries(pricingData);
+
+  const converterOptions = {
+    pricing,
+  };
+
+  const unifiedTranscript =
+    source === "codex"
+      ? convertCodexTranscript(records, converterOptions)
+      : convertClaudeCodeTranscript(records, converterOptions);
   if (!unifiedTranscript) {
     throw new Error(`Unable to convert ${source} transcript to unified format.`);
   }
@@ -85,18 +97,13 @@ export async function performUpload(
     );
   }
 
-  const transcriptCwd = cwdOverride ?? process.cwd();
-  const repoPath = existsSync(transcriptCwd) ? transcriptCwd : process.cwd();
-  const { repoId } = getRepoMetadata(repoPath);
   const eventCount = records.length;
   const sha256 = createHash("sha256").update(rawContent).digest("hex");
 
   const payload: UploadPayload = {
-    repoId,
-    transcriptId: finalSessionId,
     sha256,
     rawTranscript: rawContent,
-    source,
+    unifiedTranscript,
   };
 
   const result = await uploadTranscript(payload, options);
@@ -106,7 +113,6 @@ export async function performUpload(
     eventCount,
     invalidLines,
     sessionId: finalSessionId,
-    cwd: transcriptCwd,
     unifiedTranscript,
     sha256,
     source,

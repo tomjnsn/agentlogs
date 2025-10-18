@@ -20,7 +20,7 @@ const FIXTURE_GIT_CONTEXTS: Record<string, { repo: string; branch: string; relat
   "compact.jsonl": {
     repo: "github.com/tailwindlabs/tailwind-studio",
     branch: "main",
-    relativeCwd: ".",
+    relativeCwd: "",
   },
   "crud.jsonl": {
     repo: "github.com/vibeinsights/vibeinsights",
@@ -30,7 +30,7 @@ const FIXTURE_GIT_CONTEXTS: Record<string, { repo: string; branch: string; relat
   "subagent.jsonl": {
     repo: "github.com/tailwindlabs/tailwind-studio",
     branch: "main",
-    relativeCwd: ".",
+    relativeCwd: "",
   },
   "todos.jsonl": {
     repo: "github.com/vibeinsights/vibeinsights",

@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import type { DrizzleDB } from ".";
 import { analysis, repos, transcripts } from "./schema";
 
@@ -88,4 +88,32 @@ export async function getAnalysis(db: DrizzleDB, transcriptId: string) {
   return await db.query.analysis.findFirst({
     where: eq(analysis.transcriptId, transcriptId),
   });
+}
+
+/**
+ * Get private transcripts (no repo) grouped by cwd
+ */
+export async function getPrivateTranscriptsByCwd(db: DrizzleDB, userId: string) {
+  const results = await db
+    .select({
+      cwd: transcripts.cwd,
+      transcriptCount: sql<number>`CAST(COUNT(${transcripts.id}) AS INTEGER)`.as("transcript_count"),
+    })
+    .from(transcripts)
+    .where(and(eq(transcripts.userId, userId), isNull(transcripts.repoId)))
+    .groupBy(transcripts.cwd)
+    .orderBy(desc(sql`MAX(${transcripts.createdAt})`));
+
+  return results;
+}
+
+/**
+ * Get transcripts for a specific cwd (private transcripts)
+ */
+export async function getTranscriptsByCwd(db: DrizzleDB, userId: string, cwd: string) {
+  return await db
+    .select()
+    .from(transcripts)
+    .where(and(eq(transcripts.userId, userId), isNull(transcripts.repoId), eq(transcripts.cwd, cwd)))
+    .orderBy(desc(transcripts.createdAt));
 }

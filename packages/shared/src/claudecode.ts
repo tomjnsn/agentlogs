@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { z } from "zod";
+import { formatCwdWithTilde, normalizeRelativeCwd } from "./paths";
 import type { LiteLLMModelPricing } from "./pricing";
 import {
   toolCallMessageWithShapesSchema,
@@ -183,6 +184,8 @@ export function convertClaudeCodeTranscript(
   const primaryModel = selectPrimaryModel(modelUsageMap);
   // Extract git context from transcript records (synchronous)
   const gitContext = extractGitContextFromRecords(transcriptChain);
+  const cwd = deriveWorkingDirectory(transcriptChain);
+  const formattedCwd = cwd ? formatCwdWithTilde(cwd) : "";
   const messages = convertTranscriptToMessages(transcriptChain);
 
   const transcriptCandidate = {
@@ -198,6 +201,7 @@ export function convertClaudeCodeTranscript(
     tokenUsage,
     modelUsage: Array.from(modelUsageMap.entries()).map(([model, usage]) => ({ model, usage })),
     git: gitContext,
+    cwd: formattedCwd,
     messages,
   };
 
@@ -248,6 +252,7 @@ export async function convertClaudeCodeFile(
   const sessionId = findSessionId(transcriptChain);
   const primaryModel = selectPrimaryModel(modelUsageMap);
   const cwd = deriveWorkingDirectory(transcriptChain);
+  const formattedCwd = cwd ? formatCwdWithTilde(cwd) : "";
   const gitContext =
     options.gitContext !== undefined ? options.gitContext : await resolveGitContext(cwd, leaf.gitBranch);
   const messages = convertTranscriptToMessages(transcriptChain);
@@ -265,6 +270,7 @@ export async function convertClaudeCodeFile(
     tokenUsage,
     modelUsage: Array.from(modelUsageMap.entries()).map(([model, usage]) => ({ model, usage })),
     git: gitContext,
+    cwd: formattedCwd,
     messages,
   };
 
@@ -734,8 +740,9 @@ function extractGitContextFromRecords(transcript: ClaudeMessageRecord[]): Unifie
     const repoName = pathParts[hostingIndex + 2]?.replace(/\.git$/i, "");
     if (org && repoName) {
       const relativeSegments = pathParts.slice(hostingIndex + 3);
+      const relativeCwd = relativeSegments.length > 0 ? relativeSegments.join("/") : ".";
       return unifiedGitContextSchema.parse({
-        relativeCwd: relativeSegments.length > 0 ? relativeSegments.join("/") : ".",
+        relativeCwd: normalizeRelativeCwd(relativeCwd),
         branch: gitBranch,
         repo: `${host}/${org}/${repoName}`,
       });
@@ -785,7 +792,7 @@ async function resolveGitContext(cwd: string | undefined, gitBranch: string | un
   const repo = await readGitRemoteRepo(repoRoot);
 
   return unifiedGitContextSchema.parse({
-    relativeCwd,
+    relativeCwd: normalizeRelativeCwd(relativeCwd),
     branch,
     repo,
   });

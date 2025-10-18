@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from "fs";
+import { homedir } from "os";
 import { dirname, resolve } from "path";
 
 /**
@@ -57,4 +58,32 @@ export function getLogsDir(): string {
  */
 export function getDevLogPath(): string {
   return resolve(getLogsDir(), "dev.log");
+}
+
+/**
+ * Formats a directory path with tilde (~) if it's inside the user's home directory
+ *
+ * @param absolutePath - Absolute path to format
+ * @returns Path with tilde if inside home, otherwise absolute path
+ */
+export function formatCwdWithTilde(absolutePath: string): string {
+  const home = homedir();
+  if (absolutePath.startsWith(home)) {
+    return absolutePath.replace(home, "~");
+  }
+  return absolutePath;
+}
+
+/**
+ * Normalizes relative_cwd by converting "." to empty string
+ * This ensures consistent representation of repo root
+ *
+ * @param relativeCwd - The relative cwd from git context
+ * @returns Empty string for "." or null, otherwise the original value
+ */
+export function normalizeRelativeCwd(relativeCwd: string | null): string {
+  if (relativeCwd === "." || relativeCwd === null) {
+    return "";
+  }
+  return relativeCwd;
 }

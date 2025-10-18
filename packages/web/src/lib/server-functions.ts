@@ -72,6 +72,15 @@ export const getRepos = createServerFn().handler(async () => {
 });
 
 /**
+ * Server function to fetch private transcripts grouped by cwd
+ */
+export const getPrivateTranscriptsByCwd = createServerFn().handler(async () => {
+  const db = createDrizzle(env.DB);
+  const userId = await getAuthenticatedUserId();
+  return queries.getPrivateTranscriptsByCwd(db, userId);
+});
+
+/**
  * Server function to fetch transcripts for a specific repository
  */
 export const getTranscriptsByRepo = createServerFn()
@@ -97,6 +106,32 @@ export const getTranscriptsByRepo = createServerFn()
   });
 
 /**
+ * Server function to fetch transcripts for a specific cwd (private transcripts)
+ */
+export const getTranscriptsByCwd = createServerFn()
+  .inputValidator((cwd: string) => cwd)
+  .handler(async ({ data: cwd }) => {
+    const db = createDrizzle(env.DB);
+    const userId = await getAuthenticatedUserId();
+    const transcripts = await queries.getTranscriptsByCwd(db, userId, cwd);
+
+    // Transform to simplified view
+    return transcripts.map((t) => ({
+      id: t.id,
+      repoId: t.repoId,
+      transcriptId: t.transcriptId,
+      source: t.source,
+      preview: t.preview,
+      createdAt: t.createdAt,
+      updatedAt: t.updatedAt,
+      analyzed: t.analyzed,
+      messageCount: t.messageCount,
+      costUsd: t.costUsd,
+      cwd: t.cwd,
+    }));
+  });
+
+/**
  * Server function to fetch a single transcript with analysis
  */
 export const getTranscript = createServerFn({ method: "GET" })
@@ -113,11 +148,11 @@ export const getTranscript = createServerFn({ method: "GET" })
     // Fetch unified transcript from R2
     const r2Bucket = env.BUCKET;
     const repo = transcript.repo;
-    if (!repo) {
-      throw new Error("Transcript repo not found");
-    }
 
-    const r2Key = `${repo.repo}/${transcript.transcriptId}.json`;
+    // Determine R2 key based on whether this is a repo or private transcript
+    const r2Key = repo
+      ? `${repo.repo}/${transcript.transcriptId}.json`
+      : `private/${userId}/${transcript.transcriptId}.json`;
     const r2Object = await r2Bucket.get(r2Key);
     if (!r2Object) {
       logger.error("Unified transcript not found in R2", { key: r2Key });

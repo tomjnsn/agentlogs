@@ -7,6 +7,7 @@ import type {
   UnifiedTranscript,
   UnifiedTranscriptMessage,
 } from "./claudecode";
+import { formatCwdWithTilde, normalizeRelativeCwd } from "./paths";
 import type { LiteLLMModelPricing } from "./pricing";
 import {
   unifiedGitContextSchema,
@@ -334,6 +335,7 @@ export function convertCodexTranscript(
   const costUsd = calculateCostFromUsage(primaryModel, tokenUsage, options.pricing);
 
   const gitContext = options.gitContext !== undefined ? options.gitContext : buildGitContext(sessionMeta, cwd);
+  const formattedCwd = cwd ? formatCwdWithTilde(cwd) : "";
 
   const transcript: UnifiedTranscript = unifiedTranscriptSchema.parse({
     v: 1 as const,
@@ -355,6 +357,7 @@ export function convertCodexTranscript(
         ]
       : [],
     git: gitContext,
+    cwd: formattedCwd,
     messages,
   });
 
@@ -862,24 +865,25 @@ function derivePreview(userMessages: string[]): string | null {
 }
 
 function buildGitContext(sessionMeta: CodexSessionMeta | null, cwd: string | null): UnifiedGitContext {
+  const localCwd = cwd ?? sessionMeta?.cwd ?? null;
+
   if (!sessionMeta) {
     return unifiedGitContextSchema.parse({
       repo: null,
       branch: null,
-      relativeCwd: cwd ? "." : null,
+      relativeCwd: null,
     });
   }
 
   const repo = parseRepositoryUrl(sessionMeta.git.repositoryUrl);
   const branch = sessionMeta.git.branch;
-  const localCwd = cwd ?? sessionMeta.cwd;
   const repoName = repo ? (repo.split("/").pop() ?? null) : null;
   const relativeCwd = deriveRelativeCwd(localCwd, repoName);
 
   return unifiedGitContextSchema.parse({
     repo,
     branch,
-    relativeCwd,
+    relativeCwd: normalizeRelativeCwd(relativeCwd),
   });
 }
 

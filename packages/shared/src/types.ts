@@ -1,13 +1,13 @@
 // API Payloads
 
+import type { UnifiedTranscript } from "./claudecode";
+
 export type TranscriptSource = "claude-code" | "codex";
 
 export interface UploadPayload {
-  repoId: string;
-  transcriptId: string;
   sha256: string;
   rawTranscript: string;
-  source: TranscriptSource;
+  unifiedTranscript: UnifiedTranscript;
 }
 
 export interface UploadResponse {
@@ -19,7 +19,7 @@ export interface UploadResponse {
 export interface TranscriptMetadata {
   transcriptId: string;
   sha256: string;
-  repoId: string;
+  repoId: string | null;
 }
 
 // Analysis Results

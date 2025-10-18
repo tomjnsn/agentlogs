@@ -14,6 +14,7 @@ import { Route as DeviceRouteImport } from './routes/device'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TranscriptsIdRouteImport } from './routes/transcripts.$id'
 import { Route as ReposIdRouteImport } from './routes/repos.$id'
+import { Route as PrivateCwdRouteImport } from './routes/private.$cwd'
 import { Route as ApiTranscriptsRouteImport } from './routes/api/transcripts'
 import { Route as ApiIngestRouteImport } from './routes/api/ingest'
 import { Route as ApiTranscriptsClearRouteImport } from './routes/api/transcripts/clear'
@@ -44,6 +45,11 @@ const ReposIdRoute = ReposIdRouteImport.update({
   path: '/repos/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivateCwdRoute = PrivateCwdRouteImport.update({
+  id: '/private/$cwd',
+  path: '/private/$cwd',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiTranscriptsRoute = ApiTranscriptsRouteImport.update({
   id: '/api/transcripts',
   path: '/api/transcripts',
@@ -71,6 +77,7 @@ export interface FileRoutesByFullPath {
   '/sign-in': typeof SignInRoute
   '/api/ingest': typeof ApiIngestRoute
   '/api/transcripts': typeof ApiTranscriptsRouteWithChildren
+  '/private/$cwd': typeof PrivateCwdRoute
   '/repos/$id': typeof ReposIdRoute
   '/transcripts/$id': typeof TranscriptsIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -82,6 +89,7 @@ export interface FileRoutesByTo {
   '/sign-in': typeof SignInRoute
   '/api/ingest': typeof ApiIngestRoute
   '/api/transcripts': typeof ApiTranscriptsRouteWithChildren
+  '/private/$cwd': typeof PrivateCwdRoute
   '/repos/$id': typeof ReposIdRoute
   '/transcripts/$id': typeof TranscriptsIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -94,6 +102,7 @@ export interface FileRoutesById {
   '/sign-in': typeof SignInRoute
   '/api/ingest': typeof ApiIngestRoute
   '/api/transcripts': typeof ApiTranscriptsRouteWithChildren
+  '/private/$cwd': typeof PrivateCwdRoute
   '/repos/$id': typeof ReposIdRoute
   '/transcripts/$id': typeof TranscriptsIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -107,6 +116,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/api/ingest'
     | '/api/transcripts'
+    | '/private/$cwd'
     | '/repos/$id'
     | '/transcripts/$id'
     | '/api/auth/$'
@@ -118,6 +128,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/api/ingest'
     | '/api/transcripts'
+    | '/private/$cwd'
     | '/repos/$id'
     | '/transcripts/$id'
     | '/api/auth/$'
@@ -129,6 +140,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/api/ingest'
     | '/api/transcripts'
+    | '/private/$cwd'
     | '/repos/$id'
     | '/transcripts/$id'
     | '/api/auth/$'
@@ -141,6 +153,7 @@ export interface RootRouteChildren {
   SignInRoute: typeof SignInRoute
   ApiIngestRoute: typeof ApiIngestRoute
   ApiTranscriptsRoute: typeof ApiTranscriptsRouteWithChildren
+  PrivateCwdRoute: typeof PrivateCwdRoute
   ReposIdRoute: typeof ReposIdRoute
   TranscriptsIdRoute: typeof TranscriptsIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -181,6 +194,13 @@ declare module '@tanstack/react-router' {
       path: '/repos/$id'
       fullPath: '/repos/$id'
       preLoaderRoute: typeof ReposIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/private/$cwd': {
+      id: '/private/$cwd'
+      path: '/private/$cwd'
+      fullPath: '/private/$cwd'
+      preLoaderRoute: typeof PrivateCwdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/transcripts': {
@@ -232,6 +252,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignInRoute: SignInRoute,
   ApiIngestRoute: ApiIngestRoute,
   ApiTranscriptsRoute: ApiTranscriptsRouteWithChildren,
+  PrivateCwdRoute: PrivateCwdRoute,
   ReposIdRoute: ReposIdRoute,
   TranscriptsIdRoute: TranscriptsIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

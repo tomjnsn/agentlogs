@@ -284,5 +284,6 @@ export const unifiedTranscriptSchema = z.object({
   tokenUsage: unifiedTokenUsageSchema,
   modelUsage: z.array(unifiedModelUsageSchema),
   git: unifiedGitContextSchema,
+  cwd: z.string().nullable(),
   messages: z.array(unifiedTranscriptMessageSchema),
 });

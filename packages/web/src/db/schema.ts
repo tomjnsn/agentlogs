@@ -126,9 +126,7 @@ export const transcripts = sqliteTable(
     id: text("id")
       .primaryKey()
       .$defaultFn(() => generateId()),
-    repoId: text("repo_id")
-      .notNull()
-      .references(() => repos.id, { onDelete: "cascade" }),
+    repoId: text("repo_id").references(() => repos.id, { onDelete: "cascade" }),
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
@@ -152,6 +150,7 @@ export const transcripts = sqliteTable(
     totalTokens: integer("total_tokens").notNull(),
     relativeCwd: text("relative_cwd"),
     branch: text("branch"),
+    cwd: text("cwd"),
 
     updatedAt: integer("updated_at", { mode: "timestamp_ms" })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
@@ -159,7 +158,10 @@ export const transcripts = sqliteTable(
       .notNull(),
   },
   (table) => ({
+    // Note: SQLite unique index on (repoId, transcriptId) where repoId can be null
+    // Multiple rows with (null, transcriptId) are allowed, so we need separate constraint
     repoTranscriptIdx: uniqueIndex("idx_repo_transcript").on(table.repoId, table.transcriptId),
+    userTranscriptIdx: uniqueIndex("idx_user_transcript").on(table.userId, table.transcriptId),
     repoIdx: index("idx_repo_id").on(table.repoId),
     userIdx: index("idx_user_id").on(table.userId),
   }),
