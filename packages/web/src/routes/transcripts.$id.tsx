@@ -130,26 +130,31 @@ function MessageCard({ message, index }: { message: UnifiedTranscriptMessage; in
   const shouldCollapse = message.type === "tool-call" || message.type === "thinking";
 
   const getTypeColor = () => {
-    switch (message.type) {
-      case "user":
-        return "border-l-blue-500 bg-blue-50/50";
-      case "agent":
-        return "border-l-green-500 bg-green-50/50";
-      case "thinking":
-        return "border-l-yellow-500 bg-yellow-50/50";
-      case "tool-call":
-        return message.error || message.isError
-          ? "border-l-red-500 bg-red-50/50"
-          : "border-l-purple-500 bg-purple-50/50";
-      default:
-        return "border-l-gray-500 bg-gray-50/50";
+    if (message.type === "user") {
+      return "bg-primary/10 [border-left-color:var(--color-primary)]";
     }
+
+    if (message.type === "agent") {
+      return "bg-secondary/10 [border-left-color:var(--color-secondary)]";
+    }
+
+    if (message.type === "thinking") {
+      return "bg-muted/40 [border-left-color:var(--color-muted-foreground)]";
+    }
+
+    if (message.type === "tool-call") {
+      return message.error || message.isError
+        ? "bg-destructive/10 [border-left-color:var(--color-destructive)]"
+        : "bg-accent/10 [border-left-color:var(--color-accent)]";
+    }
+
+    return "bg-muted/10 [border-left-color:var(--color-border)]";
   };
 
   // For non-collapsible messages (user/agent), render directly
   if (!shouldCollapse) {
     return (
-      <Card className={cn("border-l-4", getTypeColor())}>
+      <Card className={cn("border-l-4 transition-colors", getTypeColor())}>
         <CardContent className="pt-6">
           <div className="mb-3 flex items-center justify-between">
             <Badge variant="outline">
@@ -174,7 +179,7 @@ function MessageCard({ message, index }: { message: UnifiedTranscriptMessage; in
 
   // For collapsible messages (tool-call/thinking), use Collapsible component
   return (
-    <Card className={cn("border-l-4", getTypeColor())}>
+    <Card className={cn("border-l-4 transition-colors", getTypeColor())}>
       <CardContent className="pt-6">
         <Collapsible defaultOpen={false}>
           <CollapsibleTrigger asChild>

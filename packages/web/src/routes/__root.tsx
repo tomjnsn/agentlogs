@@ -132,24 +132,24 @@ function AppContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="border-b border-gray-200 bg-white px-6 py-4">
+    <div className="bg-background min-h-screen">
+      <header className="border-border bg-card border-b px-6 py-4">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold">
-            <Link to="/" className="hover:text-blue-600">
+            <Link to="/" className="hover:text-primary transition-colors">
               Vibe Insights
             </Link>
           </h1>
 
           <div className="flex items-center gap-4">
             {isSigningIn ? (
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"></div>
+              <div className="text-muted-foreground flex items-center gap-2 text-sm">
+                <div className="border-border border-t-primary h-4 w-4 animate-spin rounded-full border-2"></div>
                 <span>Redirecting to GitHub...</span>
               </div>
             ) : session ? (
               <>
-                <span className="text-sm text-gray-700">{session.user.email || session.user.name}</span>
+                <span className="text-foreground text-sm">{session.user.email || session.user.name}</span>
                 <Button onClick={handleSignOut} variant="outline" size="sm">
                   Sign Out
                 </Button>
@@ -172,26 +172,15 @@ function AppContent() {
 function NotFoundComponent() {
   return (
     <RootDocument>
-      <div className="min-h-screen bg-gray-50">
-        <header className="border-b border-gray-200 bg-white px-6 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-semibold">
-              <Link to="/" className="hover:text-blue-600">
-                Vibe Insights
-              </Link>
-            </h1>
-          </div>
-        </header>
-        <main className="container mx-auto px-6 py-8">
-          <div className="flex flex-col items-center justify-center py-16">
-            <h1 className="mb-4 text-4xl font-bold text-gray-900">404</h1>
-            <p className="mb-8 text-lg text-gray-600">Page not found</p>
-            <Link to="/" className="text-blue-600 underline hover:text-blue-700">
-              Go back home
-            </Link>
-          </div>
-        </main>
-      </div>
+      <main className="container mx-auto px-6 py-8">
+        <div className="flex flex-col items-center justify-center py-16">
+          <h1 className="text-foreground mb-4 text-4xl font-bold">404</h1>
+          <p className="text-muted-foreground mb-8 text-lg">Page not found</p>
+          <Link to="/" className="text-primary font-medium underline underline-offset-4">
+            Go back home
+          </Link>
+        </div>
+      </main>
     </RootDocument>
   );
 }
