@@ -1,6 +1,7 @@
 import path from "node:path";
 import { describe, expect, test } from "bun:test";
 import { convertCodexFile, type UnifiedTranscript } from "./codex";
+import { formatCwdWithTilde } from "./paths";
 import type { LiteLLMModelPricing } from "./pricing";
 
 const FIXTURE_DIR = path.resolve(import.meta.dir, "../../../fixtures/codex");
@@ -16,11 +17,12 @@ const TEST_PRICING: Record<string, LiteLLMModelPricing> = {
 describe("convertCodexFile", () => {
   test("crud.jsonl", async () => {
     const serialized = await loadSerializedTranscript("crud.jsonl");
-    expect(serialized).toMatchInlineSnapshot(`
+    const { cwd, ...rest } = serialized;
+    expect(cwd).toBe(formatCwdWithTilde("/Users/philipp/dev/vibeinsights/fixtures"));
+    expect(rest).toMatchInlineSnapshot(`
       {
         "blendedTokens": 7697,
         "costUsd": 0.054657250000000004,
-        "cwd": "~/dev/vibeinsights/fixtures",
         "git": {
           "branch": "main",
           "relativeCwd": "fixtures",

@@ -1,6 +1,7 @@
 import path from "node:path";
 import { describe, expect, test } from "bun:test";
 import { convertClaudeCodeFile, type UnifiedTranscript } from "./claudecode";
+import { formatCwdWithTilde } from "./paths";
 
 const FIXTURE_DIR = path.resolve(import.meta.dir, "../../../fixtures/claudecode");
 
@@ -42,11 +43,12 @@ const FIXTURE_GIT_CONTEXTS: Record<string, { repo: string; branch: string; relat
 describe("convertClaudeCodeFile", () => {
   test("compact.jsonl", async () => {
     const serialized = await loadSerializedTranscript("compact.jsonl");
-    expect(serialized).toMatchInlineSnapshot(`
+    const { cwd, ...rest } = serialized;
+    expect(cwd).toBe(formatCwdWithTilde("/Users/philipp/dev/studio"));
+    expect(rest).toMatchInlineSnapshot(`
       {
         "blendedTokens": 0,
         "costUsd": 0,
-        "cwd": "~/dev/studio",
         "git": {
           "branch": "main",
           "relativeCwd": "",
@@ -93,11 +95,12 @@ describe("convertClaudeCodeFile", () => {
 
   test("crud.jsonl", async () => {
     const serialized = await loadSerializedTranscript("crud.jsonl");
-    expect(serialized).toMatchInlineSnapshot(`
+    const { cwd, ...rest } = serialized;
+    expect(cwd).toBe(formatCwdWithTilde("/Users/philipp/dev/vibeinsights/fixtures/claudecode"));
+    expect(rest).toMatchInlineSnapshot(`
       {
         "blendedTokens": 14126,
         "costUsd": 0.10516139999999999,
-        "cwd": "~/dev/vibeinsights/fixtures/claudecode",
         "git": {
           "branch": "main",
           "relativeCwd": "fixtures/claudecode",
@@ -597,11 +600,12 @@ describe("convertClaudeCodeFile", () => {
 
   test("subagent.jsonl", async () => {
     const serialized = await loadSerializedTranscript("subagent.jsonl");
-    expect(serialized).toMatchInlineSnapshot(`
+    const { cwd, ...rest } = serialized;
+    expect(cwd).toBe(formatCwdWithTilde("/Users/philipp/dev/studio"));
+    expect(rest).toMatchInlineSnapshot(`
       {
         "blendedTokens": 10896,
         "costUsd": 0.040881600000000004,
-        "cwd": "~/dev/studio",
         "git": {
           "branch": "main",
           "relativeCwd": "",
@@ -734,11 +738,12 @@ describe("convertClaudeCodeFile", () => {
 
   test("todos.jsonl", async () => {
     const serialized = await loadSerializedTranscript("todos.jsonl");
-    expect(serialized).toMatchInlineSnapshot(`
+    const { cwd, ...rest } = serialized;
+    expect(cwd).toBe(formatCwdWithTilde("/Users/philipp/dev/vibeinsights/fixtures/claudecode"));
+    expect(rest).toMatchInlineSnapshot(`
       {
         "blendedTokens": 2835,
         "costUsd": 0.04278390000000001,
-        "cwd": "~/dev/vibeinsights/fixtures/claudecode",
         "git": {
           "branch": "main",
           "relativeCwd": "fixtures/claudecode",
