@@ -46,9 +46,10 @@ describe("convertClaudeCodeFile", () => {
       {
         "blendedTokens": 0,
         "costUsd": 0,
+        "cwd": "~/dev/studio",
         "git": {
           "branch": "main",
-          "relativeCwd": ".",
+          "relativeCwd": "",
           "repo": "github.com/tailwindlabs/tailwind-studio",
         },
         "id": "0e26ec2f-937e-482c-b889-bc126f996913",
@@ -96,6 +97,7 @@ describe("convertClaudeCodeFile", () => {
       {
         "blendedTokens": 14126,
         "costUsd": 0.10516139999999999,
+        "cwd": "~/dev/vibeinsights/fixtures/claudecode",
         "git": {
           "branch": "main",
           "relativeCwd": "fixtures/claudecode",
@@ -599,9 +601,10 @@ describe("convertClaudeCodeFile", () => {
       {
         "blendedTokens": 10896,
         "costUsd": 0.040881600000000004,
+        "cwd": "~/dev/studio",
         "git": {
           "branch": "main",
-          "relativeCwd": ".",
+          "relativeCwd": "",
           "repo": "github.com/tailwindlabs/tailwind-studio",
         },
         "id": "609efeca-2f51-4118-b077-e91c9fe63f73",
@@ -735,6 +738,7 @@ describe("convertClaudeCodeFile", () => {
       {
         "blendedTokens": 2835,
         "costUsd": 0.04278390000000001,
+        "cwd": "~/dev/vibeinsights/fixtures/claudecode",
         "git": {
           "branch": "main",
           "relativeCwd": "fixtures/claudecode",

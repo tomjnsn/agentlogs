@@ -78,6 +78,11 @@ export async function performUpload(
     pricing,
   };
 
+  const resolvedCwd =
+    params.cwdOverride && params.cwdOverride.trim().length > 0
+      ? params.cwdOverride.trim()
+      : (extractCwdFromRecords(records) ?? process.cwd());
+
   const unifiedTranscript =
     source === "codex"
       ? convertCodexTranscript(records, converterOptions)
@@ -116,6 +121,7 @@ export async function performUpload(
     unifiedTranscript,
     sha256,
     source,
+    cwd: resolvedCwd,
   };
 }
 
@@ -169,5 +175,15 @@ export function resolveTranscriptPath(inputPath: string): string | null {
     current = parent;
   }
 
+  return null;
+}
+
+function extractCwdFromRecords(records: Record<string, unknown>[]): string | null {
+  for (const record of records) {
+    const cwd = typeof record.cwd === "string" ? record.cwd.trim() : "";
+    if (cwd) {
+      return cwd;
+    }
+  }
   return null;
 }

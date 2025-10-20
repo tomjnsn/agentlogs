@@ -20,6 +20,7 @@ describe("convertCodexFile", () => {
       {
         "blendedTokens": 7697,
         "costUsd": 0.054657250000000004,
+        "cwd": "~/dev/vibeinsights/fixtures",
         "git": {
           "branch": "main",
           "relativeCwd": "fixtures",
