@@ -1,6 +1,6 @@
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import type { DrizzleDB } from ".";
-import { analysis, repos, transcripts } from "./schema";
+import { analysis, repos, transcripts, user } from "./schema";
 
 /**
  * Get all repos for a user with computed transcript count
@@ -25,8 +25,34 @@ export async function getRepos(db: DrizzleDB, userId: string) {
  */
 export async function getTranscriptsByRepo(db: DrizzleDB, userId: string, repoId: string) {
   return await db
-    .select()
+    .select({
+      id: transcripts.id,
+      repoId: transcripts.repoId,
+      userId: transcripts.userId,
+      analyzed: transcripts.analyzed,
+      sha256: transcripts.sha256,
+      transcriptId: transcripts.transcriptId,
+      source: transcripts.source,
+      createdAt: transcripts.createdAt,
+      preview: transcripts.preview,
+      model: transcripts.model,
+      costUsd: transcripts.costUsd,
+      blendedTokens: transcripts.blendedTokens,
+      messageCount: transcripts.messageCount,
+      inputTokens: transcripts.inputTokens,
+      cachedInputTokens: transcripts.cachedInputTokens,
+      outputTokens: transcripts.outputTokens,
+      reasoningOutputTokens: transcripts.reasoningOutputTokens,
+      totalTokens: transcripts.totalTokens,
+      relativeCwd: transcripts.relativeCwd,
+      branch: transcripts.branch,
+      cwd: transcripts.cwd,
+      updatedAt: transcripts.updatedAt,
+      userName: user.name,
+      userImage: user.image,
+    })
     .from(transcripts)
+    .leftJoin(user, eq(transcripts.userId, user.id))
     .where(and(eq(transcripts.repoId, repoId), eq(transcripts.userId, userId)))
     .orderBy(desc(transcripts.createdAt));
 }
@@ -40,6 +66,7 @@ export async function getTranscript(db: DrizzleDB, userId: string, id: string) {
     with: {
       analysis: true,
       repo: true,
+      user: true,
     },
   });
 }
@@ -112,8 +139,34 @@ export async function getPrivateTranscriptsByCwd(db: DrizzleDB, userId: string) 
  */
 export async function getTranscriptsByCwd(db: DrizzleDB, userId: string, cwd: string) {
   return await db
-    .select()
+    .select({
+      id: transcripts.id,
+      repoId: transcripts.repoId,
+      userId: transcripts.userId,
+      analyzed: transcripts.analyzed,
+      sha256: transcripts.sha256,
+      transcriptId: transcripts.transcriptId,
+      source: transcripts.source,
+      createdAt: transcripts.createdAt,
+      preview: transcripts.preview,
+      model: transcripts.model,
+      costUsd: transcripts.costUsd,
+      blendedTokens: transcripts.blendedTokens,
+      messageCount: transcripts.messageCount,
+      inputTokens: transcripts.inputTokens,
+      cachedInputTokens: transcripts.cachedInputTokens,
+      outputTokens: transcripts.outputTokens,
+      reasoningOutputTokens: transcripts.reasoningOutputTokens,
+      totalTokens: transcripts.totalTokens,
+      relativeCwd: transcripts.relativeCwd,
+      branch: transcripts.branch,
+      cwd: transcripts.cwd,
+      updatedAt: transcripts.updatedAt,
+      userName: user.name,
+      userImage: user.image,
+    })
     .from(transcripts)
+    .leftJoin(user, eq(transcripts.userId, user.id))
     .where(and(eq(transcripts.userId, userId), isNull(transcripts.repoId), eq(transcripts.cwd, cwd)))
     .orderBy(desc(transcripts.createdAt));
 }

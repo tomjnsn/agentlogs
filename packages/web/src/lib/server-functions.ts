@@ -102,6 +102,8 @@ export const getTranscriptsByRepo = createServerFn()
       analyzed: t.analyzed,
       messageCount: t.messageCount,
       costUsd: t.costUsd,
+      userName: t.userName,
+      userImage: t.userImage,
     }));
   });
 
@@ -128,6 +130,8 @@ export const getTranscriptsByCwd = createServerFn()
       messageCount: t.messageCount,
       costUsd: t.costUsd,
       cwd: t.cwd,
+      userName: t.userName,
+      userImage: t.userImage,
     }));
   });
 
@@ -173,6 +177,8 @@ export const getTranscript = createServerFn({ method: "GET" })
       updatedAt: transcript.updatedAt,
       analyzed: transcript.analyzed,
       unifiedTranscript,
+      userName: transcript.user?.name,
+      userImage: transcript.user?.image,
       analysis: transcript.analysis
         ? {
             ...transcript.analysis,

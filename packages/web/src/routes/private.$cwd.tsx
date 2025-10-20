@@ -1,3 +1,4 @@
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -40,6 +41,7 @@ function PrivateDetailComponent() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Author</TableHead>
                 <TableHead>Transcript ID</TableHead>
                 <TableHead>Source</TableHead>
                 <TableHead>Preview</TableHead>
@@ -53,6 +55,24 @@ function PrivateDetailComponent() {
             <TableBody>
               {transcripts.map((transcript) => (
                 <TableRow key={transcript.id}>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={transcript.userImage || undefined} alt={transcript.userName || "User"} />
+                        <AvatarFallback>
+                          {transcript.userName
+                            ? transcript.userName
+                                .split(" ")
+                                .map((n) => n[0])
+                                .join("")
+                                .toUpperCase()
+                                .slice(0, 2)
+                            : "U"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm">{transcript.userName || "Unknown"}</span>
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <code className="font-mono text-sm">{transcript.transcriptId?.slice(0, 8) || "N/A"}...</code>
                   </TableCell>

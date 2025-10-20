@@ -1,4 +1,5 @@
 import { StatCard } from "@/components/stat-card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,7 +55,25 @@ function TranscriptDetailComponent() {
           </Link>
         </Button>
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold tracking-tight">Transcript</h2>
+          <div className="flex items-center gap-3">
+            <Avatar className="h-10 w-10">
+              <AvatarImage src={data.userImage || undefined} alt={data.userName || "User"} />
+              <AvatarFallback>
+                {data.userName
+                  ? data.userName
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                      .toUpperCase()
+                      .slice(0, 2)
+                  : "U"}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight">Transcript</h2>
+              <p className="text-muted-foreground text-sm">{data.userName || "Unknown User"}</p>
+            </div>
+          </div>
           <div className="text-muted-foreground text-sm">
             {unifiedTranscript.messageCount} messages • ${unifiedTranscript.costUsd.toFixed(4)}
           </div>
