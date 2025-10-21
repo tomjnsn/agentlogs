@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import type { UnifiedTranscriptMessage } from "@vibeinsights/shared/claudecode";
 import { unifiedTranscriptSchema } from "@vibeinsights/shared/schemas";
+import { useEffect, useState } from "react";
 import { getToolSummary } from "../lib/message-utils";
 import { getTranscript } from "../lib/server-functions";
 
@@ -45,6 +46,18 @@ function TranscriptDetailComponent() {
         return "Unknown";
     }
   })();
+
+  // Auto-scroll to message if hash is present in URL
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash) {
+      // Small delay to ensure DOM is ready
+      setTimeout(() => {
+        const target = document.querySelector(hash);
+        target?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 100);
+    }
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -146,7 +159,9 @@ function TranscriptDetailComponent() {
 }
 
 function MessageCard({ message, index }: { message: UnifiedTranscriptMessage; index: number }) {
+  const [copied, setCopied] = useState(false);
   const shouldCollapse = message.type === "tool-call" || message.type === "thinking";
+  const messageId = `msg-${index + 1}`;
 
   const getTypeColor = () => {
     if (message.type === "user") {
@@ -170,18 +185,43 @@ function MessageCard({ message, index }: { message: UnifiedTranscriptMessage; in
     return "bg-muted/10 [border-left-color:var(--color-border)]";
   };
 
+  const copyLink = async (e: React.MouseEvent) => {
+    // Prevent the click from bubbling up to CollapsibleTrigger
+    e.stopPropagation();
+
+    const url = `${window.location.origin}${window.location.pathname}#${messageId}`;
+    await navigator.clipboard.writeText(url);
+
+    // Update URL in address bar to show the link
+    window.history.pushState({}, "", `#${messageId}`);
+
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   // For non-collapsible messages (user/agent), render directly
   if (!shouldCollapse) {
     return (
-      <Card className={cn("border-l-4 transition-colors", getTypeColor())}>
+      <Card id={messageId} className={cn("border-l-4 transition-colors", getTypeColor())}>
         <CardContent className="pt-6">
           <div className="mb-3 flex items-center justify-between">
             <Badge variant="outline">
               #{index + 1} {message.type}
             </Badge>
-            {message.timestamp && (
-              <span className="text-muted-foreground text-xs">{new Date(message.timestamp).toLocaleTimeString()}</span>
-            )}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={copyLink}
+                className="text-muted-foreground hover:text-foreground cursor-pointer text-xs opacity-0 transition-opacity hover:opacity-100 group-hover:opacity-100"
+                title="Copy link to this message"
+              >
+                {copied ? "✓ Copied!" : "🔗"}
+              </button>
+              {message.timestamp && (
+                <span className="text-muted-foreground text-xs">
+                  {new Date(message.timestamp).toLocaleTimeString()}
+                </span>
+              )}
+            </div>
           </div>
 
           {message.type === "user" && (
@@ -198,7 +238,7 @@ function MessageCard({ message, index }: { message: UnifiedTranscriptMessage; in
 
   // For collapsible messages (tool-call/thinking), use Collapsible component
   return (
-    <Card className={cn("border-l-4 transition-colors", getTypeColor())}>
+    <Card id={messageId} className={cn("border-l-4 transition-colors", getTypeColor())}>
       <CardContent className="pt-6">
         <Collapsible defaultOpen={false}>
           <CollapsibleTrigger asChild>
@@ -221,11 +261,20 @@ function MessageCard({ message, index }: { message: UnifiedTranscriptMessage; in
                 )}
               </div>
 
-              {message.timestamp && (
-                <span className="text-muted-foreground text-xs">
-                  {new Date(message.timestamp).toLocaleTimeString()}
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={copyLink}
+                  className="text-muted-foreground hover:text-foreground cursor-pointer text-xs opacity-0 transition-opacity hover:opacity-100 group-hover:opacity-100"
+                  title="Copy link to this message"
+                >
+                  {copied ? "✓ Copied!" : "🔗"}
+                </button>
+                {message.timestamp && (
+                  <span className="text-muted-foreground text-xs">
+                    {new Date(message.timestamp).toLocaleTimeString()}
+                  </span>
+                )}
+              </div>
             </div>
           </CollapsibleTrigger>
 
