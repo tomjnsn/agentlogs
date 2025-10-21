@@ -10,6 +10,46 @@ interface LoggerOptions {
   logFilePath?: string;
 }
 
+// Track if we've shown the payload logging message (once per process)
+let hasShownPayloadMessage = false;
+
+/**
+ * Sanitize metadata for logging - prevents binary data and huge payloads
+ */
+function sanitizeMeta(meta: unknown): unknown {
+  if (meta === undefined || meta === null) return meta;
+
+  // Check if payload logging is disabled
+  const skipPayloads = process.env.DEBUG_PAYLOADS !== "true";
+  if (skipPayloads) {
+    // Return message only once per process
+    if (!hasShownPayloadMessage) {
+      hasShownPayloadMessage = true;
+      return "[payload logging disabled - set DEBUG_PAYLOADS=true to enable]";
+    }
+    return undefined;
+  }
+
+  // Recursively sanitize objects/arrays
+  if (typeof meta === "object") {
+    const json = JSON.stringify(meta);
+    const sizeKB = Math.round(json.length / 1024);
+
+    // Check for binary data indicators
+    const hasBinary =
+      json.includes('"isImage":true') ||
+      json.includes('"isImage": true') ||
+      (json.length > 10000 && /[A-Za-z0-9+/]{100,}/.test(json));
+
+    // If too large or has binary, return summary
+    if (hasBinary || json.length > 10000) {
+      return `[payload: ${sizeKB}KB${hasBinary ? ", contains binary data" : ""}]`;
+    }
+  }
+
+  return meta;
+}
+
 /**
  * Simple, elegant logger that writes to both console and file
  *
@@ -93,9 +133,13 @@ class Logger {
     const consoleMethod = level === "ERROR" ? console.error : level === "WARN" ? console.warn : console.log;
     consoleMethod(logLine);
 
+    // Sanitize metadata before logging
+    const sanitizedMeta = sanitizeMeta(meta);
+
     // Meta data on separate line (indented for readability)
-    if (meta !== undefined) {
-      const metaStr = typeof meta === "object" ? JSON.stringify(meta, null, 2) : String(meta);
+    if (sanitizedMeta !== undefined) {
+      const metaStr =
+        typeof sanitizedMeta === "object" ? JSON.stringify(sanitizedMeta, null, 2) : String(sanitizedMeta);
       consoleMethod(`  ${metaStr}`);
     }
 
@@ -103,8 +147,8 @@ class Logger {
     if (this.logToFile) {
       try {
         let fileContent = logLine + "\n";
-        if (meta !== undefined) {
-          const metaStr = typeof meta === "object" ? JSON.stringify(meta) : String(meta);
+        if (sanitizedMeta !== undefined) {
+          const metaStr = typeof sanitizedMeta === "object" ? JSON.stringify(sanitizedMeta) : String(sanitizedMeta);
           fileContent += `  ${metaStr}\n`;
         }
         appendFileSync(this.logFilePath, fileContent);
