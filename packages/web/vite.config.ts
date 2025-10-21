@@ -14,6 +14,11 @@ export default defineConfig({
   server: {
     port: 3000,
   },
+  optimizeDeps: {
+    // Hold optimization until all static imports are crawled on cold start
+    // This prevents full-page reloads when new dependencies are discovered
+    holdUntilCrawlEnd: true,
+  },
   plugins: [
     consoleToFile(), // Must be first to intercept all console output
     websocketLogger(), // Handle client-side logs via WebSocket
