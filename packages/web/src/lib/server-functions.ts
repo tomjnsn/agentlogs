@@ -57,8 +57,8 @@ export const getSession = createServerFn({ method: "GET" }).handler(async () => 
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
     });
-    // Re-throw to let the caller handle it
-    throw error;
+    // Return null instead of throwing - SSR must not fail for unauthenticated users
+    return null;
   }
 });
 
