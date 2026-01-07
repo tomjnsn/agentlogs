@@ -3,6 +3,7 @@ import { Command } from "commander";
 import { hookCommand } from "./commands/hook";
 import { loginCommand } from "./commands/login";
 import { logoutCommand } from "./commands/logout";
+import { pretoolHookCommand } from "./commands/pretool-hook";
 import { statusCommand } from "./commands/status";
 import { syncCommand } from "./commands/sync";
 import { uploadCommand } from "./commands/upload";
@@ -32,6 +33,13 @@ program
   .description("Log out and clear stored credentials")
   .action(async () => {
     await logoutCommand();
+  });
+
+program
+  .command("pretool-hook")
+  .description("Process Claude Code PreToolUse hook input from stdin")
+  .action(async () => {
+    await pretoolHookCommand();
   });
 
 const claudecode = program.command("claudecode").description("Claude Code transcript utilities for Vibe Insights");
