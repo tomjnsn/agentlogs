@@ -105,7 +105,7 @@ export async function pretoolHookCommand(): Promise<void> {
   }
 }
 
-function extractCommand(hookInput: PreToolHookInput): {
+export function extractCommand(hookInput: PreToolHookInput): {
   command: string | undefined;
   updateCommand: (nextCommand: string) => void;
 } {
@@ -139,11 +139,11 @@ function extractCommand(hookInput: PreToolHookInput): {
   };
 }
 
-function containsGitCommit(command: string): boolean {
+export function containsGitCommit(command: string): boolean {
   return /\bgit\s+commit\b/.test(command);
 }
 
-function appendTranscriptLink(command: string, sessionId: string): string {
+export function appendTranscriptLink(command: string, sessionId: string): string {
   const linkText = `🔮 View transcript: https://vibeinsights.dev/s/${sessionId}`;
 
   if (command.includes(linkText)) {
@@ -169,7 +169,7 @@ function appendTranscriptLink(command: string, sessionId: string): string {
   return command;
 }
 
-function getRepoPath(hookInput: PreToolHookInput): string {
+export function getRepoPath(hookInput: PreToolHookInput): string {
   if (typeof hookInput.repo_path === "string") {
     return hookInput.repo_path;
   }
