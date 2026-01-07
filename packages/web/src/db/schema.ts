@@ -183,6 +183,18 @@ export const analysis = sqliteTable("analysis", {
     .$defaultFn(() => new Date()),
 });
 
+export const commitTracking = sqliteTable("commit_tracking", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => generateId()),
+  sessionId: text("session_id").notNull(),
+  repoPath: text("repo_path").notNull(),
+  timestamp: text("timestamp").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
 // =============================================================================
 // Relations (for Drizzle queries with joins)
 // =============================================================================
