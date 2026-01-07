@@ -15,7 +15,7 @@ function getDevLogPath(): string {
 }
 
 const logPath = getDevLogPath();
-const logger = createLogger("cli", { logFilePath: logPath, logToFile: true });
+const logger = createLogger("cli", { logFilePath: logPath, logToFile: true, disableConsole: true });
 
 interface PreToolHookInput {
   session_id?: string;

@@ -8,6 +8,7 @@ interface LoggerOptions {
   component: string;
   logToFile?: boolean;
   logFilePath?: string;
+  disableConsole?: boolean;
 }
 
 // Track if we've shown the payload logging message (once per process)
@@ -69,9 +70,11 @@ class Logger {
   private component: string;
   private logToFile: boolean;
   private logFilePath: string;
+  private disableConsole: boolean;
 
   constructor(options: LoggerOptions) {
     this.component = options.component;
+    this.disableConsole = options.disableConsole ?? false;
 
     // Detect if we're in a Node.js environment (not Cloudflare Workers or browser)
     const isNodeEnvironment = typeof process !== "undefined" && !!process.versions?.node;
@@ -131,16 +134,19 @@ class Logger {
 
     // Console output (always, regardless of environment)
     const consoleMethod = level === "ERROR" ? console.error : level === "WARN" ? console.warn : console.log;
-    consoleMethod(logLine);
 
     // Sanitize metadata before logging
     const sanitizedMeta = sanitizeMeta(meta);
 
-    // Meta data on separate line (indented for readability)
-    if (sanitizedMeta !== undefined) {
-      const metaStr =
-        typeof sanitizedMeta === "object" ? JSON.stringify(sanitizedMeta, null, 2) : String(sanitizedMeta);
-      consoleMethod(`  ${metaStr}`);
+    if (!this.disableConsole) {
+      consoleMethod(logLine);
+
+      // Meta data on separate line (indented for readability)
+      if (sanitizedMeta !== undefined) {
+        const metaStr =
+          typeof sanitizedMeta === "object" ? JSON.stringify(sanitizedMeta, null, 2) : String(sanitizedMeta);
+        consoleMethod(`  ${metaStr}`);
+      }
     }
 
     // File output (development only)
