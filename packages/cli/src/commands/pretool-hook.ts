@@ -76,9 +76,21 @@ export async function pretoolHookCommand(): Promise<void> {
 
     // Output the proper Claude Code hook response format
     // See: https://code.claude.com/docs/en/hooks (Advanced: JSON Output)
+    // Must use hookSpecificOutput wrapper with permissionDecision (not decision)
     const output = modified 
-      ? { decision: "approve", updatedInput: hookInput.tool_input }
-      : { decision: "approve" };
+      ? { 
+          hookSpecificOutput: {
+            hookEventName: "PreToolUse",
+            permissionDecision: "allow",
+            updatedInput: hookInput.tool_input
+          }
+        }
+      : { 
+          hookSpecificOutput: {
+            hookEventName: "PreToolUse", 
+            permissionDecision: "allow"
+          }
+        };
     process.stdout.write(JSON.stringify(output));
 
     if (shouldTrack) {
