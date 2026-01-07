@@ -74,7 +74,12 @@ export async function pretoolHookCommand(): Promise<void> {
       }
     }
 
-    process.stdout.write(JSON.stringify(hookInput));
+    // Output the proper Claude Code hook response format
+    // See: https://code.claude.com/docs/en/hooks (Advanced: JSON Output)
+    const output = modified 
+      ? { decision: "approve", updatedInput: hookInput.tool_input }
+      : { decision: "approve" };
+    process.stdout.write(JSON.stringify(output));
 
     if (shouldTrack) {
       await trackCommit({
