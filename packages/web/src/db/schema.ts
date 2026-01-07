@@ -187,6 +187,7 @@ export const commitTracking = sqliteTable("commit_tracking", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => generateId()),
+  userId: text("user_id").notNull(),
   sessionId: text("session_id").notNull(),
   repoPath: text("repo_path").notNull(),
   timestamp: text("timestamp").notNull(),

@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { json } from "@tanstack/react-start";
 import { env } from "cloudflare:workers";
 import { commitTracking } from "../../db/schema";
+import { createAuth } from "../../lib/auth";
 import { logger } from "../../lib/logger";
 
 interface CommitTrackPayload {
@@ -16,12 +17,27 @@ export const Route = createFileRoute("/api/commit-track")({
     handlers: {
       POST: async ({ request }) => {
         const db = createDrizzle(env.DB);
+        const auth = createAuth();
+
+        logger.debug("Commit track request received");
+
+        const session = await auth.api.getSession({
+          headers: request.headers,
+        });
+
+        if (!session?.user) {
+          logger.warn("Commit track auth failed: no session");
+          return json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const userId = session.user.id;
 
         let payload: CommitTrackPayload;
         try {
           payload = (await request.json()) as CommitTrackPayload;
         } catch (error) {
           logger.error("Commit track validation failed: invalid JSON", {
+            userId,
             error: error instanceof Error ? error.message : String(error),
           });
           return json({ error: "Invalid JSON" }, { status: 400 });
@@ -31,6 +47,7 @@ export const Route = createFileRoute("/api/commit-track")({
 
         if (!session_id || !repo_path || !timestamp) {
           logger.error("Commit track validation failed: missing required fields", {
+            userId,
             session_id,
             repo_path,
             timestamp,
@@ -40,12 +57,14 @@ export const Route = createFileRoute("/api/commit-track")({
 
         try {
           await db.insert(commitTracking).values({
+            userId,
             sessionId: session_id,
             repoPath: repo_path,
             timestamp,
           });
 
           logger.info("Commit track stored", {
+            userId,
             sessionId: session_id.substring(0, 8),
             repoPath: repo_path,
           });
@@ -53,6 +72,7 @@ export const Route = createFileRoute("/api/commit-track")({
           return json({ success: true });
         } catch (error) {
           logger.error("Commit track insert failed", {
+            userId,
             sessionId: session_id.substring(0, 8),
             repoPath: repo_path,
             error: error instanceof Error ? error.message : String(error),

@@ -1,7 +1,7 @@
 import { dirname, resolve } from "path";
 import { fileURLToPath } from "url";
 import { createLogger } from "@vibeinsights/shared/logger";
-import { readConfig } from "../config";
+import { getToken, readConfig } from "../config";
 
 // Create logger for CLI hook commands with explicit log path
 // Use the file's location to find the monorepo root, not the working directory
@@ -198,11 +198,20 @@ async function trackCommit(payload: {
     config.baseURL ??
     "http://localhost:3000";
 
+  const authToken = getToken();
+  if (!authToken) {
+    logger.warn("Commit tracking skipped: no auth token. Run 'vibeinsights login' first.", {
+      sessionId: payload.sessionId.substring(0, 8),
+    });
+    return;
+  }
+
   try {
     const response = await fetch(new URL("/api/commit-track", serverUrl), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "Authorization": `Bearer ${authToken}`,
       },
       body: JSON.stringify({
         session_id: payload.sessionId,

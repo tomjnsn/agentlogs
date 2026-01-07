@@ -17,6 +17,7 @@ import { Route as ReposIdRouteImport } from './routes/repos.$id'
 import { Route as PrivateCwdRouteImport } from './routes/private.$cwd'
 import { Route as ApiTranscriptsRouteImport } from './routes/api/transcripts'
 import { Route as ApiIngestRouteImport } from './routes/api/ingest'
+import { Route as ApiCommitTrackRouteImport } from './routes/api/commit-track'
 import { Route as ApiTranscriptsClearRouteImport } from './routes/api/transcripts/clear'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth.$'
 
@@ -60,6 +61,11 @@ const ApiIngestRoute = ApiIngestRouteImport.update({
   path: '/api/ingest',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCommitTrackRoute = ApiCommitTrackRouteImport.update({
+  id: '/api/commit-track',
+  path: '/api/commit-track',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiTranscriptsClearRoute = ApiTranscriptsClearRouteImport.update({
   id: '/clear',
   path: '/clear',
@@ -75,6 +81,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/device': typeof DeviceRoute
   '/sign-in': typeof SignInRoute
+  '/api/commit-track': typeof ApiCommitTrackRoute
   '/api/ingest': typeof ApiIngestRoute
   '/api/transcripts': typeof ApiTranscriptsRouteWithChildren
   '/private/$cwd': typeof PrivateCwdRoute
@@ -87,6 +94,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/device': typeof DeviceRoute
   '/sign-in': typeof SignInRoute
+  '/api/commit-track': typeof ApiCommitTrackRoute
   '/api/ingest': typeof ApiIngestRoute
   '/api/transcripts': typeof ApiTranscriptsRouteWithChildren
   '/private/$cwd': typeof PrivateCwdRoute
@@ -100,6 +108,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/device': typeof DeviceRoute
   '/sign-in': typeof SignInRoute
+  '/api/commit-track': typeof ApiCommitTrackRoute
   '/api/ingest': typeof ApiIngestRoute
   '/api/transcripts': typeof ApiTranscriptsRouteWithChildren
   '/private/$cwd': typeof PrivateCwdRoute
@@ -114,6 +123,7 @@ export interface FileRouteTypes {
     | '/'
     | '/device'
     | '/sign-in'
+    | '/api/commit-track'
     | '/api/ingest'
     | '/api/transcripts'
     | '/private/$cwd'
@@ -126,6 +136,7 @@ export interface FileRouteTypes {
     | '/'
     | '/device'
     | '/sign-in'
+    | '/api/commit-track'
     | '/api/ingest'
     | '/api/transcripts'
     | '/private/$cwd'
@@ -138,6 +149,7 @@ export interface FileRouteTypes {
     | '/'
     | '/device'
     | '/sign-in'
+    | '/api/commit-track'
     | '/api/ingest'
     | '/api/transcripts'
     | '/private/$cwd'
@@ -151,6 +163,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DeviceRoute: typeof DeviceRoute
   SignInRoute: typeof SignInRoute
+  ApiCommitTrackRoute: typeof ApiCommitTrackRoute
   ApiIngestRoute: typeof ApiIngestRoute
   ApiTranscriptsRoute: typeof ApiTranscriptsRouteWithChildren
   PrivateCwdRoute: typeof PrivateCwdRoute
@@ -217,6 +230,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiIngestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/commit-track': {
+      id: '/api/commit-track'
+      path: '/api/commit-track'
+      fullPath: '/api/commit-track'
+      preLoaderRoute: typeof ApiCommitTrackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/transcripts/clear': {
       id: '/api/transcripts/clear'
       path: '/clear'
@@ -250,6 +270,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DeviceRoute: DeviceRoute,
   SignInRoute: SignInRoute,
+  ApiCommitTrackRoute: ApiCommitTrackRoute,
   ApiIngestRoute: ApiIngestRoute,
   ApiTranscriptsRoute: ApiTranscriptsRouteWithChildren,
   PrivateCwdRoute: PrivateCwdRoute,
