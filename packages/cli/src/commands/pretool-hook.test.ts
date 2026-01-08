@@ -48,7 +48,40 @@ describe("appendTranscriptLink", () => {
 
   test("does not double-add when link already exists", () => {
     const command = `git commit -m "Initial commit\n\n${link}"`;
-    expect(appendTranscriptLink(command, sessionId)).toBe(command);
+    expect(appendTranscriptLink(command, sessionId, ["New prompt"])).toBe(command);
+  });
+
+  test("adds prompts before transcript link", () => {
+    const command = 'git commit -m "feat: add auth"';
+    const prompts = ["Add login form with email/password", "Fix the TypeScript error"];
+    const expected = `git commit -m "feat: add auth\n\nPrompts:\n• "Add login form with email/password"\n• "Fix the TypeScript error"\n\n${link}"`;
+    expect(appendTranscriptLink(command, sessionId, prompts)).toBe(expected);
+  });
+
+  test("truncates and limits prompt list", () => {
+    const command = 'git commit -m "feat: prompts"';
+    const longPrompt = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    const longerPrompt = `${longPrompt}${longPrompt}`;
+    const prompts = [
+      "first prompt that should be dropped",
+      "second prompt that should be dropped",
+      "third prompt that should be included",
+      "fourth prompt that should be included",
+      "fifth prompt that should be included",
+      `sixth prompt ${longPrompt}`,
+      `seventh prompt ${longerPrompt}`,
+    ];
+    const expectedPrompts = [
+      "third prompt that should be included",
+      "fourth prompt that should be included",
+      "fifth prompt that should be included",
+      `sixth prompt ${longPrompt}`.slice(0, 57) + "...",
+      `seventh prompt ${longerPrompt}`.slice(0, 57) + "...",
+    ];
+    const expected = `git commit -m "feat: prompts\n\nPrompts:\n${expectedPrompts
+      .map((prompt) => `• "${prompt}"`)
+      .join("\n")}\n\n${link}"`;
+    expect(appendTranscriptLink(command, sessionId, prompts)).toBe(expected);
   });
 });
 

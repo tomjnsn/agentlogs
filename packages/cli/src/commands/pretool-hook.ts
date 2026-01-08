@@ -1,3 +1,4 @@
+import { promises as fs } from "fs";
 import { dirname, resolve } from "path";
 import { fileURLToPath } from "url";
 import { createLogger } from "@vibeinsights/shared/logger";
@@ -70,7 +71,11 @@ export async function pretoolHookCommand(): Promise<void> {
 
     if (isBashTool && command && containsGitCommit(command)) {
       shouldTrack = true;
-      const updatedCommand = appendTranscriptLink(command, sessionId);
+      const prompts = await collectCommitPrompts({
+        sessionId,
+        transcriptPath: hookInput.transcript_path,
+      });
+      const updatedCommand = appendTranscriptLink(command, sessionId, prompts);
       if (updatedCommand !== command) {
         updateCommand(updatedCommand);
         modified = true;
@@ -168,14 +173,18 @@ export function containsGitCommit(command: string): boolean {
   return /\bgit\s+commit\b/.test(command);
 }
 
-export function appendTranscriptLink(command: string, sessionId: string): string {
+export function appendTranscriptLink(command: string, sessionId: string, prompts: string[] = []): string {
   const linkText = `🔮 View transcript: https://vibeinsights.dev/s/${sessionId}`;
 
   if (command.includes(linkText)) {
     return command;
   }
 
-  const suffix = `\n\n${linkText}`;
+  const preparedPrompts = preparePromptList(prompts);
+  const promptsSection = preparedPrompts.length
+    ? `Prompts:\n${preparedPrompts.map((prompt) => `• "${prompt}"`).join("\n")}`
+    : "";
+  const suffix = promptsSection ? `\n\n${promptsSection}\n\n${linkText}` : `\n\n${linkText}`;
 
   const patterns = [
     { regex: /(\s(?:-m|--message|-am))\s+"([^"]*)"/, quote: '"' },
@@ -320,4 +329,210 @@ function readStdin(): Promise<string> {
     process.stdin.on("end", () => resolve(data));
     process.stdin.on("error", (error) => reject(error));
   });
+}
+
+async function collectCommitPrompts(payload: { sessionId: string; transcriptPath?: string }): Promise<string[]> {
+  if (!payload.transcriptPath) {
+    logger.warn("Commit prompts skipped: missing transcript_path", {
+      sessionId: payload.sessionId.substring(0, 8),
+    });
+    return [];
+  }
+
+  const entries = await readUserPrompts(payload.transcriptPath, payload.sessionId);
+  if (entries.length === 0) {
+    return [];
+  }
+
+  const lastCommitId = await readLastCommitMarker(payload.sessionId);
+  const startIndex = lastCommitId ? entries.findIndex((entry) => entry.id === lastCommitId) + 1 : 0;
+  const newEntries = startIndex > 0 ? entries.slice(startIndex) : entries;
+  const prompts = newEntries.map((entry) => entry.prompt);
+
+  const lastUserMessageId = entries[entries.length - 1]?.id;
+  if (lastUserMessageId) {
+    await writeLastCommitMarker(payload.sessionId, lastUserMessageId);
+  }
+
+  return prompts;
+}
+
+async function readUserPrompts(transcriptPath: string, sessionId: string): Promise<UserPromptEntry[]> {
+  try {
+    const rawContent = await fs.readFile(transcriptPath, "utf8");
+    const lines = rawContent.split(/\r?\n/);
+    const entries: UserPromptEntry[] = [];
+    let invalidLines = 0;
+
+    for (const [index, rawLine] of lines.entries()) {
+      const line = rawLine.trim();
+      if (!line) continue;
+
+      try {
+        const parsed = JSON.parse(line) as unknown;
+        if (!isRecord(parsed)) {
+          invalidLines += 1;
+          continue;
+        }
+
+        if (parsed.type !== "user") {
+          continue;
+        }
+
+        const prompt = extractPromptText(parsed);
+        if (!prompt) {
+          continue;
+        }
+
+        entries.push({
+          id: getUserMessageId(parsed, index),
+          prompt,
+        });
+      } catch {
+        invalidLines += 1;
+      }
+    }
+
+    if (invalidLines > 0) {
+      logger.warn("Commit prompts: skipped invalid transcript lines", {
+        sessionId: sessionId.substring(0, 8),
+        invalidLines,
+      });
+    }
+
+    return entries;
+  } catch (error) {
+    logger.warn("Commit prompts skipped: unable to read transcript", {
+      sessionId: sessionId.substring(0, 8),
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return [];
+  }
+}
+
+async function readLastCommitMarker(sessionId: string): Promise<string | null> {
+  const markerPath = getLastCommitMarkerPath(sessionId);
+  try {
+    const content = await fs.readFile(markerPath, "utf8");
+    const trimmed = content.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  } catch (error) {
+    if (isFileNotFound(error)) {
+      return null;
+    }
+    logger.warn("Commit prompts: failed to read commit marker", {
+      sessionId: sessionId.substring(0, 8),
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
+}
+
+async function writeLastCommitMarker(sessionId: string, lastUserMessageId: string): Promise<void> {
+  const markerPath = getLastCommitMarkerPath(sessionId);
+  try {
+    await fs.writeFile(markerPath, `${lastUserMessageId}\n`, "utf8");
+  } catch (error) {
+    logger.warn("Commit prompts: failed to write commit marker", {
+      sessionId: sessionId.substring(0, 8),
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
+function getLastCommitMarkerPath(sessionId: string): string {
+  return `/tmp/vibeinsights-lastcommit-${sessionId}.txt`;
+}
+
+function extractPromptText(record: Record<string, unknown>): string | null {
+  const message = record.message;
+  const messageContent = extractContentText(message);
+  if (messageContent) {
+    return messageContent;
+  }
+
+  const directContent = extractContentText(record.content);
+  if (directContent) {
+    return directContent;
+  }
+
+  return null;
+}
+
+function extractContentText(content: unknown): string | null {
+  if (typeof content === "string") {
+    return content;
+  }
+
+  if (isRecord(content)) {
+    const innerContent = extractContentText(content.content);
+    if (innerContent) {
+      return innerContent;
+    }
+  }
+
+  if (Array.isArray(content)) {
+    const parts = content
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (isRecord(item)) {
+          const text = extractContentText(item.text ?? item.content);
+          return text ?? "";
+        }
+        return "";
+      })
+      .filter((part) => part.length > 0);
+
+    if (parts.length > 0) {
+      return parts.join("");
+    }
+  }
+
+  return null;
+}
+
+function getUserMessageId(record: Record<string, unknown>, lineIndex: number): string {
+  const candidates = [record.uuid, record.messageId, record.id, isRecord(record.message) ? record.message.id : null];
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.length > 0) {
+      return candidate;
+    }
+  }
+
+  return `line-${lineIndex}`;
+}
+
+function preparePromptList(prompts: string[]): string[] {
+  const normalized = prompts.map((prompt) => prompt.replace(/\s+/g, " ").trim()).filter((prompt) => prompt.length > 0);
+
+  const recent = normalized.length > 5 ? normalized.slice(-5) : normalized;
+
+  return recent.map((prompt) => truncatePrompt(prompt, 60));
+}
+
+function truncatePrompt(prompt: string, maxLength: number): string {
+  if (prompt.length <= maxLength) {
+    return prompt;
+  }
+
+  if (maxLength <= 3) {
+    return "...".slice(0, maxLength);
+  }
+
+  return `${prompt.slice(0, maxLength - 3)}...`;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isFileNotFound(error: unknown): boolean {
+  return (
+    typeof error === "object" && error !== null && "code" in error && (error as NodeJS.ErrnoException).code === "ENOENT"
+  );
+}
+
+interface UserPromptEntry {
+  id: string;
+  prompt: string;
 }
