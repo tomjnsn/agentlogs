@@ -84,15 +84,15 @@ function TranscriptDetailComponent() {
             </Avatar>
             <div>
               <h2 className="text-2xl font-bold tracking-tight">Transcript</h2>
-              <p className="text-muted-foreground text-sm">{data.userName || "Unknown User"}</p>
+              <p className="text-sm text-muted-foreground">{data.userName || "Unknown User"}</p>
             </div>
           </div>
-          <div className="text-muted-foreground text-sm">
+          <div className="text-sm text-muted-foreground">
             {unifiedTranscript.messageCount} messages • ${unifiedTranscript.costUsd.toFixed(4)}
           </div>
         </div>
-        {unifiedTranscript.preview && <p className="text-muted-foreground text-sm">{unifiedTranscript.preview}</p>}
-        <div className="text-muted-foreground flex gap-4 text-sm">
+        {unifiedTranscript.preview && <p className="text-sm text-muted-foreground">{unifiedTranscript.preview}</p>}
+        <div className="flex gap-4 text-sm text-muted-foreground">
           <div>
             <span className="font-medium">Conversation:</span> {new Date(data.createdAt).toLocaleString()}
           </div>
@@ -125,7 +125,7 @@ function TranscriptDetailComponent() {
                   {antiPatterns.map((antiPattern, index) => (
                     <li key={index} className="flex items-start gap-2">
                       <Badge variant={severityVariantMap[antiPattern.severity]}>{antiPattern.severity}</Badge>
-                      <span className="text-muted-foreground text-sm">{antiPattern.description}</span>
+                      <span className="text-sm text-muted-foreground">{antiPattern.description}</span>
                     </li>
                   ))}
                 </ul>
@@ -137,7 +137,7 @@ function TranscriptDetailComponent() {
                 <h4 className="font-medium">Recommendations</h4>
                 <ul className="list-inside list-disc space-y-1">
                   {recommendations.map((recommendation, index) => (
-                    <li key={index} className="text-muted-foreground text-sm">
+                    <li key={index} className="text-sm text-muted-foreground">
                       {recommendation}
                     </li>
                   ))}
@@ -211,13 +211,13 @@ function MessageCard({ message, index }: { message: UnifiedTranscriptMessage; in
             <div className="flex items-center gap-2">
               <button
                 onClick={copyLink}
-                className="text-muted-foreground hover:text-foreground cursor-pointer text-xs opacity-0 transition-opacity hover:opacity-100 group-hover:opacity-100"
+                className="cursor-pointer text-xs text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground hover:opacity-100"
                 title="Copy link to this message"
               >
                 {copied ? "✓ Copied!" : "🔗"}
               </button>
               {message.timestamp && (
-                <span className="text-muted-foreground text-xs">
+                <span className="text-xs text-muted-foreground">
                   {new Date(message.timestamp).toLocaleTimeString()}
                 </span>
               )}
@@ -225,11 +225,11 @@ function MessageCard({ message, index }: { message: UnifiedTranscriptMessage; in
           </div>
 
           {message.type === "user" && (
-            <pre className="bg-background/50 whitespace-pre-wrap rounded border p-3 text-sm">{message.text}</pre>
+            <pre className="rounded border bg-background/50 p-3 text-sm whitespace-pre-wrap">{message.text}</pre>
           )}
 
           {message.type === "agent" && (
-            <div className="bg-background/50 whitespace-pre-wrap rounded border p-3 text-sm">{message.text}</div>
+            <div className="rounded border bg-background/50 p-3 text-sm whitespace-pre-wrap">{message.text}</div>
           )}
         </CardContent>
       </Card>
@@ -242,7 +242,7 @@ function MessageCard({ message, index }: { message: UnifiedTranscriptMessage; in
       <CardContent className="pt-6">
         <Collapsible defaultOpen={false}>
           <CollapsibleTrigger asChild>
-            <div className="hover:bg-accent/50 -m-2 mb-3 flex w-full cursor-pointer items-center justify-between rounded p-2">
+            <div className="-m-2 mb-3 flex w-full cursor-pointer items-center justify-between rounded p-2 hover:bg-accent/50">
               <div className="flex items-center gap-2">
                 <Badge variant="outline">
                   #{index + 1} {message.type}
@@ -257,20 +257,20 @@ function MessageCard({ message, index }: { message: UnifiedTranscriptMessage; in
 
                 {/* Show preview for collapsed thinking blocks */}
                 {message.type === "thinking" && (
-                  <span className="text-muted-foreground text-sm">{message.text.slice(0, 60)}...</span>
+                  <span className="text-sm text-muted-foreground">{message.text.slice(0, 60)}...</span>
                 )}
               </div>
 
               <div className="flex items-center gap-2">
                 <button
                   onClick={copyLink}
-                  className="text-muted-foreground hover:text-foreground cursor-pointer text-xs opacity-0 transition-opacity hover:opacity-100 group-hover:opacity-100"
+                  className="cursor-pointer text-xs text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground hover:opacity-100"
                   title="Copy link to this message"
                 >
                   {copied ? "✓ Copied!" : "🔗"}
                 </button>
                 {message.timestamp && (
-                  <span className="text-muted-foreground text-xs">
+                  <span className="text-xs text-muted-foreground">
                     {new Date(message.timestamp).toLocaleTimeString()}
                   </span>
                 )}
@@ -280,7 +280,7 @@ function MessageCard({ message, index }: { message: UnifiedTranscriptMessage; in
 
           <CollapsibleContent className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0">
             {message.type === "thinking" && (
-              <div className="bg-background/50 text-muted-foreground whitespace-pre-wrap rounded border p-3 text-sm italic">
+              <div className="rounded border bg-background/50 p-3 text-sm whitespace-pre-wrap text-muted-foreground italic">
                 {message.text}
               </div>
             )}
@@ -297,22 +297,22 @@ function MessageCard({ message, index }: { message: UnifiedTranscriptMessage; in
                 </div>
                 {message.input && (
                   <div className="mb-2">
-                    <div className="text-muted-foreground mb-1 text-xs font-semibold">Input:</div>
-                    <pre className="bg-background/50 overflow-x-auto whitespace-pre-wrap rounded border p-3 text-xs">
+                    <div className="mb-1 text-xs font-semibold text-muted-foreground">Input:</div>
+                    <pre className="overflow-x-auto rounded border bg-background/50 p-3 text-xs whitespace-pre-wrap">
                       {JSON.stringify(message.input, null, 2)}
                     </pre>
                   </div>
                 )}
                 {message.output && (
                   <div>
-                    <div className="text-muted-foreground mb-1 text-xs font-semibold">Output:</div>
-                    <pre className="bg-background/50 overflow-x-auto whitespace-pre-wrap rounded border p-3 text-xs">
+                    <div className="mb-1 text-xs font-semibold text-muted-foreground">Output:</div>
+                    <pre className="overflow-x-auto rounded border bg-background/50 p-3 text-xs whitespace-pre-wrap">
                       {JSON.stringify(message.output, null, 2)}
                     </pre>
                   </div>
                 )}
                 {message.error && (
-                  <div className="text-destructive bg-background/50 mt-2 rounded border p-3 text-sm">
+                  <div className="mt-2 rounded border bg-background/50 p-3 text-sm text-destructive">
                     Error: {message.error}
                   </div>
                 )}

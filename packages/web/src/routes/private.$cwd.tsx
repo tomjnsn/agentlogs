@@ -79,7 +79,7 @@ function PrivateDetailComponent() {
                   <TableCell>
                     <Badge variant="outline">{formatSource(transcript.source)}</Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground max-w-md truncate">
+                  <TableCell className="max-w-md truncate text-muted-foreground">
                     {transcript.preview || "No preview"}
                   </TableCell>
                   <TableCell>{transcript.messageCount ?? "N/A"}</TableCell>

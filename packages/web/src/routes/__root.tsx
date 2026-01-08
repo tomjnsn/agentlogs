@@ -85,24 +85,24 @@ function AppContent() {
   };
 
   return (
-    <div className="bg-background min-h-screen">
-      <header className="border-border bg-card border-b px-6 py-4">
+    <div className="min-h-screen bg-background">
+      <header className="border-b border-border bg-card px-6 py-4">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold">
-            <Link to="/" className="hover:text-primary transition-colors">
+            <Link to="/" className="transition-colors hover:text-primary">
               Vibe Insights
             </Link>
           </h1>
 
           <div className="flex items-center gap-4">
             {isSigningIn ? (
-              <div className="text-muted-foreground flex items-center gap-2 text-sm">
-                <div className="border-border border-t-primary h-4 w-4 animate-spin rounded-full border-2"></div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-border border-t-primary"></div>
                 <span>Redirecting to GitHub...</span>
               </div>
             ) : session ? (
               <>
-                <span className="text-foreground text-sm">{session.user.email || session.user.name}</span>
+                <span className="text-sm text-foreground">{session.user.email || session.user.name}</span>
                 <Button onClick={handleSignOut} variant="outline" size="sm">
                   Sign Out
                 </Button>
@@ -127,9 +127,9 @@ function NotFoundComponent() {
     <RootDocument>
       <main className="container mx-auto px-6 py-8">
         <div className="flex flex-col items-center justify-center py-16">
-          <h1 className="text-foreground mb-4 text-4xl font-bold">404</h1>
-          <p className="text-muted-foreground mb-8 text-lg">Page not found</p>
-          <Link to="/" className="text-primary font-medium underline underline-offset-4">
+          <h1 className="mb-4 text-4xl font-bold text-foreground">404</h1>
+          <p className="mb-8 text-lg text-muted-foreground">Page not found</p>
+          <Link to="/" className="font-medium text-primary underline underline-offset-4">
             Go back home
           </Link>
         </div>

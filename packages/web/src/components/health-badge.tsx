@@ -6,7 +6,7 @@ interface HealthBadgeProps {
 
 export function HealthBadge({ score }: HealthBadgeProps) {
   if (score === null) {
-    return <span className="text-muted-foreground text-sm">N/A</span>;
+    return <span className="text-sm text-muted-foreground">N/A</span>;
   }
 
   const variant = score >= 80 ? "default" : score >= 50 ? "secondary" : "destructive";

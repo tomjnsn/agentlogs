@@ -77,19 +77,19 @@ export async function pretoolHookCommand(): Promise<void> {
     // Output the proper Claude Code hook response format
     // See: https://code.claude.com/docs/en/hooks (Advanced: JSON Output)
     // Must use hookSpecificOutput wrapper with permissionDecision (not decision)
-    const output = modified 
-      ? { 
+    const output = modified
+      ? {
           hookSpecificOutput: {
             hookEventName: "PreToolUse",
             permissionDecision: "allow",
-            updatedInput: hookInput.tool_input
-          }
+            updatedInput: hookInput.tool_input,
+          },
         }
-      : { 
+      : {
           hookSpecificOutput: {
-            hookEventName: "PreToolUse", 
-            permissionDecision: "allow"
-          }
+            hookEventName: "PreToolUse",
+            permissionDecision: "allow",
+          },
         };
     process.stdout.write(JSON.stringify(output));
 
@@ -170,7 +170,7 @@ export function appendTranscriptLink(command: string, sessionId: string): string
   const suffix = `\n\n${linkText}`;
 
   const patterns = [
-    { regex: /(\s(?:-m|--message|-am))\s+"([^"]*)"/, quote: "\"" },
+    { regex: /(\s(?:-m|--message|-am))\s+"([^"]*)"/, quote: '"' },
     { regex: /(\s(?:-m|--message|-am))\s+'([^']*)'/, quote: "'" },
   ];
 
@@ -198,17 +198,10 @@ export function getRepoPath(hookInput: PreToolHookInput): string {
   return "";
 }
 
-async function trackCommit(payload: {
-  sessionId: string;
-  repoPath: string;
-  timestamp: string;
-}): Promise<void> {
+async function trackCommit(payload: { sessionId: string; repoPath: string; timestamp: string }): Promise<void> {
   const config = readConfig();
   const serverUrl =
-    process.env.VI_SERVER_URL ??
-    process.env.VIBEINSIGHTS_BASE_URL ??
-    config.baseURL ??
-    "http://localhost:3000";
+    process.env.VI_SERVER_URL ?? process.env.VIBEINSIGHTS_BASE_URL ?? config.baseURL ?? "http://localhost:3000";
 
   const authToken = getToken();
   if (!authToken) {
@@ -223,7 +216,7 @@ async function trackCommit(payload: {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${authToken}`,
+        Authorization: `Bearer ${authToken}`,
       },
       body: JSON.stringify({
         session_id: payload.sessionId,

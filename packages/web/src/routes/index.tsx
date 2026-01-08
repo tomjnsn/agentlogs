@@ -112,7 +112,7 @@ function IndexComponent() {
                         <TableCell>
                           <div>
                             <div className="font-medium">{repo.repo}</div>
-                            <div className="text-muted-foreground text-sm">{repo.id}</div>
+                            <div className="text-sm text-muted-foreground">{repo.id}</div>
                           </div>
                         </TableCell>
                         <TableCell>{repo.transcriptCount}</TableCell>

@@ -1,18 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import {
-  appendTranscriptLink,
-  containsGitCommit,
-  extractCommand,
-  getRepoPath,
-} from "./pretool-hook";
+import { appendTranscriptLink, containsGitCommit, extractCommand, getRepoPath } from "./pretool-hook";
 
 describe("containsGitCommit", () => {
   test("detects git commit invocations", () => {
-    const matches = [
-      "git commit -m \"feat: test\"",
-      "git    commit -am \"message\"",
-      "echo ok && git commit --amend",
-    ];
+    const matches = ['git commit -m "feat: test"', 'git    commit -am "message"', "echo ok && git commit --amend"];
 
     for (const command of matches) {
       expect(containsGitCommit(command)).toBe(true);
@@ -20,12 +11,7 @@ describe("containsGitCommit", () => {
   });
 
   test("rejects non-commit commands", () => {
-    const misses = [
-      "git status",
-      "git commits -m \"message\"",
-      "gitcommit -m \"message\"",
-      "commit git -m \"message\"",
-    ];
+    const misses = ["git status", 'git commits -m "message"', 'gitcommit -m "message"', 'commit git -m "message"'];
 
     for (const command of misses) {
       expect(containsGitCommit(command)).toBe(false);
@@ -37,8 +23,8 @@ describe("appendTranscriptLink", () => {
   const sessionId = "abc123";
   const link = `🔮 View transcript: https://vibeinsights.dev/s/${sessionId}`;
 
-  test("adds link to -m \"message\" commits", () => {
-    const command = "git commit -m \"Initial commit\"";
+  test('adds link to -m "message" commits', () => {
+    const command = 'git commit -m "Initial commit"';
     const expected = `git commit -m "Initial commit\n\n${link}"`;
     expect(appendTranscriptLink(command, sessionId)).toBe(expected);
   });
@@ -49,8 +35,8 @@ describe("appendTranscriptLink", () => {
     expect(appendTranscriptLink(command, sessionId)).toBe(expected);
   });
 
-  test("adds link to --message \"message\" commits", () => {
-    const command = "git commit --message \"Initial commit\"";
+  test('adds link to --message "message" commits', () => {
+    const command = 'git commit --message "Initial commit"';
     const expected = `git commit --message "Initial commit\n\n${link}"`;
     expect(appendTranscriptLink(command, sessionId)).toBe(expected);
   });
@@ -72,8 +58,8 @@ describe("extractCommand", () => {
     const { command, updateCommand } = extractCommand(hookInput);
 
     expect(command).toBe("git status");
-    updateCommand("git commit -m \"hi\"");
-    expect(hookInput.tool_input.command).toBe("git commit -m \"hi\"");
+    updateCommand('git commit -m "hi"');
+    expect(hookInput.tool_input.command).toBe('git commit -m "hi"');
   });
 
   test("extracts command from top-level command and updates it", () => {
