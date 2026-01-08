@@ -62,11 +62,13 @@ function TranscriptDetailComponent() {
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <Button variant="ghost" size="sm" asChild>
-          <Link to="/repos/$id" params={{ id: data.repoId }}>
-            ← Back to Repository
-          </Link>
-        </Button>
+        {data.repoId && (
+          <Button variant="ghost" size="sm" asChild>
+            <Link to="/repos/$id" params={{ id: data.repoId }}>
+              ← Back to Repository
+            </Link>
+          </Button>
+        )}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Avatar className="h-10 w-10">
