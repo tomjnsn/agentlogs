@@ -1,7 +1,9 @@
 import { dirname, resolve } from "path";
 import { fileURLToPath } from "url";
 import { createLogger } from "@vibeinsights/shared/logger";
+import type { UploadOptions } from "@vibeinsights/shared/upload";
 import { getToken, readConfig } from "../config";
+import { performUpload } from "../lib/perform-upload";
 
 // Create logger for CLI hook commands with explicit log path
 // Use the file's location to find the monorepo root, not the working directory
@@ -19,6 +21,7 @@ const logger = createLogger("cli", { logFilePath: logPath, logToFile: true, disa
 
 interface PreToolHookInput {
   session_id?: string;
+  transcript_path?: string;
   cwd?: string;
   hook_event_name?: string;
   tool_name?: string;
@@ -94,6 +97,11 @@ export async function pretoolHookCommand(): Promise<void> {
     process.stdout.write(JSON.stringify(output));
 
     if (shouldTrack) {
+      await uploadPartialTranscript({
+        sessionId,
+        transcriptPath: hookInput.transcript_path,
+        cwd: typeof hookInput.cwd === "string" ? hookInput.cwd : undefined,
+      });
       await trackCommit({
         sessionId,
         repoPath: getRepoPath(hookInput),
@@ -239,6 +247,63 @@ async function trackCommit(payload: { sessionId: string; repoPath: string; times
     });
   } catch (error) {
     logger.error("Commit tracking request error", {
+      sessionId: payload.sessionId.substring(0, 8),
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
+async function uploadPartialTranscript(payload: {
+  sessionId: string;
+  transcriptPath?: string;
+  cwd?: string;
+}): Promise<void> {
+  if (!payload.transcriptPath) {
+    logger.warn("Commit tracking transcript upload skipped: missing transcript_path", {
+      sessionId: payload.sessionId.substring(0, 8),
+    });
+    return;
+  }
+
+  const config = readConfig();
+  const serverUrl =
+    process.env.VI_SERVER_URL ?? process.env.VIBEINSIGHTS_BASE_URL ?? config.baseURL ?? "http://localhost:3000";
+
+  const authToken = getToken();
+  if (!authToken) {
+    logger.warn("Commit tracking transcript upload skipped: no auth token. Run 'vibeinsights login' first.", {
+      sessionId: payload.sessionId.substring(0, 8),
+    });
+    return;
+  }
+
+  const options: UploadOptions = {};
+  if (serverUrl) options.serverUrl = serverUrl;
+  options.authToken = authToken;
+
+  try {
+    const result = await performUpload(
+      {
+        transcriptPath: payload.transcriptPath,
+        sessionId: payload.sessionId,
+        cwdOverride: payload.cwd,
+      },
+      options,
+    );
+
+    if (result.success) {
+      logger.info("Commit tracking: uploaded partial transcript", {
+        transcriptId: result.transcriptId,
+        sessionId: payload.sessionId.substring(0, 8),
+        eventCount: result.eventCount,
+      });
+    } else {
+      logger.error("Commit tracking: transcript upload failed", {
+        sessionId: payload.sessionId.substring(0, 8),
+      });
+    }
+  } catch (error) {
+    logger.error("Commit tracking: transcript upload error", {
       sessionId: payload.sessionId.substring(0, 8),
       error: error instanceof Error ? error.message : String(error),
     });

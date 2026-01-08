@@ -72,6 +72,19 @@ export async function getTranscript(db: DrizzleDB, userId: string, id: string) {
 }
 
 /**
+ * Get a transcript by its session/transcript ID for a user.
+ */
+export async function getTranscriptByTranscriptId(db: DrizzleDB, userId: string, transcriptId: string) {
+  return await db.query.transcripts.findFirst({
+    columns: {
+      id: true,
+      transcriptId: true,
+    },
+    where: and(eq(transcripts.transcriptId, transcriptId), eq(transcripts.userId, userId)),
+  });
+}
+
+/**
  * Get unanalyzed transcripts
  */
 export async function getUnanalyzedTranscripts(db: DrizzleDB, limit: number = 100) {

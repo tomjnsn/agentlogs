@@ -188,3 +188,20 @@ export const getTranscript = createServerFn({ method: "GET" })
         : null,
     };
   });
+
+/**
+ * Server function to fetch a transcript ID by session/transcript ID.
+ */
+export const getTranscriptBySessionId = createServerFn({ method: "GET" })
+  .inputValidator((sessionId: string) => sessionId)
+  .handler(async ({ data: sessionId }) => {
+    const db = createDrizzle(env.DB);
+    const userId = await getAuthenticatedUserId();
+    const transcript = await queries.getTranscriptByTranscriptId(db, userId, sessionId);
+
+    if (!transcript) {
+      throw new Error("Transcript not found");
+    }
+
+    return transcript;
+  });

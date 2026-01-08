@@ -13,6 +13,7 @@ import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as DeviceRouteImport } from './routes/device'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TranscriptsIdRouteImport } from './routes/transcripts.$id'
+import { Route as SSessionIdRouteImport } from './routes/s.$sessionId'
 import { Route as ReposIdRouteImport } from './routes/repos.$id'
 import { Route as PrivateCwdRouteImport } from './routes/private.$cwd'
 import { Route as ApiTranscriptsRouteImport } from './routes/api/transcripts'
@@ -39,6 +40,11 @@ const IndexRoute = IndexRouteImport.update({
 const TranscriptsIdRoute = TranscriptsIdRouteImport.update({
   id: '/transcripts/$id',
   path: '/transcripts/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SSessionIdRoute = SSessionIdRouteImport.update({
+  id: '/s/$sessionId',
+  path: '/s/$sessionId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReposIdRoute = ReposIdRouteImport.update({
@@ -86,6 +92,7 @@ export interface FileRoutesByFullPath {
   '/api/transcripts': typeof ApiTranscriptsRouteWithChildren
   '/private/$cwd': typeof PrivateCwdRoute
   '/repos/$id': typeof ReposIdRoute
+  '/s/$sessionId': typeof SSessionIdRoute
   '/transcripts/$id': typeof TranscriptsIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/transcripts/clear': typeof ApiTranscriptsClearRoute
@@ -99,6 +106,7 @@ export interface FileRoutesByTo {
   '/api/transcripts': typeof ApiTranscriptsRouteWithChildren
   '/private/$cwd': typeof PrivateCwdRoute
   '/repos/$id': typeof ReposIdRoute
+  '/s/$sessionId': typeof SSessionIdRoute
   '/transcripts/$id': typeof TranscriptsIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/transcripts/clear': typeof ApiTranscriptsClearRoute
@@ -113,6 +121,7 @@ export interface FileRoutesById {
   '/api/transcripts': typeof ApiTranscriptsRouteWithChildren
   '/private/$cwd': typeof PrivateCwdRoute
   '/repos/$id': typeof ReposIdRoute
+  '/s/$sessionId': typeof SSessionIdRoute
   '/transcripts/$id': typeof TranscriptsIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/transcripts/clear': typeof ApiTranscriptsClearRoute
@@ -128,6 +137,7 @@ export interface FileRouteTypes {
     | '/api/transcripts'
     | '/private/$cwd'
     | '/repos/$id'
+    | '/s/$sessionId'
     | '/transcripts/$id'
     | '/api/auth/$'
     | '/api/transcripts/clear'
@@ -141,6 +151,7 @@ export interface FileRouteTypes {
     | '/api/transcripts'
     | '/private/$cwd'
     | '/repos/$id'
+    | '/s/$sessionId'
     | '/transcripts/$id'
     | '/api/auth/$'
     | '/api/transcripts/clear'
@@ -154,6 +165,7 @@ export interface FileRouteTypes {
     | '/api/transcripts'
     | '/private/$cwd'
     | '/repos/$id'
+    | '/s/$sessionId'
     | '/transcripts/$id'
     | '/api/auth/$'
     | '/api/transcripts/clear'
@@ -168,6 +180,7 @@ export interface RootRouteChildren {
   ApiTranscriptsRoute: typeof ApiTranscriptsRouteWithChildren
   PrivateCwdRoute: typeof PrivateCwdRoute
   ReposIdRoute: typeof ReposIdRoute
+  SSessionIdRoute: typeof SSessionIdRoute
   TranscriptsIdRoute: typeof TranscriptsIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
@@ -200,6 +213,13 @@ declare module '@tanstack/react-router' {
       path: '/transcripts/$id'
       fullPath: '/transcripts/$id'
       preLoaderRoute: typeof TranscriptsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/s/$sessionId': {
+      id: '/s/$sessionId'
+      path: '/s/$sessionId'
+      fullPath: '/s/$sessionId'
+      preLoaderRoute: typeof SSessionIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/repos/$id': {
@@ -275,6 +295,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiTranscriptsRoute: ApiTranscriptsRouteWithChildren,
   PrivateCwdRoute: PrivateCwdRoute,
   ReposIdRoute: ReposIdRoute,
+  SSessionIdRoute: SSessionIdRoute,
   TranscriptsIdRoute: TranscriptsIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
