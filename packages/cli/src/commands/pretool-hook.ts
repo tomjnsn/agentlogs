@@ -339,32 +339,22 @@ async function collectCommitPrompts(payload: { sessionId: string; transcriptPath
     return [];
   }
 
-  const entries = await readUserPrompts(payload.transcriptPath, payload.sessionId);
+  const entries = await readTranscriptEntries(payload.transcriptPath, payload.sessionId);
   if (entries.length === 0) {
     return [];
   }
 
-  const lastCommitId = await readLastCommitMarker(payload.sessionId);
-  const startIndex = lastCommitId ? entries.findIndex((entry) => entry.id === lastCommitId) + 1 : 0;
-  const newEntries = startIndex > 0 ? entries.slice(startIndex) : entries;
-  const prompts = newEntries.map((entry) => entry.prompt);
-
-  const lastUserMessageId = entries[entries.length - 1]?.id;
-  if (lastUserMessageId) {
-    await writeLastCommitMarker(payload.sessionId, lastUserMessageId);
-  }
-
-  return prompts;
+  return getPromptsSinceLastCommit(entries);
 }
 
-async function readUserPrompts(transcriptPath: string, sessionId: string): Promise<UserPromptEntry[]> {
+async function readTranscriptEntries(transcriptPath: string, sessionId: string): Promise<TranscriptEntry[]> {
   try {
     const rawContent = await fs.readFile(transcriptPath, "utf8");
     const lines = rawContent.split(/\r?\n/);
-    const entries: UserPromptEntry[] = [];
+    const entries: TranscriptEntry[] = [];
     let invalidLines = 0;
 
-    for (const [index, rawLine] of lines.entries()) {
+    for (const rawLine of lines) {
       const line = rawLine.trim();
       if (!line) continue;
 
@@ -375,19 +365,11 @@ async function readUserPrompts(transcriptPath: string, sessionId: string): Promi
           continue;
         }
 
-        if (parsed.type !== "user") {
+        if (typeof parsed.type !== "string") {
           continue;
         }
 
-        const prompt = extractPromptText(parsed);
-        if (!prompt) {
-          continue;
-        }
-
-        entries.push({
-          id: getUserMessageId(parsed, index),
-          prompt,
-        });
+        entries.push(parsed as TranscriptEntry);
       } catch {
         invalidLines += 1;
       }
@@ -410,41 +392,51 @@ async function readUserPrompts(transcriptPath: string, sessionId: string): Promi
   }
 }
 
-async function readLastCommitMarker(sessionId: string): Promise<string | null> {
-  const markerPath = getLastCommitMarkerPath(sessionId);
-  try {
-    const content = await fs.readFile(markerPath, "utf8");
-    const trimmed = content.trim();
-    return trimmed.length > 0 ? trimmed : null;
-  } catch (error) {
-    if (isFileNotFound(error)) {
-      return null;
+export function findLastGitCommitIndex(entries: TranscriptEntry[]): number {
+  for (let index = entries.length - 1; index >= 0; index -= 1) {
+    const entry = entries[index];
+    if (entry.type !== "tool-call") {
+      continue;
     }
-    logger.warn("Commit prompts: failed to read commit marker", {
-      sessionId: sessionId.substring(0, 8),
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return null;
+
+    const toolName = typeof entry.toolName === "string" ? entry.toolName : null;
+    if (!toolName || toolName.toLowerCase() !== "bash") {
+      continue;
+    }
+
+    const command = extractToolCommand(entry.input);
+    if (command && containsGitCommit(command)) {
+      return index;
+    }
   }
+
+  return -1;
 }
 
-async function writeLastCommitMarker(sessionId: string, lastUserMessageId: string): Promise<void> {
-  const markerPath = getLastCommitMarkerPath(sessionId);
-  try {
-    await fs.writeFile(markerPath, `${lastUserMessageId}\n`, "utf8");
-  } catch (error) {
-    logger.warn("Commit prompts: failed to write commit marker", {
-      sessionId: sessionId.substring(0, 8),
-      error: error instanceof Error ? error.message : String(error),
-    });
-  }
-}
+export function getPromptsSinceLastCommit(entries: TranscriptEntry[]): string[] {
+  const startIndex = findLastGitCommitIndex(entries);
+  const prompts: string[] = [];
+  const start = startIndex >= 0 ? startIndex + 1 : 0;
 
-function getLastCommitMarkerPath(sessionId: string): string {
-  return `/tmp/vibeinsights-lastcommit-${sessionId}.txt`;
+  for (let index = start; index < entries.length; index += 1) {
+    const entry = entries[index];
+    if (entry.type !== "user") {
+      continue;
+    }
+    const prompt = extractPromptText(entry);
+    if (prompt) {
+      prompts.push(prompt);
+    }
+  }
+
+  return prompts;
 }
 
 function extractPromptText(record: Record<string, unknown>): string | null {
+  if (typeof record.text === "string") {
+    return record.text;
+  }
+
   const message = record.message;
   const messageContent = extractContentText(message);
   if (messageContent) {
@@ -491,15 +483,31 @@ function extractContentText(content: unknown): string | null {
   return null;
 }
 
-function getUserMessageId(record: Record<string, unknown>, lineIndex: number): string {
-  const candidates = [record.uuid, record.messageId, record.id, isRecord(record.message) ? record.message.id : null];
-  for (const candidate of candidates) {
-    if (typeof candidate === "string" && candidate.length > 0) {
-      return candidate;
-    }
+function extractToolCommand(input: unknown): string | null {
+  if (!isRecord(input)) {
+    return null;
   }
 
-  return `line-${lineIndex}`;
+  const directCommand = input.command;
+  if (typeof directCommand === "string") {
+    return directCommand;
+  }
+
+  if (Array.isArray(directCommand)) {
+    const commandEntry = directCommand[2];
+    if (typeof commandEntry === "string") {
+      return commandEntry;
+    }
+    const joined = directCommand.filter((part) => typeof part === "string").join(" ");
+    return joined.length > 0 ? joined : null;
+  }
+
+  const fallbackCommand = input.cmd;
+  if (typeof fallbackCommand === "string") {
+    return fallbackCommand;
+  }
+
+  return null;
 }
 
 function preparePromptList(prompts: string[]): string[] {
@@ -526,13 +534,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function isFileNotFound(error: unknown): boolean {
-  return (
-    typeof error === "object" && error !== null && "code" in error && (error as NodeJS.ErrnoException).code === "ENOENT"
-  );
-}
-
-interface UserPromptEntry {
-  id: string;
-  prompt: string;
+interface TranscriptEntry extends Record<string, unknown> {
+  type: string;
+  toolName?: unknown;
+  input?: unknown;
 }

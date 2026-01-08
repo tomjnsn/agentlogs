@@ -1,5 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { appendTranscriptLink, containsGitCommit, extractCommand, getRepoPath } from "./pretool-hook";
+import {
+  appendTranscriptLink,
+  containsGitCommit,
+  extractCommand,
+  findLastGitCommitIndex,
+  getPromptsSinceLastCommit,
+  getRepoPath,
+} from "./pretool-hook";
 
 describe("containsGitCommit", () => {
   test("detects git commit invocations", () => {
@@ -127,5 +134,56 @@ describe("getRepoPath", () => {
   test("returns empty string when no path provided", () => {
     const hookInput = {};
     expect(getRepoPath(hookInput)).toBe("");
+  });
+});
+
+describe("findLastGitCommitIndex", () => {
+  test("returns last bash git commit index", () => {
+    const entries = [
+      { type: "user", text: "first" },
+      { type: "tool-call", toolName: "Bash", input: { command: "git status" } },
+      { type: "user", text: "second" },
+      { type: "tool-call", toolName: "Bash", input: { command: 'git commit -m "feat"' } },
+      { type: "user", text: "third" },
+      { type: "tool-call", toolName: "Bash", input: { command: ["bash", "-lc", 'git commit -m "fix"'] } },
+      { type: "user", text: "fourth" },
+    ];
+
+    expect(findLastGitCommitIndex(entries)).toBe(5);
+  });
+
+  test("returns -1 when no commit is found", () => {
+    const entries = [
+      { type: "tool-call", toolName: "Bash", input: { command: "git status" } },
+      { type: "user", text: "no commit yet" },
+    ];
+
+    expect(findLastGitCommitIndex(entries)).toBe(-1);
+  });
+});
+
+describe("getPromptsSinceLastCommit", () => {
+  test("returns prompts after last commit", () => {
+    const entries = [
+      { type: "user", text: "first" },
+      { type: "tool-call", toolName: "Bash", input: { command: "git status" } },
+      { type: "user", text: "second" },
+      { type: "tool-call", toolName: "Bash", input: { command: 'git commit -m "feat"' } },
+      { type: "user", text: "third" },
+      { type: "tool-call", toolName: "Bash", input: { command: 'git commit -m "fix"' } },
+      { type: "user", text: "fourth" },
+    ];
+
+    expect(getPromptsSinceLastCommit(entries)).toEqual(["fourth"]);
+  });
+
+  test("returns all prompts when no commit exists", () => {
+    const entries = [
+      { type: "user", text: "first" },
+      { type: "tool-call", toolName: "Bash", input: { command: "git status" } },
+      { type: "user", text: "second" },
+    ];
+
+    expect(getPromptsSinceLastCommit(entries)).toEqual(["first", "second"]);
   });
 });
