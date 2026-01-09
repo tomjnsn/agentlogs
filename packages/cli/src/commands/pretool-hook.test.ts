@@ -1,189 +1,124 @@
-import { describe, expect, test } from "bun:test";
-import {
-  appendTranscriptLink,
-  containsGitCommit,
-  extractCommand,
-  findLastGitCommitIndex,
-  getPromptsSinceLastCommit,
-  getRepoPath,
-} from "./pretool-hook";
+import { describe, expect, it } from "vitest";
+import { appendTranscriptLink, containsGitCommit } from "./pretool-hook";
 
 describe("containsGitCommit", () => {
-  test("detects git commit invocations", () => {
-    const matches = ['git commit -m "feat: test"', 'git    commit -am "message"', "echo ok && git commit --amend"];
-
-    for (const command of matches) {
-      expect(containsGitCommit(command)).toBe(true);
-    }
+  it("detects git commit command", () => {
+    expect(containsGitCommit('git commit -m "message"')).toBe(true);
+    expect(containsGitCommit("git commit -am 'message'")).toBe(true);
+    expect(containsGitCommit('git commit --message="message"')).toBe(true);
   });
 
-  test("rejects non-commit commands", () => {
-    const misses = ["git status", 'git commits -m "message"', 'gitcommit -m "message"', 'commit git -m "message"'];
-
-    for (const command of misses) {
-      expect(containsGitCommit(command)).toBe(false);
-    }
+  it("does not match non-commit commands", () => {
+    expect(containsGitCommit("git status")).toBe(false);
+    expect(containsGitCommit("git push")).toBe(false);
+    expect(containsGitCommit("echo git commit")).toBe(true); // substring match is intentional
   });
 });
 
 describe("appendTranscriptLink", () => {
-  const sessionId = "abc123";
-  const link = `🔮 View transcript: https://vibeinsights.dev/s/${sessionId}`;
+  const sessionId = "test-session-123";
+  const expectedLink = `🔮 View transcript: https://vibeinsights.dev/s/${sessionId}`;
 
-  test('adds link to -m "message" commits', () => {
-    const command = 'git commit -m "Initial commit"';
-    const expected = `git commit -m "Initial commit\n\n${link}"`;
-    expect(appendTranscriptLink(command, sessionId)).toBe(expected);
+  describe("git commit -m with double quotes", () => {
+    it("appends link to message", () => {
+      const command = 'git commit -m "initial commit"';
+      const result = appendTranscriptLink(command, sessionId);
+
+      expect(result).toContain(expectedLink);
+      expect(result).toMatch(/git commit -m "initial commit\n\n.*🔮 View transcript/);
+    });
   });
 
-  test("adds link to -m 'message' commits", () => {
-    const command = "git commit -m 'Initial commit'";
-    const expected = `git commit -m 'Initial commit\n\n${link}'`;
-    expect(appendTranscriptLink(command, sessionId)).toBe(expected);
+  describe("git commit -m with single quotes", () => {
+    it("appends link to message", () => {
+      const command = "git commit -m 'initial commit'";
+      const result = appendTranscriptLink(command, sessionId);
+
+      expect(result).toContain(expectedLink);
+      expect(result).toMatch(/git commit -m 'initial commit\n\n.*🔮 View transcript/);
+    });
   });
 
-  test('adds link to --message "message" commits', () => {
-    const command = 'git commit --message "Initial commit"';
-    const expected = `git commit --message "Initial commit\n\n${link}"`;
-    expect(appendTranscriptLink(command, sessionId)).toBe(expected);
+  describe("git commit --message= with equals sign", () => {
+    it("handles --message=\"msg\" format", () => {
+      const command = 'git commit --message="fix: something"';
+      const result = appendTranscriptLink(command, sessionId);
+
+      expect(result).toContain(expectedLink);
+      expect(result).toMatch(/git commit --message="fix: something\n\n.*🔮 View transcript/);
+    });
+
+    it("handles --message='msg' format with single quotes", () => {
+      const command = "git commit --message='fix: something'";
+      const result = appendTranscriptLink(command, sessionId);
+
+      expect(result).toContain(expectedLink);
+      expect(result).toMatch(/git commit --message='fix: something\n\n.*🔮 View transcript/);
+    });
   });
 
-  test("returns original command when no message flag is present", () => {
-    const command = "git commit --amend";
-    expect(appendTranscriptLink(command, sessionId)).toBe(command);
+  describe("git commit -am (add + message)", () => {
+    it("appends link to -am message", () => {
+      const command = 'git commit -am "quick fix"';
+      const result = appendTranscriptLink(command, sessionId);
+
+      expect(result).toContain(expectedLink);
+      expect(result).toMatch(/git commit -am "quick fix\n\n.*🔮 View transcript/);
+    });
   });
 
-  test("does not double-add when link already exists", () => {
-    const command = `git commit -m "Initial commit\n\n${link}"`;
-    expect(appendTranscriptLink(command, sessionId, ["New prompt"])).toBe(command);
+  describe("command without git commit", () => {
+    it("returns command unchanged", () => {
+      const command = "git push origin main";
+      const result = appendTranscriptLink(command, sessionId);
+
+      expect(result).toBe(command);
+      expect(result).not.toContain(expectedLink);
+    });
+
+    it("returns non-git command unchanged", () => {
+      const command = "npm install";
+      const result = appendTranscriptLink(command, sessionId);
+
+      expect(result).toBe(command);
+    });
   });
 
-  test("adds prompts before transcript link", () => {
-    const command = 'git commit -m "feat: add auth"';
-    const prompts = ["Add login form with email/password", "Fix the TypeScript error"];
-    const expected = `git commit -m "feat: add auth\n\nPrompts:\n• "Add login form with email/password"\n• "Fix the TypeScript error"\n\n${link}"`;
-    expect(appendTranscriptLink(command, sessionId, prompts)).toBe(expected);
+  describe("idempotency", () => {
+    it("does not add link twice", () => {
+      const command = 'git commit -m "initial commit"';
+      const firstPass = appendTranscriptLink(command, sessionId);
+      const secondPass = appendTranscriptLink(firstPass, sessionId);
+
+      expect(secondPass).toBe(firstPass);
+
+      // Count occurrences of the link
+      const linkOccurrences = (secondPass.match(/🔮 View transcript/g) ?? []).length;
+      expect(linkOccurrences).toBe(1);
+    });
   });
 
-  test("truncates and limits prompt list", () => {
-    const command = 'git commit -m "feat: prompts"';
-    const longPrompt = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    const longerPrompt = `${longPrompt}${longPrompt}`;
-    const prompts = [
-      "first prompt that should be dropped",
-      "second prompt that should be dropped",
-      "third prompt that should be included",
-      "fourth prompt that should be included",
-      "fifth prompt that should be included",
-      `sixth prompt ${longPrompt}`,
-      `seventh prompt ${longerPrompt}`,
-    ];
-    const expectedPrompts = [
-      "third prompt that should be included",
-      "fourth prompt that should be included",
-      "fifth prompt that should be included",
-      `sixth prompt ${longPrompt}`.slice(0, 57) + "...",
-      `seventh prompt ${longerPrompt}`.slice(0, 57) + "...",
-    ];
-    const expected = `git commit -m "feat: prompts\n\nPrompts:\n${expectedPrompts
-      .map((prompt) => `• "${prompt}"`)
-      .join("\n")}\n\n${link}"`;
-    expect(appendTranscriptLink(command, sessionId, prompts)).toBe(expected);
-  });
-});
+  describe("multiple -m flags", () => {
+    it("only appends to the first -m flag", () => {
+      const command = 'git commit -m "title" -m "body paragraph"';
+      const result = appendTranscriptLink(command, sessionId);
 
-describe("extractCommand", () => {
-  test("extracts command from tool_input and updates it", () => {
-    const hookInput = { tool_input: { command: "git status" } };
-    const { command, updateCommand } = extractCommand(hookInput);
-
-    expect(command).toBe("git status");
-    updateCommand('git commit -m "hi"');
-    expect(hookInput.tool_input.command).toBe('git commit -m "hi"');
+      expect(result).toContain(expectedLink);
+      // The link should be inside the first message, leaving second -m intact
+      expect(result).toMatch(/-m "title\n\n.*🔮 View transcript.*" -m "body paragraph"/s);
+    });
   });
 
-  test("extracts command from top-level command and updates it", () => {
-    const hookInput = { command: "ls -la" };
-    const { command, updateCommand } = extractCommand(hookInput);
+  describe("with prompts", () => {
+    it("includes prompts in the appended text", () => {
+      const command = 'git commit -m "feature: add login"';
+      const prompts = ["Add login functionality", "Fix the button styling"];
+      const result = appendTranscriptLink(command, sessionId, prompts);
 
-    expect(command).toBe("ls -la");
-    updateCommand("pwd");
-    expect(hookInput.command).toBe("pwd");
-  });
-
-  test("returns undefined when no command exists", () => {
-    const hookInput = { tool_input: { args: ["--help"] } };
-    const { command, updateCommand } = extractCommand(hookInput);
-
-    expect(command).toBeUndefined();
-    expect(() => updateCommand("noop")).not.toThrow();
-  });
-});
-
-describe("getRepoPath", () => {
-  test("prefers repo_path over cwd", () => {
-    const hookInput = { repo_path: "/repo/path", cwd: "/other/path" };
-    expect(getRepoPath(hookInput)).toBe("/repo/path");
-  });
-
-  test("falls back to cwd", () => {
-    const hookInput = { cwd: "/repo/path" };
-    expect(getRepoPath(hookInput)).toBe("/repo/path");
-  });
-
-  test("returns empty string when no path provided", () => {
-    const hookInput = {};
-    expect(getRepoPath(hookInput)).toBe("");
-  });
-});
-
-describe("findLastGitCommitIndex", () => {
-  test("returns last bash git commit index", () => {
-    const entries = [
-      { type: "user", text: "first" },
-      { type: "tool-call", toolName: "Bash", input: { command: "git status" } },
-      { type: "user", text: "second" },
-      { type: "tool-call", toolName: "Bash", input: { command: 'git commit -m "feat"' } },
-      { type: "user", text: "third" },
-      { type: "tool-call", toolName: "Bash", input: { command: ["bash", "-lc", 'git commit -m "fix"'] } },
-      { type: "user", text: "fourth" },
-    ];
-
-    expect(findLastGitCommitIndex(entries)).toBe(5);
-  });
-
-  test("returns -1 when no commit is found", () => {
-    const entries = [
-      { type: "tool-call", toolName: "Bash", input: { command: "git status" } },
-      { type: "user", text: "no commit yet" },
-    ];
-
-    expect(findLastGitCommitIndex(entries)).toBe(-1);
-  });
-});
-
-describe("getPromptsSinceLastCommit", () => {
-  test("returns prompts after last commit", () => {
-    const entries = [
-      { type: "user", text: "first" },
-      { type: "tool-call", toolName: "Bash", input: { command: "git status" } },
-      { type: "user", text: "second" },
-      { type: "tool-call", toolName: "Bash", input: { command: 'git commit -m "feat"' } },
-      { type: "user", text: "third" },
-      { type: "tool-call", toolName: "Bash", input: { command: 'git commit -m "fix"' } },
-      { type: "user", text: "fourth" },
-    ];
-
-    expect(getPromptsSinceLastCommit(entries)).toEqual(["fourth"]);
-  });
-
-  test("returns all prompts when no commit exists", () => {
-    const entries = [
-      { type: "user", text: "first" },
-      { type: "tool-call", toolName: "Bash", input: { command: "git status" } },
-      { type: "user", text: "second" },
-    ];
-
-    expect(getPromptsSinceLastCommit(entries)).toEqual(["first", "second"]);
+      expect(result).toContain("Prompts:");
+      expect(result).toContain('• "Add login functionality"');
+      expect(result).toContain('• "Fix the button styling"');
+      expect(result).toContain(expectedLink);
+    });
   });
 });

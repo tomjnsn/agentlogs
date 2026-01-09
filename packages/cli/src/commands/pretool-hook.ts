@@ -186,16 +186,27 @@ export function appendTranscriptLink(command: string, sessionId: string, prompts
     : "";
   const suffix = promptsSection ? `\n\n${promptsSection}\n\n${linkText}` : `\n\n${linkText}`;
 
+  // Patterns for different git commit message formats
+  // Order matters: check equals-sign form first, then space-separated
+  // Only match the FIRST occurrence to handle multiple -m flags
   const patterns = [
-    { regex: /(\s(?:-m|--message|-am))\s+"([^"]*)"/, quote: '"' },
-    { regex: /(\s(?:-m|--message|-am))\s+'([^']*)'/, quote: "'" },
+    // --message="msg" or --message='msg' (equals sign form)
+    { regex: /(\s--message=)"([^"]*)"/, quote: '"', equalsForm: true },
+    { regex: /(\s--message=)'([^']*)'/, quote: "'", equalsForm: true },
+    // -m "msg", --message "msg", -am "msg" (space-separated form)
+    { regex: /(\s(?:-m|--message|-am))\s+"([^"]*)"/, quote: '"', equalsForm: false },
+    { regex: /(\s(?:-m|--message|-am))\s+'([^']*)'/, quote: "'", equalsForm: false },
   ];
 
-  for (const { regex, quote } of patterns) {
+  for (const { regex, quote, equalsForm } of patterns) {
     const match = command.match(regex);
     if (match) {
       const flag = match[1];
       const message = match[2];
+      // Only replace the first match (handles multiple -m flags)
+      if (equalsForm) {
+        return command.replace(regex, `${flag}${quote}${message}${suffix}${quote}`);
+      }
       return command.replace(regex, `${flag} ${quote}${message}${suffix}${quote}`);
     }
   }
@@ -229,6 +240,10 @@ async function trackCommit(payload: { sessionId: string; repoPath: string; times
   }
 
   try {
+    // 5 second timeout for commit tracking - fail silently if it takes too long
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
     const response = await fetch(new URL("/api/commit-track", serverUrl), {
       method: "POST",
       headers: {
@@ -240,7 +255,10 @@ async function trackCommit(payload: { sessionId: string; repoPath: string; times
         repo_path: payload.repoPath,
         timestamp: payload.timestamp,
       }),
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       logger.warn("Commit tracking request failed", {
@@ -255,6 +273,13 @@ async function trackCommit(payload: { sessionId: string; repoPath: string; times
       repoPath: payload.repoPath,
     });
   } catch (error) {
+    // Check if it was a timeout (AbortError)
+    if (error instanceof Error && error.name === "AbortError") {
+      logger.warn("Commit tracking request timed out after 5s", {
+        sessionId: payload.sessionId.substring(0, 8),
+      });
+      return;
+    }
     logger.error("Commit tracking request error", {
       sessionId: payload.sessionId.substring(0, 8),
       error: error instanceof Error ? error.message : String(error),
