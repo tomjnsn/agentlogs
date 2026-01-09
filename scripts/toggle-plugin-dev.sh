@@ -18,15 +18,19 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 CLI_PATH="bun $REPO_ROOT/packages/cli/src/index.ts"
 
-# Detect shell
-if [ -n "$ZSH_VERSION" ]; then
-  SHELL_RC="$HOME/.zshrc"
-elif [ -n "$BASH_VERSION" ]; then
-  SHELL_RC="$HOME/.bashrc"
-else
-  echo "⚠️  Unsupported shell (only bash and zsh are supported)"
-  exit 1
-fi
+# Detect user's shell (from $SHELL, not the script interpreter)
+case "$SHELL" in
+  */zsh)
+    SHELL_RC="$HOME/.zshrc"
+    ;;
+  */bash)
+    SHELL_RC="$HOME/.bashrc"
+    ;;
+  *)
+    echo "⚠️  Unsupported shell (only bash and zsh are supported)"
+    exit 1
+    ;;
+esac
 
 # Check current mode and toggle
 if [ -n "$VI_CLI_PATH" ]; then
