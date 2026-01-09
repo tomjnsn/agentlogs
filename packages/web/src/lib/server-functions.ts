@@ -99,7 +99,6 @@ export const getTranscriptsByRepo = createServerFn()
       preview: t.preview,
       createdAt: t.createdAt,
       updatedAt: t.updatedAt,
-      analyzed: t.analyzed,
       messageCount: t.messageCount,
       costUsd: t.costUsd,
       userName: t.userName,
@@ -126,7 +125,6 @@ export const getTranscriptsByCwd = createServerFn()
       preview: t.preview,
       createdAt: t.createdAt,
       updatedAt: t.updatedAt,
-      analyzed: t.analyzed,
       messageCount: t.messageCount,
       costUsd: t.costUsd,
       cwd: t.cwd,
@@ -136,7 +134,7 @@ export const getTranscriptsByCwd = createServerFn()
   });
 
 /**
- * Server function to fetch a single transcript with analysis
+ * Server function to fetch a single transcript
  */
 export const getTranscript = createServerFn({ method: "GET" })
   .inputValidator((id: string) => id)
@@ -175,17 +173,9 @@ export const getTranscript = createServerFn({ method: "GET" })
       preview: transcript.preview,
       createdAt: transcript.createdAt,
       updatedAt: transcript.updatedAt,
-      analyzed: transcript.analyzed,
       unifiedTranscript,
       userName: transcript.user?.name,
       userImage: transcript.user?.image,
-      analysis: transcript.analysis
-        ? {
-            ...transcript.analysis,
-            antiPatterns: JSON.parse(transcript.analysis.antiPatterns),
-            recommendations: JSON.parse(transcript.analysis.recommendations),
-          }
-        : null,
     };
   });
 

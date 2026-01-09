@@ -131,7 +131,6 @@ export const transcripts = sqliteTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
 
-    analyzed: integer("analyzed", { mode: "boolean" }).default(false).notNull(),
     sha256: text("sha256").notNull(),
     transcriptId: text("transcript_id").notNull(),
     source: text("source").notNull(),
@@ -166,22 +165,6 @@ export const transcripts = sqliteTable(
     userIdx: index("idx_user_id").on(table.userId),
   }),
 );
-
-export const analysis = sqliteTable("analysis", {
-  transcriptId: text("transcript_id")
-    .primaryKey()
-    .references(() => transcripts.id, { onDelete: "cascade" }),
-  retryCount: integer("retry_count").notNull(),
-  errorCount: integer("error_count").notNull(),
-  toolFailureRate: real("tool_failure_rate").notNull(),
-  contextOverflows: integer("context_overflows").notNull(),
-  healthScore: integer("health_score").notNull(),
-  antiPatterns: text("anti_patterns").notNull(), // JSON
-  recommendations: text("recommendations").notNull(), // JSON
-  analyzedAt: integer("analyzed_at", { mode: "timestamp" })
-    .notNull()
-    .$defaultFn(() => new Date()),
-});
 
 export const commitTracking = sqliteTable("commit_tracking", {
   id: text("id")
@@ -234,9 +217,5 @@ export const transcriptsRelations = relations(transcripts, ({ one }) => ({
   repo: one(repos, {
     fields: [transcripts.repoId],
     references: [repos.id],
-  }),
-  analysis: one(analysis, {
-    fields: [transcripts.id],
-    references: [analysis.transcriptId],
   }),
 }));

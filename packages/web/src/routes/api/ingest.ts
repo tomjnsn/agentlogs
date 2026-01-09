@@ -5,8 +5,7 @@ import type { TranscriptSource } from "@vibeinsights/shared";
 import { unifiedTranscriptSchema } from "@vibeinsights/shared/schemas";
 import { env } from "cloudflare:workers";
 import { and, eq } from "drizzle-orm";
-import { analysis, repos, transcripts } from "../../db/schema";
-import { analyzeTranscript } from "../../lib/analyzer";
+import { repos, transcripts } from "../../db/schema";
 import { createAuth } from "../../lib/auth";
 import { logger } from "../../lib/logger";
 
@@ -212,7 +211,7 @@ export const Route = createFileRoute("/api/ingest")({
         };
 
         // Insert or update transcript
-        const transcriptRecord = await db
+        await db
           .insert(transcripts)
           .values({
             repoId: repoDbId,
@@ -229,55 +228,7 @@ export const Route = createFileRoute("/api/ingest")({
               repoId: repoDbId,
               ...metadata,
             },
-          })
-          .returning({ id: transcripts.id });
-
-        const transcriptDbId = transcriptRecord[0].id;
-
-        // Analyze transcript
-        const analysisResult = analyzeTranscript(unifiedTranscript);
-        logger.debug("Ingest analysis complete", {
-          transcriptId,
-          metrics: analysisResult.metrics,
-          healthScore: analysisResult.healthScore,
-          antiPatterns: analysisResult.antiPatterns,
-          recommendations: analysisResult.recommendations,
-        });
-
-        // Insert or update analysis
-        await db
-          .insert(analysis)
-          .values({
-            transcriptId: transcriptDbId,
-            retryCount: analysisResult.metrics.retries,
-            errorCount: analysisResult.metrics.errors,
-            toolFailureRate:
-              analysisResult.metrics.toolCalls > 0
-                ? analysisResult.metrics.errors / analysisResult.metrics.toolCalls
-                : 0,
-            contextOverflows: analysisResult.metrics.contextOverflows,
-            healthScore: analysisResult.healthScore,
-            antiPatterns: JSON.stringify(analysisResult.antiPatterns),
-            recommendations: JSON.stringify(analysisResult.recommendations),
-          })
-          .onConflictDoUpdate({
-            target: analysis.transcriptId,
-            set: {
-              retryCount: analysisResult.metrics.retries,
-              errorCount: analysisResult.metrics.errors,
-              toolFailureRate:
-                analysisResult.metrics.toolCalls > 0
-                  ? analysisResult.metrics.errors / analysisResult.metrics.toolCalls
-                  : 0,
-              contextOverflows: analysisResult.metrics.contextOverflows,
-              healthScore: analysisResult.healthScore,
-              antiPatterns: JSON.stringify(analysisResult.antiPatterns),
-              recommendations: JSON.stringify(analysisResult.recommendations),
-            },
           });
-
-        // Mark transcript as analyzed
-        await db.update(transcripts).set({ analyzed: true }).where(eq(transcripts.id, transcriptDbId));
 
         // Upload to R2
         const r2Bucket = env.BUCKET;

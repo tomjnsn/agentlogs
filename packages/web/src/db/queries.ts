@@ -1,6 +1,6 @@
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import type { DrizzleDB } from ".";
-import { analysis, repos, transcripts, user } from "./schema";
+import { repos, transcripts, user } from "./schema";
 
 /**
  * Get all repos for a user with computed transcript count
@@ -29,7 +29,6 @@ export async function getTranscriptsByRepo(db: DrizzleDB, userId: string, repoId
       id: transcripts.id,
       repoId: transcripts.repoId,
       userId: transcripts.userId,
-      analyzed: transcripts.analyzed,
       sha256: transcripts.sha256,
       transcriptId: transcripts.transcriptId,
       source: transcripts.source,
@@ -58,13 +57,12 @@ export async function getTranscriptsByRepo(db: DrizzleDB, userId: string, repoId
 }
 
 /**
- * Get a single transcript with its analysis and repo (using relations)
+ * Get a single transcript with its repo (using relations)
  */
 export async function getTranscript(db: DrizzleDB, userId: string, id: string) {
   return await db.query.transcripts.findFirst({
     where: and(eq(transcripts.id, id), eq(transcripts.userId, userId)),
     with: {
-      analysis: true,
       repo: true,
       user: true,
     },
@@ -81,52 +79,6 @@ export async function getTranscriptByTranscriptId(db: DrizzleDB, userId: string,
       transcriptId: true,
     },
     where: and(eq(transcripts.transcriptId, transcriptId), eq(transcripts.userId, userId)),
-  });
-}
-
-/**
- * Get unanalyzed transcripts
- */
-export async function getUnanalyzedTranscripts(db: DrizzleDB, limit: number = 100) {
-  return await db.select().from(transcripts).where(eq(transcripts.analyzed, false)).limit(limit);
-}
-
-/**
- * Insert analysis for a transcript
- */
-export async function insertAnalysis(
-  db: DrizzleDB,
-  transcriptId: string,
-  retryCount: number,
-  errorCount: number,
-  toolFailureRate: number,
-  contextOverflows: number,
-  healthScore: number,
-  antiPatterns: string,
-  recommendations: string,
-) {
-  // Use transaction to ensure atomicity
-  await db.batch([
-    db.insert(analysis).values({
-      transcriptId,
-      retryCount,
-      errorCount,
-      toolFailureRate,
-      contextOverflows,
-      healthScore,
-      antiPatterns,
-      recommendations,
-    }),
-    db.update(transcripts).set({ analyzed: true }).where(eq(transcripts.id, transcriptId)),
-  ]);
-}
-
-/**
- * Get analysis for a transcript
- */
-export async function getAnalysis(db: DrizzleDB, transcriptId: string) {
-  return await db.query.analysis.findFirst({
-    where: eq(analysis.transcriptId, transcriptId),
   });
 }
 
@@ -156,7 +108,6 @@ export async function getTranscriptsByCwd(db: DrizzleDB, userId: string, cwd: st
       id: transcripts.id,
       repoId: transcripts.repoId,
       userId: transcripts.userId,
-      analyzed: transcripts.analyzed,
       sha256: transcripts.sha256,
       transcriptId: transcripts.transcriptId,
       source: transcripts.source,

@@ -1,8 +1,7 @@
-import { StatCard } from "@/components/stat-card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge, type BadgeProps } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -17,22 +16,8 @@ export const Route = createFileRoute("/transcripts/$id")({
   component: TranscriptDetailComponent,
 });
 
-type AntiPattern = {
-  severity: "low" | "medium" | "high";
-  description: string;
-  type?: string;
-};
-
 function TranscriptDetailComponent() {
   const data = Route.useLoaderData();
-  const analysis = data.analysis;
-  const antiPatterns = (analysis?.antiPatterns ?? []) as AntiPattern[];
-  const recommendations = (analysis?.recommendations ?? []) as string[];
-  const severityVariantMap: Record<AntiPattern["severity"], BadgeProps["variant"]> = {
-    high: "destructive",
-    medium: "secondary",
-    low: "outline",
-  };
 
   // Parse and validate the unified transcript
   const unifiedTranscript = unifiedTranscriptSchema.parse(data.unifiedTranscript);
@@ -106,49 +91,6 @@ function TranscriptDetailComponent() {
           </div>
         </div>
       </div>
-
-      {analysis && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Analysis</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
-              <StatCard label="Health Score" value={`${analysis.healthScore}%`} />
-              <StatCard label="Retries" value={analysis.retryCount} />
-              <StatCard label="Errors" value={analysis.errorCount} />
-              <StatCard label="Failure Rate" value={`${(analysis.toolFailureRate * 100).toFixed(1)}%`} />
-            </div>
-
-            {antiPatterns.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="font-medium">Anti-Patterns</h4>
-                <ul className="space-y-2">
-                  {antiPatterns.map((antiPattern, index) => (
-                    <li key={index} className="flex items-start gap-2">
-                      <Badge variant={severityVariantMap[antiPattern.severity]}>{antiPattern.severity}</Badge>
-                      <span className="text-sm text-muted-foreground">{antiPattern.description}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {recommendations.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="font-medium">Recommendations</h4>
-                <ul className="list-inside list-disc space-y-1">
-                  {recommendations.map((recommendation, index) => (
-                    <li key={index} className="text-sm text-muted-foreground">
-                      {recommendation}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
 
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Messages</h3>

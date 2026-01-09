@@ -21,24 +21,3 @@ export interface TranscriptMetadata {
   sha256: string;
   repoId: string | null;
 }
-
-// Analysis Results
-
-export interface AnalysisResult {
-  transcriptId: string;
-  metrics: {
-    totalEvents: number;
-    toolCalls: number;
-    errors: number;
-    retries: number;
-    contextOverflows: number;
-    duration: number;
-  };
-  antiPatterns: Array<{
-    type: string;
-    description: string;
-    severity: "low" | "medium" | "high";
-  }>;
-  recommendations: string[];
-  healthScore: number;
-}
