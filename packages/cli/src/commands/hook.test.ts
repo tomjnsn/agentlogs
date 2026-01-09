@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { appendTranscriptLink, containsGitCommit } from "./pretool-hook";
+import { appendTranscriptLink, containsGitCommit } from "./hook";
 
 describe("containsGitCommit", () => {
   it("detects git commit command", () => {

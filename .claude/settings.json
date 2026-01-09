@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "VI_SERVER_URL=http://localhost:3000 bun vibeinsights claudecode pretool-hook"
+            "command": "VI_SERVER_URL=http://localhost:3000 bun vibeinsights claudecode hook"
           }
         ]
       }
