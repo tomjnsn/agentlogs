@@ -1,4 +1,5 @@
 import { promises as fs } from "fs";
+import { convertClaudeCodeTranscript, type UnifiedTranscriptMessage } from "@vibeinsights/shared/claudecode";
 import { createLogger } from "@vibeinsights/shared/logger";
 import { getDevLogPath } from "@vibeinsights/shared/paths";
 import type { UploadOptions } from "@vibeinsights/shared/upload";
@@ -494,7 +495,13 @@ async function collectCommitPrompts(payload: { sessionId: string; transcriptPath
     return [];
   }
 
-  return getPromptsSinceLastCommit(entries);
+  // Use the shared transcript parser which properly filters out tool results from user messages
+  const transcript = convertClaudeCodeTranscript(entries);
+  if (!transcript || transcript.messages.length === 0) {
+    return [];
+  }
+
+  return getPromptsSinceLastCommit(transcript.messages);
 }
 
 async function readTranscriptEntries(transcriptPath: string, sessionId: string): Promise<TranscriptEntry[]> {
@@ -542,19 +549,19 @@ async function readTranscriptEntries(transcriptPath: string, sessionId: string):
   }
 }
 
-export function findLastGitCommitIndex(entries: TranscriptEntry[]): number {
-  for (let index = entries.length - 1; index >= 0; index -= 1) {
-    const entry = entries[index];
-    if (entry.type !== "tool-call") {
+export function findLastGitCommitIndex(messages: UnifiedTranscriptMessage[]): number {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (message.type !== "tool-call") {
       continue;
     }
 
-    const toolName = typeof entry.toolName === "string" ? entry.toolName : null;
+    const toolName = message.toolName;
     if (!toolName || toolName.toLowerCase() !== "bash") {
       continue;
     }
 
-    const command = extractToolCommand(entry.input);
+    const command = extractToolCommand(message.input);
     if (command && containsGitCommit(command)) {
       return index;
     }
@@ -563,74 +570,24 @@ export function findLastGitCommitIndex(entries: TranscriptEntry[]): number {
   return -1;
 }
 
-export function getPromptsSinceLastCommit(entries: TranscriptEntry[]): string[] {
-  const startIndex = findLastGitCommitIndex(entries);
+export function getPromptsSinceLastCommit(messages: UnifiedTranscriptMessage[]): string[] {
+  const startIndex = findLastGitCommitIndex(messages);
   const prompts: string[] = [];
   const start = startIndex >= 0 ? startIndex + 1 : 0;
 
-  for (let index = start; index < entries.length; index += 1) {
-    const entry = entries[index];
-    if (entry.type !== "user") {
+  for (let index = start; index < messages.length; index += 1) {
+    const message = messages[index];
+    // The unified transcript already filters user messages to exclude tool results
+    if (message.type !== "user") {
       continue;
     }
-    const prompt = extractPromptText(entry);
-    if (prompt) {
-      prompts.push(prompt);
+    // User messages in unified transcript have text directly available
+    if (message.text) {
+      prompts.push(message.text);
     }
   }
 
   return prompts;
-}
-
-function extractPromptText(record: Record<string, unknown>): string | null {
-  if (typeof record.text === "string") {
-    return record.text;
-  }
-
-  const message = record.message;
-  const messageContent = extractContentText(message);
-  if (messageContent) {
-    return messageContent;
-  }
-
-  const directContent = extractContentText(record.content);
-  if (directContent) {
-    return directContent;
-  }
-
-  return null;
-}
-
-function extractContentText(content: unknown): string | null {
-  if (typeof content === "string") {
-    return content;
-  }
-
-  if (isRecord(content)) {
-    const innerContent = extractContentText(content.content);
-    if (innerContent) {
-      return innerContent;
-    }
-  }
-
-  if (Array.isArray(content)) {
-    const parts = content
-      .map((item) => {
-        if (typeof item === "string") return item;
-        if (isRecord(item)) {
-          const text = extractContentText(item.text ?? item.content);
-          return text ?? "";
-        }
-        return "";
-      })
-      .filter((part) => part.length > 0);
-
-    if (parts.length > 0) {
-      return parts.join("");
-    }
-  }
-
-  return null;
 }
 
 function extractToolCommand(input: unknown): string | null {
