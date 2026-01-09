@@ -4,6 +4,7 @@
 - `bun run lint` in the workspace root for linting
 - `bun run format` in the workspace root for formatting
 - `bun run typecheck` in the workspace root for running TypeScript checks
+- `bun vibeinsights` to run the CLI tool
 
 ## Code Style
 
