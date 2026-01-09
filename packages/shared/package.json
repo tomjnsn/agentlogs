@@ -12,6 +12,7 @@
     "./schemas": "./src/schemas.ts",
     "./logger": "./src/logger.ts",
     "./upload": "./src/upload.ts",
+    "./paths": "./src/paths.ts",
     "./claudecode": "./src/claudecode.ts",
     "./codex": "./src/codex.ts",
     "./pricing": "./src/pricing.ts"

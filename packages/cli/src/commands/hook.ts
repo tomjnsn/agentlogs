@@ -1,22 +1,12 @@
 import { promises as fs } from "fs";
-import { dirname, resolve } from "path";
-import { fileURLToPath } from "url";
 import { createLogger } from "@vibeinsights/shared/logger";
+import { getDevLogPath } from "@vibeinsights/shared/paths";
 import type { UploadOptions } from "@vibeinsights/shared/upload";
 import { getToken, readConfig } from "../config";
 import { performUpload } from "../lib/perform-upload";
 
-// Create logger for CLI hook commands with explicit log path
-// Use the file's location to find the monorepo root, not the working directory
-// File location: /agentic-engineering-insights/packages/cli/src/commands/hook.ts
-// Target: /agentic-engineering-insights/logs/dev.log
-// Relative path: ../../../../logs/dev.log
-function getDevLogPath(): string {
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = dirname(__filename);
-  return resolve(__dirname, "../../../../logs/dev.log");
-}
-
+// Create logger for CLI hook commands
+// Uses shared getDevLogPath() which finds the monorepo root by looking for package.json with workspaces
 const logPath = getDevLogPath();
 const logger = createLogger("cli", { logFilePath: logPath, logToFile: true, disableConsole: true });
 
@@ -670,12 +660,18 @@ function extractToolCommand(input: unknown): string | null {
   return null;
 }
 
+export function escapeShellChars(text: string): string {
+  // Escape characters that could break shell parsing when embedded in a quoted string
+  // Backticks, $, and backslashes are the main culprits
+  return text.replace(/[`$\\]/g, "\\$&");
+}
+
 function preparePromptList(prompts: string[]): string[] {
   const normalized = prompts.map((prompt) => prompt.replace(/\s+/g, " ").trim()).filter((prompt) => prompt.length > 0);
 
   const recent = normalized.length > 5 ? normalized.slice(-5) : normalized;
 
-  return recent.map((prompt) => truncatePrompt(prompt, 60));
+  return recent.map((prompt) => escapeShellChars(truncatePrompt(prompt, 60)));
 }
 
 function truncatePrompt(prompt: string, maxLength: number): string {
