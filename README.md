@@ -170,10 +170,6 @@ All data scoped by `userId` for multi-tenant isolation.
 **Auth issues**: Verify callback URL and clear cookies
 **Build errors**: `bun install && bun run typecheck`
 
-## Fun Fact
-
-Why do programmers prefer dark mode? Because light attracts bugs.
-
 ## License
 
 MIT
