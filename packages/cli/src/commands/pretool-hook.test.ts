@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { appendTranscriptLink, containsGitCommit } from "./pretool-hook";
 
 describe("containsGitCommit", () => {
@@ -40,7 +40,7 @@ describe("appendTranscriptLink", () => {
   });
 
   describe("git commit --message= with equals sign", () => {
-    it("handles --message=\"msg\" format", () => {
+    it('handles --message="msg" format', () => {
       const command = 'git commit --message="fix: something"';
       const result = appendTranscriptLink(command, sessionId);
 
