@@ -16,3 +16,8 @@
 - Use `tail -f logs/dev.log` to monitor logs in real-time
 - For logger architecture details, see `packages/shared/README.md`
 - Always use the project-specific logger module when adding logs (do not use `console.log`)
+
+## Commits
+
+- Use conventional commits (feat|fix|refactor|build|ci|chore|docs|style|perf|test).
+- Do atomic and small commits.
