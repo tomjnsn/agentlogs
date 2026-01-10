@@ -44,22 +44,12 @@ const toolCallMessageSchema = z.object({
   model: z.string().optional(),
 });
 
-const imageMessageSchema = z.object({
-  type: z.literal("image"),
-  mediaType: z.string(),
-  data: z.string().optional(),
-  id: z.string().optional(),
-  timestamp: z.string().optional(),
-  model: z.string().optional(),
-});
-
 export const unifiedTranscriptMessageSchema = z.discriminatedUnion("type", [
   userMessageSchema,
   compactionSummaryMessageSchema,
   agentMessageSchema,
   thinkingMessageSchema,
   toolCallMessageSchema,
-  imageMessageSchema,
 ]);
 
 export const unifiedTokenUsageSchema = z.object({

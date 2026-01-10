@@ -1,6 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import type {
+  ConversionResult,
+  TranscriptBlob,
   UnifiedGitContext,
   UnifiedModelUsage,
   UnifiedTokenUsage,
@@ -82,7 +84,7 @@ const IGNORED_USER_PREFIXES = ["<user_instructions", "<environment_context"];
 export function convertCodexTranscript(
   events: Array<Record<string, unknown>>,
   options: ConvertCodexOptions = {},
-): UnifiedTranscript | null {
+): ConversionResult | null {
   const parsedEvents = normalizeEvents(events);
   if (parsedEvents.length === 0) {
     return null;
@@ -361,7 +363,7 @@ export function convertCodexTranscript(
     messages,
   });
 
-  return transcript;
+  return { transcript, blobs: new Map() };
 }
 
 /**
@@ -370,7 +372,7 @@ export function convertCodexTranscript(
 export async function convertCodexFile(
   filePath: string,
   options: ConvertCodexOptions = {},
-): Promise<UnifiedTranscript | null> {
+): Promise<ConversionResult | null> {
   const content = await fs.readFile(filePath, "utf8");
   const events: Array<Record<string, unknown>> = [];
 
@@ -396,15 +398,15 @@ export async function convertCodexFile(
 export async function convertCodexFiles(
   filePaths: string[],
   options: ConvertCodexOptions = {},
-): Promise<UnifiedTranscript[]> {
-  const transcripts: UnifiedTranscript[] = [];
+): Promise<ConversionResult[]> {
+  const results: ConversionResult[] = [];
   for (const filePath of filePaths) {
-    const transcript = await convertCodexFile(filePath, options);
-    if (transcript) {
-      transcripts.push(transcript);
+    const result = await convertCodexFile(filePath, options);
+    if (result) {
+      results.push(result);
     }
   }
-  return transcripts;
+  return results;
 }
 
 function normalizeEvents(events: Array<Record<string, unknown>>): CodexEvent[] {

@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { z } from "zod";
@@ -18,6 +19,16 @@ export type UnifiedTokenUsage = z.infer<typeof unifiedTokenUsageSchema>;
 
 export type UnifiedModelUsage = z.infer<typeof unifiedModelUsageSchema>;
 export type UnifiedGitContext = z.infer<typeof unifiedGitContextSchema>;
+
+export type TranscriptBlob = {
+  data: Buffer;
+  mediaType: string;
+};
+
+export type ConversionResult = {
+  transcript: UnifiedTranscript;
+  blobs: Map<string, TranscriptBlob>;
+};
 
 export type ConvertClaudeCodeOptions = {
   pricing?: Record<string, LiteLLMModelPricing>;
@@ -144,7 +155,7 @@ const MAX_SUMMARY_LINES = 3;
 export function convertClaudeCodeTranscript(
   transcript: Array<Record<string, unknown>>,
   options: ConvertClaudeCodeOptions = {},
-): UnifiedTranscript | null {
+): ConversionResult | null {
   const parseResult = parseClaudeTranscript(transcript);
   if (parseResult.records.size === 0) {
     return null;
@@ -188,7 +199,7 @@ export function convertClaudeCodeTranscript(
   const gitContext = extractGitContextFromRecords(transcriptChain);
   const cwd = deriveWorkingDirectory(transcriptChain);
   const formattedCwd = cwd ? formatCwdWithTilde(cwd) : "";
-  const messages = convertTranscriptToMessages(transcriptChain);
+  const { messages, blobs } = convertTranscriptToMessages(transcriptChain);
 
   const transcriptCandidate = {
     v: 1 as const,
@@ -207,13 +218,16 @@ export function convertClaudeCodeTranscript(
     messages,
   };
 
-  return unifiedTranscriptSchema.parse(transcriptCandidate);
+  return {
+    transcript: unifiedTranscriptSchema.parse(transcriptCandidate),
+    blobs,
+  };
 }
 
 export async function convertClaudeCodeFile(
   filePath: string,
   options: ConvertClaudeCodeOptions = {},
-): Promise<UnifiedTranscript | null> {
+): Promise<ConversionResult | null> {
   const parseResult = await parseClaudeJsonl(filePath);
   if (parseResult.records.size === 0) {
     return null;
@@ -257,7 +271,7 @@ export async function convertClaudeCodeFile(
   const formattedCwd = cwd ? formatCwdWithTilde(cwd) : "";
   const gitContext =
     options.gitContext !== undefined ? options.gitContext : await resolveGitContext(cwd, leaf.gitBranch);
-  const messages = convertTranscriptToMessages(transcriptChain);
+  const { messages, blobs } = convertTranscriptToMessages(transcriptChain);
 
   const transcriptCandidate = {
     v: 1 as const,
@@ -276,18 +290,21 @@ export async function convertClaudeCodeFile(
     messages,
   };
 
-  return unifiedTranscriptSchema.parse(transcriptCandidate);
+  return {
+    transcript: unifiedTranscriptSchema.parse(transcriptCandidate),
+    blobs,
+  };
 }
 
 export async function convertClaudeCodeFiles(
   filePaths: string[],
   options: ConvertClaudeCodeOptions = {},
-): Promise<UnifiedTranscript[]> {
-  const results: UnifiedTranscript[] = [];
+): Promise<ConversionResult[]> {
+  const results: ConversionResult[] = [];
   for (const filePath of filePaths) {
-    const transcript = await convertClaudeCodeFile(filePath, options);
-    if (transcript) {
-      results.push(transcript);
+    const result = await convertClaudeCodeFile(filePath, options);
+    if (result) {
+      results.push(result);
     }
   }
   return results;
@@ -1074,6 +1091,68 @@ function asNonEmptyString(value: unknown): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
+function computeSha256(data: Buffer): string {
+  return crypto.createHash("sha256").update(data).digest("hex");
+}
+
+/**
+ * Recursively sanitize images in a value, replacing base64 data with sha256 references.
+ * Extracts blobs and adds them to the provided map.
+ */
+function sanitizeImagesInValue(value: unknown, blobs: Map<string, TranscriptBlob>): unknown {
+  if (value === null || value === undefined) {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeImagesInValue(item, blobs));
+  }
+
+  if (typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+
+    // Check if this is an image object with source.data
+    if (obj.type === "image" && obj.source && typeof obj.source === "object") {
+      const source = obj.source as Record<string, unknown>;
+      if (typeof source.data === "string" && source.data.length > 0) {
+        const base64Data = source.data;
+        const mediaType =
+          typeof source.mediaType === "string"
+            ? source.mediaType
+            : typeof source.media_type === "string"
+              ? source.media_type
+              : "image/unknown";
+
+        const data = Buffer.from(base64Data, "base64");
+        const sha256 = computeSha256(data);
+
+        if (!blobs.has(sha256)) {
+          blobs.set(sha256, { data, mediaType });
+        }
+
+        // Return sanitized image with sha256 reference instead of data
+        return {
+          type: "image",
+          source: {
+            type: "sha256",
+            mediaType,
+            sha256,
+          },
+        };
+      }
+    }
+
+    // Recursively sanitize object properties
+    const result: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(obj)) {
+      result[key] = sanitizeImagesInValue(val, blobs);
+    }
+    return result;
+  }
+
+  return value;
+}
+
 function calculateCostFromUsageDetails(
   usageDetails: ClaudeUsageDetail[],
   pricingData: Record<string, LiteLLMModelPricing> | undefined,
@@ -1207,8 +1286,14 @@ function calculateCostFromPricing(
   return inputCost + outputCost + cacheCreationCost + cacheReadCost;
 }
 
-function convertTranscriptToMessages(transcript: ClaudeMessageRecord[]): UnifiedTranscriptMessage[] {
+type ConvertMessagesResult = {
+  messages: UnifiedTranscriptMessage[];
+  blobs: Map<string, TranscriptBlob>;
+};
+
+function convertTranscriptToMessages(transcript: ClaudeMessageRecord[]): ConvertMessagesResult {
   const messages: UnifiedTranscriptMessage[] = [];
+  const blobs = new Map<string, TranscriptBlob>();
   const toolCallById = new Map<
     string,
     {
@@ -1253,7 +1338,7 @@ function convertTranscriptToMessages(transcript: ClaudeMessageRecord[]): Unified
           const toolCallMessage = messages[linkedTool.index] as (typeof messages)[number] & {
             type: "tool-call";
           };
-          toolCallMessage.output = result.output;
+          toolCallMessage.output = sanitizeImagesInValue(result.output, blobs);
           if (result.error) {
             toolCallMessage.error = result.error;
           }
@@ -1328,30 +1413,13 @@ function convertTranscriptToMessages(transcript: ClaudeMessageRecord[]): Unified
         }
 
         if (partObj.type === "image") {
-          const source = partObj.source as Record<string, unknown> | undefined;
-          const mediaType =
-            typeof source?.media_type === "string"
-              ? source.media_type
-              : typeof partObj.media_type === "string"
-                ? partObj.media_type
-                : "image/unknown";
-          const data = typeof source?.data === "string" ? source.data : undefined;
-
-          messages.push(
-            unifiedTranscriptMessageSchema.parse({
-              type: "image",
-              mediaType,
-              ...(data && { data }),
-              ...metadata,
-            }),
-          );
           continue;
         }
       }
     }
   }
 
-  return messages;
+  return { messages, blobs };
 }
 
 type ExtractedUserContent = {

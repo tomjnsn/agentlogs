@@ -79,7 +79,7 @@ describe("Codex tool calls", () => {
 
     const transcript = convertCodexTranscript(events);
     expect(transcript).not.toBeNull();
-    const toolCall = transcript!.messages.find((m) => m.type === "tool-call" && m.id === "call-shell");
+    const toolCall = transcript!.transcript.messages.find((m) => m.type === "tool-call" && m.id === "call-shell");
     expect(toolCall).toMatchInlineSnapshot(`
       {
         "id": "call-shell",
@@ -144,7 +144,7 @@ describe("Codex tool calls", () => {
 
     const transcript = convertCodexTranscript(events);
     expect(transcript).not.toBeNull();
-    const toolCall = transcript!.messages.find((m) => m.type === "tool-call" && m.id === "call-patch");
+    const toolCall = transcript!.transcript.messages.find((m) => m.type === "tool-call" && m.id === "call-patch");
     expect(toolCall).toMatchInlineSnapshot(`
 {
   "id": "call-patch",
@@ -204,7 +204,7 @@ describe("Codex tool calls", () => {
 
     const transcript = convertCodexTranscript(events);
     expect(transcript).not.toBeNull();
-    const toolCall = transcript!.messages.find((m) => m.type === "tool-call" && m.id === "call-write");
+    const toolCall = transcript!.transcript.messages.find((m) => m.type === "tool-call" && m.id === "call-write");
     expect(toolCall).toMatchInlineSnapshot(`
       {
         "id": "call-write",
@@ -261,7 +261,7 @@ describe("Codex tool calls", () => {
 
     const transcript = convertCodexTranscript(events);
     expect(transcript).not.toBeNull();
-    const toolCall = transcript!.messages.find((m) => m.type === "tool-call" && m.id === "call-read");
+    const toolCall = transcript!.transcript.messages.find((m) => m.type === "tool-call" && m.id === "call-read");
     expect(toolCall).toMatchInlineSnapshot(`
       {
         "id": "call-read",
@@ -316,7 +316,7 @@ describe("Codex tool calls", () => {
 
     const transcript = convertCodexTranscript(events);
     expect(transcript).not.toBeNull();
-    const toolCall = transcript!.messages.find((m) => m.type === "tool-call" && m.id === "call-zsh-read");
+    const toolCall = transcript!.transcript.messages.find((m) => m.type === "tool-call" && m.id === "call-zsh-read");
     expect(toolCall).toMatchInlineSnapshot(`
       {
         "id": "call-zsh-read",

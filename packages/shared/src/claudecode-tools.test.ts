@@ -38,7 +38,7 @@ function processToolCall(toolUse: any, toolResult: any) {
 
   const transcript = [assistantMessage, userMessage];
   const converted = convertClaudeCodeTranscript(transcript);
-  return converted?.messages.find((m) => m.type === "tool-call");
+  return converted?.transcript.messages.find((m) => m.type === "tool-call");
 }
 
 describe("Tool Call Input/Output Processing", () => {

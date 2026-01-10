@@ -2,7 +2,11 @@ import { createHash } from "crypto";
 import { existsSync, readFileSync } from "fs";
 import { dirname, isAbsolute, resolve } from "path";
 import type { TranscriptSource, UploadPayload } from "@vibeinsights/shared";
-import { convertClaudeCodeTranscript, type UnifiedTranscript } from "@vibeinsights/shared/claudecode";
+import {
+  convertClaudeCodeTranscript,
+  type ConversionResult,
+  type UnifiedTranscript,
+} from "@vibeinsights/shared/claudecode";
 import { convertCodexTranscript } from "@vibeinsights/shared/codex";
 import { LiteLLMPricingFetcher } from "@vibeinsights/shared/pricing";
 import { uploadTranscript } from "@vibeinsights/shared/upload";
@@ -83,13 +87,16 @@ export async function performUpload(
       ? params.cwdOverride.trim()
       : (extractCwdFromRecords(records) ?? process.cwd());
 
-  const unifiedTranscript =
+  const conversionResult =
     source === "codex"
       ? convertCodexTranscript(records, converterOptions)
       : convertClaudeCodeTranscript(records, converterOptions);
-  if (!unifiedTranscript) {
+
+  if (!conversionResult) {
     throw new Error(`Unable to convert ${source} transcript to unified format.`);
   }
+
+  const { transcript: unifiedTranscript } = conversionResult;
 
   const finalSessionId = sessionId ?? unifiedTranscript.id;
   if (!finalSessionId) {
