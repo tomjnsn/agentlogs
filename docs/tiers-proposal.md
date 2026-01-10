@@ -1,9 +1,11 @@
 # Pricing Tier Implementation Plan
 
 ## Overview
+
 Add pricing tiers to vibeinsights: **Free** (unlimited open-source, 10 commits/month private), **Pro** (unlimited), **Enterprise** (TBD).
 
 ## Key Decisions
+
 - **Open-source detection**: HTTP HEAD to `https://github.com/{owner}/{repo}` (200 = public, 404 = private)
 - **Billing**: Polar.sh with BetterAuth plugin (`@polar-sh/better-auth`)
 - **Limit behavior**: Hard block at 10 commits for free tier on private repos
@@ -67,7 +69,7 @@ Note: Polar plugin auto-creates `polar_customer` table via BetterAuth.
 ### 5. Configure BetterAuth with Polar (`packages/web/src/lib/auth.ts`)
 
 ```typescript
-import { polar, checkout, portal, webhooks } from "@polar-sh/better-auth";
+import { checkout, polar, portal, webhooks } from "@polar-sh/better-auth";
 import { Polar } from "@polar-sh/sdk";
 
 const polarClient = new Polar({
@@ -81,7 +83,7 @@ export const auth = betterAuth({
     // ... existing plugins ...
     polar({
       client: polarClient,
-      createCustomerOnSignUp: true,  // Auto-create Polar customer
+      createCustomerOnSignUp: true, // Auto-create Polar customer
       use: [
         checkout({
           products: [
@@ -91,7 +93,7 @@ export const auth = betterAuth({
           successUrl: "/settings/billing?success=true",
           authenticatedUsersOnly: true,
         }),
-        portal(),  // Customer portal for managing subscriptions
+        portal(), // Customer portal for managing subscriptions
         webhooks({
           secret: process.env.POLAR_WEBHOOK_SECRET,
           onSubscriptionCreated: async (payload) => {
@@ -120,6 +122,7 @@ export const authClient = createAuthClient({
 ### 7. Repo Visibility Service (`packages/web/src/lib/repo-visibility.ts`)
 
 New file:
+
 - `parseGitHubRepo(repoIdentifier)` - Extract owner/repo from paths like `github.com/owner/repo`, SSH URLs, HTTPS URLs
 - `checkGitHubVisibility(owner, repo)` - HTTP HEAD request with 5s timeout
 - `getRepoVisibility(db, repoIdentifier)` - Main function with 24h cache lookup/update
@@ -127,6 +130,7 @@ New file:
 ### 8. Quota Service (`packages/web/src/lib/quota.ts`)
 
 New file:
+
 - `TIER_LIMITS` constant: `{ free: { privateCommitsPerMonth: 10 }, pro: { privateCommitsPerMonth: Infinity }, ... }`
 - `getCurrentPeriodMonth()` - Returns "YYYY-MM" format
 - `getUserTier(authClient, userId)` - Check Polar subscriptions to determine tier
@@ -138,7 +142,7 @@ New file:
 // Get tier from Polar subscriptions
 async function getUserTier(userId: string): Promise<"free" | "pro" | "enterprise"> {
   const subscriptions = await authClient.customer.subscriptions.list({
-    query: { active: true }
+    query: { active: true },
   });
 
   if (subscriptions?.data?.length > 0) {
@@ -152,6 +156,7 @@ async function getUserTier(userId: string): Promise<"free" | "pro" | "enterprise
 ### 9. Update `/api/commit-track` (`packages/web/src/routes/api/commit-track.ts`)
 
 Before inserting commit:
+
 ```typescript
 // 1. Check repo visibility
 const visibility = await getRepoVisibility(db, repo_path);
@@ -176,6 +181,7 @@ return json({ success: true, quota: { ... } });
 ### 10. Update CLI Hook (`packages/cli/src/commands/hook.ts`)
 
 In `trackCommit()` function, handle 403 response:
+
 ```typescript
 if (response.status === 403) {
   const body = await response.json();
@@ -193,20 +199,25 @@ if (response.status === 403) {
 ### 11. Add `/api/quota` Endpoint (`packages/web/src/routes/api/quota.ts`)
 
 New endpoint for CLI status and dashboard:
+
 - GET returns: `{ tier, periodMonth, privateCommitsUsed, publicCommitsUsed, privateCommitsLimit, remainingCommits }`
 
 ### 12. Dashboard & Billing UI
 
 **Server function** (`packages/web/src/lib/server-functions.ts`):
+
 - Add `getQuota()` server function
 
 **Usage Card** (`packages/web/src/components/usage-card.tsx`):
+
 - Show tier badge, progress bar for private commits, upgrade CTA when at limit
 
 **Dashboard** (`packages/web/src/routes/index.tsx`):
+
 - Add `getQuota()` to loader, render `<UsageCard />`
 
 **Billing Page** (`packages/web/src/routes/settings/billing.tsx`):
+
 - Show current plan, usage stats
 - "Upgrade to Pro" button → `authClient.checkout({ slug: "pro-monthly" })`
 - "Manage Subscription" button → `authClient.customer.portal()`
@@ -215,19 +226,19 @@ New endpoint for CLI status and dashboard:
 
 ## Files to Modify/Create
 
-| Action | File |
-|--------|------|
-| Modify | `packages/web/src/db/schema.ts` |
-| Modify | `packages/web/src/lib/auth.ts` |
-| Modify | `packages/web/src/lib/auth-client.ts` |
-| Create | `packages/web/src/lib/repo-visibility.ts` |
-| Create | `packages/web/src/lib/quota.ts` |
-| Modify | `packages/web/src/routes/api/commit-track.ts` |
-| Create | `packages/web/src/routes/api/quota.ts` |
-| Modify | `packages/cli/src/commands/hook.ts` |
-| Modify | `packages/web/src/lib/server-functions.ts` |
-| Create | `packages/web/src/components/usage-card.tsx` |
-| Modify | `packages/web/src/routes/index.tsx` |
+| Action | File                                           |
+| ------ | ---------------------------------------------- |
+| Modify | `packages/web/src/db/schema.ts`                |
+| Modify | `packages/web/src/lib/auth.ts`                 |
+| Modify | `packages/web/src/lib/auth-client.ts`          |
+| Create | `packages/web/src/lib/repo-visibility.ts`      |
+| Create | `packages/web/src/lib/quota.ts`                |
+| Modify | `packages/web/src/routes/api/commit-track.ts`  |
+| Create | `packages/web/src/routes/api/quota.ts`         |
+| Modify | `packages/cli/src/commands/hook.ts`            |
+| Modify | `packages/web/src/lib/server-functions.ts`     |
+| Create | `packages/web/src/components/usage-card.tsx`   |
+| Modify | `packages/web/src/routes/index.tsx`            |
 | Create | `packages/web/src/routes/settings/billing.tsx` |
 
 ---
