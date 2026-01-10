@@ -4,13 +4,13 @@
   "description": "Insights from your transcripts with agentic coding tools",
   "icons": [
     {
-      "src": "/android-chrome-192x192.png",
-      "sizes": "192x192",
+      "src": "/favicons/favicon-48x48.png",
+      "sizes": "48x48",
       "type": "image/png"
     },
     {
-      "src": "/android-chrome-512x512.png",
-      "sizes": "512x512",
+      "src": "/apple-touch-icon/apple-touch-icon-180x180.png",
+      "sizes": "180x180",
       "type": "image/png"
     }
   ],
