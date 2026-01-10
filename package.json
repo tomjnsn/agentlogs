@@ -2,13 +2,10 @@
   "name": "vibeinsights",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
   "workspaces": [
     "packages/*"
   ],
-  "overrides": {
-    "vite": "npm:rolldown-vite@latest"
-  },
+  "type": "module",
   "scripts": {
     "dev": "bun --filter @vibeinsights/web dev",
     "build": "bun --filter @vibeinsights/web build",
@@ -19,31 +16,26 @@
     "db:migrate": "bun --filter @vibeinsights/web db:migrate",
     "db:studio": "bun --filter @vibeinsights/web db:studio",
     "test:e2e": "bun --filter @vibeinsights/cli test:e2e",
-    "lint": "oxlint --deny-warnings .",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "check": "bun run lint && bun run format:check",
-    "typecheck": "bun run --workspaces typecheck",
+    "lint": "oxlint --fix --deny-warnings .",
+    "format": "concurrently -n fmt,lint 'oxfmt .' 'bun run lint'",
+    "check": "concurrently -n fmt,lint,ts 'oxfmt --check .' 'bun run lint' 'bun run --workspaces check'",
     "plugin:switch-dev": "bash scripts/toggle-plugin-dev.sh",
     "plugin:switch-prod": "bash scripts/toggle-plugin-dev.sh",
-    "plugin:status": "bash scripts/check-plugin-status.sh"
+    "plugin:status": "bash scripts/check-plugin-status.sh",
+    "prepare": "husky"
   },
   "devDependencies": {
-    "@ianvs/prettier-plugin-sort-imports": "^4.7.0",
-    "@prettier/plugin-oxc": "^0.0.4",
+    "@anthropic-ai/sdk": "^0.71.2",
     "@types/bun": "^1.3.0",
+    "@typescript/native-preview": "7.0.0-dev.20251204.1",
+    "concurrently": "^9.2.1",
+    "husky": "^9.1.7",
+    "oxfmt": "^0.23.0",
     "oxlint": "^1.23.0",
-    "prettier": "^3.6.2",
-    "prettier-plugin-tailwindcss": "^0.6.14",
     "typescript": "^5.6.2"
   },
-  "prettier": {
-    "printWidth": 120,
-    "plugins": [
-      "@prettier/plugin-oxc",
-      "@ianvs/prettier-plugin-sort-imports",
-      "prettier-plugin-tailwindcss"
-    ],
-    "tailwindStylesheet": "./packages/web/src/styles/globals.css"
-  }
+  "overrides": {
+    "vite": "npm:rolldown-vite@latest"
+  },
+  "packageManager": "bun@1.3.0"
 }

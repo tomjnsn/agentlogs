@@ -2,11 +2,7 @@ import { createHash } from "crypto";
 import { existsSync, readFileSync } from "fs";
 import { dirname, isAbsolute, resolve } from "path";
 import type { TranscriptSource, UploadPayload } from "@vibeinsights/shared";
-import {
-  convertClaudeCodeTranscript,
-  type ConversionResult,
-  type UnifiedTranscript,
-} from "@vibeinsights/shared/claudecode";
+import { convertClaudeCodeTranscript, type UnifiedTranscript } from "@vibeinsights/shared/claudecode";
 import { convertCodexTranscript } from "@vibeinsights/shared/codex";
 import { LiteLLMPricingFetcher } from "@vibeinsights/shared/pricing";
 import { uploadTranscript } from "@vibeinsights/shared/upload";

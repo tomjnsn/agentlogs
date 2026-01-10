@@ -6,7 +6,7 @@
     "dev": "bash ../../scripts/check-and-migrate.sh && bun run cf-typegen && npx @react-grab/claude-code@latest && vite dev",
     "dev:test": "VITE_USE_TEST_DB=true bun run cf-typegen && vite dev",
     "dev:wrangler": "wrangler dev --local --log-level=debug",
-    "build": "vite build && tsc --noEmit",
+    "build": "vite build",
     "preview": "vite preview",
     "predeploy": "bun run cf-typegen && bun run build",
     "deploy": "wrangler deploy",
@@ -18,7 +18,7 @@
     "db:studio": "DB_LOCAL_PATH=$(find $PWD/.wrangler/state/v3/d1/miniflare-D1DatabaseObject -type f -name '*.sqlite' -print -quit 2>/dev/null) bunx drizzle-kit studio --port 4983",
     "db:studio:test": "DB_LOCAL_PATH=$(find $PWD/.wrangler-test/state/v3/d1/miniflare-D1DatabaseObject -type f -name '*.sqlite' -print -quit 2>/dev/null) bunx drizzle-kit studio --port 4984",
     "db:reset": "rm -rf .wrangler/state && bun run db:setup",
-    "typecheck": "tsc --noEmit --project tsconfig.json"
+    "check": "tsgo --project tsconfig.json"
   },
   "dependencies": {
     "@paralleldrive/cuid2": "^2.3.0",

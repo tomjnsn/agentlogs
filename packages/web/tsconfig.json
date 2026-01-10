@@ -5,9 +5,9 @@
     "jsxImportSource": "react",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["@types/bun"],
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "*": ["./*"]
     }
   },
   "include": ["src/**/*", "worker-configuration.d.ts"]

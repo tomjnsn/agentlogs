@@ -1,11 +1,6 @@
 import path from "node:path";
 import { describe, expect, test } from "bun:test";
-import {
-  convertClaudeCodeFile,
-  convertClaudeCodeTranscript,
-  type ConversionResult,
-  type UnifiedTranscript,
-} from "./claudecode";
+import { convertClaudeCodeFile, type ConversionResult } from "./claudecode";
 import { formatCwdWithTilde } from "./paths";
 
 const FIXTURE_DIR = path.resolve(import.meta.dir, "../../../fixtures/claudecode");

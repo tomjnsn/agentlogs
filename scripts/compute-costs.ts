@@ -90,7 +90,7 @@ function formatCurrency(amount: number): string {
 
 function calculateCosts() {
   const sessionsPerMonth = config.commitsPerMonth * config.sessionsPerCommit;
-  const totalCustomerSessions = sessionsPerMonth * config.numberOfCustomers;
+  const _totalCustomerSessions = sessionsPerMonth * config.numberOfCustomers;
 
   console.log("═".repeat(70));
   console.log("VIBEINSIGHTS INFRASTRUCTURE COST ESTIMATION");

@@ -1,27 +1,27 @@
 {
   "name": "@vibeinsights/cli",
   "version": "0.0.5",
-  "type": "module",
-  "main": "src/index.ts",
   "bin": {
     "vibeinsights": "src/index.ts"
   },
   "files": [
     "dist"
   ],
+  "type": "module",
+  "main": "src/index.ts",
   "publishConfig": {
     "access": "public",
-    "main": "dist/index.js",
     "bin": {
       "vibeinsights": "dist/index.js"
-    }
+    },
+    "main": "dist/index.js"
   },
   "scripts": {
     "start": "bun run src/index.ts",
     "build": "bun build ./src/index.ts --outdir ./dist --target node --external @napi-rs/keyring --production --define '__NODE_ENV__=\"production\"' --define 'process.env.SERVER_URL=\"https://vibeinsights.dev\"'",
     "prepublishOnly": "bun run build",
     "test:e2e": "bun test ./test/e2e/*.e2e.ts",
-    "typecheck": "tsc --noEmit --project tsconfig.json"
+    "check": "tsgo --project tsconfig.json"
   },
   "dependencies": {
     "@napi-rs/keyring": "^1.2.0",
