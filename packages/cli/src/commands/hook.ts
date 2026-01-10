@@ -1,5 +1,3 @@
-import { promises as fs } from "fs";
-import { convertClaudeCodeTranscript, type UnifiedTranscriptMessage } from "@vibeinsights/shared/claudecode";
 import { createLogger } from "@vibeinsights/shared/logger";
 import { getDevLogPath } from "@vibeinsights/shared/paths";
 import type { UploadOptions } from "@vibeinsights/shared/upload";
@@ -35,22 +33,40 @@ export async function hookCommand(): Promise<void> {
   let sessionId: string | undefined;
 
   try {
-    // Read stdin
-    const stdinPayload = await readStdin();
+    // Read stdin with a preview for quick filtering
+    const { preview, full } = await readStdinWithPreview();
 
     // Log hook invocation with stdin size
-    logger.info(`Hook invoked (stdin: ${stdinPayload.length} bytes)`);
+    logger.info(`Hook invoked (stdin: ${full.length} bytes)`);
 
     // Guard: empty stdin
-    if (!stdinPayload.trim()) {
+    if (!full.trim()) {
       logger.warn("Hook received empty stdin - ignoring");
+      process.exit(0);
+    }
+
+    // Quick check: for PreToolUse, skip parsing large payloads that aren't git commits
+    // This avoids parsing 800KB+ tool inputs (e.g., Write with large file content)
+    const isPreToolUse = preview.includes('"PreToolUse"');
+    const mightBeGitCommit = preview.includes("git") && preview.includes("commit");
+    if (isPreToolUse && !mightBeGitCommit) {
+      // Fast path: not a git commit, just allow it without full parsing
+      const output = {
+        hookSpecificOutput: {
+          hookEventName: "PreToolUse",
+          permissionDecision: "allow",
+        },
+      };
+      process.stdout.write(JSON.stringify(output));
+      const duration = Date.now() - startTime;
+      logger.info(`Hook completed: PreToolUse (fast path, ${duration}ms)`);
       process.exit(0);
     }
 
     // Parse JSON
     let hookInput: ClaudeHookInput;
     try {
-      hookInput = JSON.parse(stdinPayload) as ClaudeHookInput;
+      hookInput = JSON.parse(full) as ClaudeHookInput;
     } catch (error) {
       logger.error("Hook failed to parse stdin JSON", { error: error instanceof Error ? error.message : error });
       process.exit(1);
@@ -105,11 +121,7 @@ async function handlePreToolUse(hookInput: ClaudeHookInput): Promise<void> {
 
   if (isBashTool && command && containsGitCommit(command)) {
     shouldTrack = true;
-    const prompts = await collectCommitPrompts({
-      sessionId,
-      transcriptPath: hookInput.transcript_path,
-    });
-    const updatedCommand = appendTranscriptLink(command, sessionId, prompts);
+    const updatedCommand = appendTranscriptLink(command, sessionId);
     if (updatedCommand !== command) {
       updateCommand(updatedCommand);
       modified = true;
@@ -259,14 +271,21 @@ async function handleStop(hookInput: ClaudeHookInput): Promise<void> {
   }
 }
 
-function readStdin(): Promise<string> {
+const STDIN_PREVIEW_SIZE = 2048;
+
+function readStdinWithPreview(): Promise<{ preview: string; full: string }> {
   return new Promise((resolve, reject) => {
     let data = "";
     process.stdin.setEncoding("utf8");
     process.stdin.on("data", (chunk) => {
       data += chunk;
     });
-    process.stdin.on("end", () => resolve(data));
+    process.stdin.on("end", () => {
+      resolve({
+        preview: data.slice(0, STDIN_PREVIEW_SIZE),
+        full: data,
+      });
+    });
     process.stdin.on("error", (error) => reject(error));
   });
 }
@@ -311,18 +330,14 @@ export function containsGitCommit(command: string): boolean {
   return /\bgit\s+commit\b/.test(command);
 }
 
-export function appendTranscriptLink(command: string, sessionId: string, prompts: string[] = []): string {
+export function appendTranscriptLink(command: string, sessionId: string): string {
   const linkText = `🔮 View transcript: https://vibeinsights.dev/s/${sessionId}`;
 
   if (command.includes(linkText)) {
     return command;
   }
 
-  const preparedPrompts = preparePromptList(prompts);
-  const promptsSection = preparedPrompts.length
-    ? `Prompts:\n${preparedPrompts.map((prompt) => `• "${prompt}"`).join("\n")}`
-    : "";
-  const suffix = promptsSection ? `\n\n${promptsSection}\n\n${linkText}` : `\n\n${linkText}`;
+  const suffix = `\n\n${linkText}`;
 
   // Patterns for different git commit message formats
   // Order matters: check equals-sign form first, then space-separated
@@ -480,175 +495,4 @@ async function uploadPartialTranscript(payload: {
       error: error instanceof Error ? error.message : String(error),
     });
   }
-}
-
-async function collectCommitPrompts(payload: { sessionId: string; transcriptPath?: string }): Promise<string[]> {
-  if (!payload.transcriptPath) {
-    logger.warn("Commit prompts skipped: missing transcript_path", {
-      sessionId: payload.sessionId.substring(0, 8),
-    });
-    return [];
-  }
-
-  const entries = await readTranscriptEntries(payload.transcriptPath, payload.sessionId);
-  if (entries.length === 0) {
-    return [];
-  }
-
-  // Use the shared transcript parser which properly filters out tool results from user messages
-  const transcript = convertClaudeCodeTranscript(entries);
-  if (!transcript || transcript.messages.length === 0) {
-    return [];
-  }
-
-  return getPromptsSinceLastCommit(transcript.messages);
-}
-
-async function readTranscriptEntries(transcriptPath: string, sessionId: string): Promise<TranscriptEntry[]> {
-  try {
-    const rawContent = await fs.readFile(transcriptPath, "utf8");
-    const lines = rawContent.split(/\r?\n/);
-    const entries: TranscriptEntry[] = [];
-    let invalidLines = 0;
-
-    for (const rawLine of lines) {
-      const line = rawLine.trim();
-      if (!line) continue;
-
-      try {
-        const parsed = JSON.parse(line) as unknown;
-        if (!isRecord(parsed)) {
-          invalidLines += 1;
-          continue;
-        }
-
-        if (typeof parsed.type !== "string") {
-          continue;
-        }
-
-        entries.push(parsed as TranscriptEntry);
-      } catch {
-        invalidLines += 1;
-      }
-    }
-
-    if (invalidLines > 0) {
-      logger.warn("Commit prompts: skipped invalid transcript lines", {
-        sessionId: sessionId.substring(0, 8),
-        invalidLines,
-      });
-    }
-
-    return entries;
-  } catch (error) {
-    logger.warn("Commit prompts skipped: unable to read transcript", {
-      sessionId: sessionId.substring(0, 8),
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return [];
-  }
-}
-
-export function findLastGitCommitIndex(messages: UnifiedTranscriptMessage[]): number {
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    const message = messages[index];
-    if (message.type !== "tool-call") {
-      continue;
-    }
-
-    const toolName = message.toolName;
-    if (!toolName || toolName.toLowerCase() !== "bash") {
-      continue;
-    }
-
-    const command = extractToolCommand(message.input);
-    if (command && containsGitCommit(command)) {
-      return index;
-    }
-  }
-
-  return -1;
-}
-
-export function getPromptsSinceLastCommit(messages: UnifiedTranscriptMessage[]): string[] {
-  const startIndex = findLastGitCommitIndex(messages);
-  const prompts: string[] = [];
-  const start = startIndex >= 0 ? startIndex + 1 : 0;
-
-  for (let index = start; index < messages.length; index += 1) {
-    const message = messages[index];
-    // The unified transcript already filters user messages to exclude tool results
-    if (message.type !== "user") {
-      continue;
-    }
-    // User messages in unified transcript have text directly available
-    if (message.text) {
-      prompts.push(message.text);
-    }
-  }
-
-  return prompts;
-}
-
-function extractToolCommand(input: unknown): string | null {
-  if (!isRecord(input)) {
-    return null;
-  }
-
-  const directCommand = input.command;
-  if (typeof directCommand === "string") {
-    return directCommand;
-  }
-
-  if (Array.isArray(directCommand)) {
-    const commandEntry = directCommand[2];
-    if (typeof commandEntry === "string") {
-      return commandEntry;
-    }
-    const joined = directCommand.filter((part) => typeof part === "string").join(" ");
-    return joined.length > 0 ? joined : null;
-  }
-
-  const fallbackCommand = input.cmd;
-  if (typeof fallbackCommand === "string") {
-    return fallbackCommand;
-  }
-
-  return null;
-}
-
-export function escapeShellChars(text: string): string {
-  // Escape characters that could break shell parsing when embedded in a quoted string
-  // Backticks, $, and backslashes are the main culprits
-  return text.replace(/[`$\\]/g, "\\$&");
-}
-
-function preparePromptList(prompts: string[]): string[] {
-  const normalized = prompts.map((prompt) => prompt.replace(/\s+/g, " ").trim()).filter((prompt) => prompt.length > 0);
-
-  const recent = normalized.length > 5 ? normalized.slice(-5) : normalized;
-
-  return recent.map((prompt) => escapeShellChars(truncatePrompt(prompt, 60)));
-}
-
-function truncatePrompt(prompt: string, maxLength: number): string {
-  if (prompt.length <= maxLength) {
-    return prompt;
-  }
-
-  if (maxLength <= 3) {
-    return "...".slice(0, maxLength);
-  }
-
-  return `${prompt.slice(0, maxLength - 3)}...`;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-interface TranscriptEntry extends Record<string, unknown> {
-  type: string;
-  toolName?: unknown;
-  input?: unknown;
 }

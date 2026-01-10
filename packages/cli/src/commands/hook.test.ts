@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { appendTranscriptLink, containsGitCommit, escapeShellChars } from "./hook";
+import { appendTranscriptLink, containsGitCommit } from "./hook";
 
 describe("containsGitCommit", () => {
   it("detects git commit command", () => {
@@ -107,59 +107,5 @@ describe("appendTranscriptLink", () => {
       // The link should be inside the first message, leaving second -m intact
       expect(result).toMatch(/-m "title\n\n.*🔮 View transcript.*" -m "body paragraph"/s);
     });
-  });
-
-  describe("with prompts", () => {
-    it("includes prompts in the appended text", () => {
-      const command = 'git commit -m "feature: add login"';
-      const prompts = ["Add login functionality", "Fix the button styling"];
-      const result = appendTranscriptLink(command, sessionId, prompts);
-
-      expect(result).toContain("Prompts:");
-      expect(result).toContain('• "Add login functionality"');
-      expect(result).toContain('• "Fix the button styling"');
-      expect(result).toContain(expectedLink);
-    });
-
-    it("escapes shell-breaking characters in prompts", () => {
-      const command = 'git commit -m "feature: add login"';
-      const prompts = ["Fix the `bug` in code", "Check $HOME variable"];
-      const result = appendTranscriptLink(command, sessionId, prompts);
-
-      // Backticks and $ should be escaped
-      expect(result).toContain("\\`bug\\`");
-      expect(result).toContain("\\$HOME");
-      // Should not contain unescaped versions that would break shell
-      expect(result).not.toMatch(/• "Fix the `bug`/);
-      expect(result).not.toMatch(/• "Check \$HOME/);
-    });
-  });
-});
-
-describe("escapeShellChars", () => {
-  it("escapes backticks", () => {
-    expect(escapeShellChars("hello `world`")).toBe("hello \\`world\\`");
-  });
-
-  it("escapes dollar signs", () => {
-    expect(escapeShellChars("$HOME/path")).toBe("\\$HOME/path");
-    expect(escapeShellChars("$(command)")).toBe("\\$(command)");
-  });
-
-  it("escapes backslashes", () => {
-    expect(escapeShellChars("path\\to\\file")).toBe("path\\\\to\\\\file");
-  });
-
-  it("escapes multiple special characters", () => {
-    expect(escapeShellChars("`cmd` $VAR \\ end")).toBe("\\`cmd\\` \\$VAR \\\\ end");
-  });
-
-  it("leaves normal text unchanged", () => {
-    expect(escapeShellChars("hello world")).toBe("hello world");
-    expect(escapeShellChars("fix: update README")).toBe("fix: update README");
-  });
-
-  it("handles empty string", () => {
-    expect(escapeShellChars("")).toBe("");
   });
 });
