@@ -92,8 +92,8 @@ function TranscriptDetailComponent() {
         </div>
       </div>
 
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Messages</h3>
+      <div>
+        <h3 className="mb-4 text-lg font-semibold">Messages</h3>
         {unifiedTranscript.messages.map((message, i) => (
           <MessageCard key={i} message={message} index={i} />
         ))}
@@ -146,7 +146,7 @@ function MessageCard({ message, index }: { message: UnifiedTranscriptMessage; in
   // For non-collapsible messages (user/agent), render directly
   if (!shouldCollapse) {
     return (
-      <Card id={messageId} className={cn("border-l-4 transition-colors", getTypeColor())}>
+      <Card id={messageId} className={cn("transition-colors", getTypeColor())}>
         <CardContent className="pt-6">
           <div className="mb-3 flex items-center justify-between">
             <Badge variant="outline">
@@ -182,7 +182,7 @@ function MessageCard({ message, index }: { message: UnifiedTranscriptMessage; in
 
   // For collapsible messages (tool-call/thinking), use Collapsible component
   return (
-    <Card id={messageId} className={cn("border-l-4 transition-colors", getTypeColor())}>
+    <Card id={messageId} className={cn("transition-colors", getTypeColor())}>
       <CardContent className="pt-6">
         <Collapsible defaultOpen={false}>
           <CollapsibleTrigger asChild>
