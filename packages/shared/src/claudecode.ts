@@ -46,8 +46,10 @@ type ClaudeMessageRecord = {
   type: string;
   timestamp?: string;
   parentUuid?: string | null;
+  logicalParentUuid?: string | null;
   isSidechain?: boolean;
   isMeta?: boolean;
+  isCompactSummary?: boolean;
   sessionId?: string;
   cwd?: string;
   gitBranch?: string;
@@ -317,8 +319,13 @@ function parseClaudeTranscript(transcript: Array<Record<string, unknown>>): {
         typeof parsed.parentUuid === "string" || parsed.parentUuid === null
           ? (parsed.parentUuid as string | null | undefined)
           : undefined,
+      logicalParentUuid:
+        typeof parsed.logicalParentUuid === "string" || parsed.logicalParentUuid === null
+          ? (parsed.logicalParentUuid as string | null | undefined)
+          : undefined,
       isSidechain: Boolean(parsed.isSidechain),
       isMeta: Boolean(parsed.isMeta),
+      isCompactSummary: Boolean(parsed.isCompactSummary),
       sessionId: typeof parsed.sessionId === "string" ? parsed.sessionId : undefined,
       cwd: typeof parsed.cwd === "string" ? parsed.cwd : undefined,
       gitBranch: typeof parsed.gitBranch === "string" ? parsed.gitBranch : undefined,
@@ -379,8 +386,13 @@ async function parseClaudeJsonl(filePath: string): Promise<{
         typeof parsed.parentUuid === "string" || parsed.parentUuid === null
           ? (parsed.parentUuid as string | null | undefined)
           : undefined,
+      logicalParentUuid:
+        typeof parsed.logicalParentUuid === "string" || parsed.logicalParentUuid === null
+          ? (parsed.logicalParentUuid as string | null | undefined)
+          : undefined,
       isSidechain: Boolean(parsed.isSidechain),
       isMeta: Boolean(parsed.isMeta),
+      isCompactSummary: Boolean(parsed.isCompactSummary),
       sessionId: typeof parsed.sessionId === "string" ? parsed.sessionId : undefined,
       cwd: typeof parsed.cwd === "string" ? parsed.cwd : undefined,
       gitBranch: typeof parsed.gitBranch === "string" ? parsed.gitBranch : undefined,
@@ -479,7 +491,8 @@ function buildTranscriptChain(
     }
     visited.add(current.uuid);
     chain.unshift(current);
-    const parentUuid = current.parentUuid ?? undefined;
+    // Use logicalParentUuid as fallback when parentUuid is null (e.g., after compaction)
+    const parentUuid = current.parentUuid ?? current.logicalParentUuid ?? undefined;
     if (!parentUuid) {
       break;
     }
@@ -1224,7 +1237,7 @@ function convertTranscriptToMessages(transcript: ClaudeMessageRecord[]): Unified
         }
         messages.push(
           unifiedTranscriptMessageSchema.parse({
-            type: "user",
+            type: record.isCompactSummary ? "compaction-summary" : "user",
             text: text.trim(),
             id: record.uuid,
             timestamp: metadata.timestamp,
@@ -1311,6 +1324,28 @@ function convertTranscriptToMessages(transcript: ClaudeMessageRecord[]): Unified
           if (callId) {
             toolCallById.set(callId, { index: messages.length - 1, toolName });
           }
+          continue;
+        }
+
+        if (partObj.type === "image") {
+          const source = partObj.source as Record<string, unknown> | undefined;
+          const mediaType =
+            typeof source?.media_type === "string"
+              ? source.media_type
+              : typeof partObj.media_type === "string"
+                ? partObj.media_type
+                : "image/unknown";
+          const data = typeof source?.data === "string" ? source.data : undefined;
+
+          messages.push(
+            unifiedTranscriptMessageSchema.parse({
+              type: "image",
+              mediaType,
+              ...(data && { data }),
+              ...metadata,
+            }),
+          );
+          continue;
         }
       }
     }

@@ -9,6 +9,13 @@ const userMessageSchema = z.object({
   timestamp: z.string().optional(),
 });
 
+const compactionSummaryMessageSchema = z.object({
+  type: z.literal("compaction-summary"),
+  text: z.string(),
+  id: z.string().optional(),
+  timestamp: z.string().optional(),
+});
+
 const agentMessageSchema = z.object({
   type: z.literal("agent"),
   text: z.string(),
@@ -37,11 +44,22 @@ const toolCallMessageSchema = z.object({
   model: z.string().optional(),
 });
 
+const imageMessageSchema = z.object({
+  type: z.literal("image"),
+  mediaType: z.string(),
+  data: z.string().optional(),
+  id: z.string().optional(),
+  timestamp: z.string().optional(),
+  model: z.string().optional(),
+});
+
 export const unifiedTranscriptMessageSchema = z.discriminatedUnion("type", [
   userMessageSchema,
+  compactionSummaryMessageSchema,
   agentMessageSchema,
   thinkingMessageSchema,
   toolCallMessageSchema,
+  imageMessageSchema,
 ]);
 
 export const unifiedTokenUsageSchema = z.object({
