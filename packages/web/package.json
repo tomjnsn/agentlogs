@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "bash ../../scripts/check-and-migrate.sh && bun run cf-typegen && vite dev",
+    "dev": "bash ../../scripts/check-and-migrate.sh && bun run cf-typegen && npx @react-grab/claude-code@latest && vite dev",
     "dev:test": "VITE_USE_TEST_DB=true bun run cf-typegen && vite dev",
     "dev:wrangler": "wrangler dev --local --log-level=debug",
     "build": "vite build && tsc --noEmit",

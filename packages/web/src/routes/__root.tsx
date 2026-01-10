@@ -62,6 +62,12 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
     <html>
       <head>
         <HeadContent />
+        {import.meta.env.DEV && (
+          <>
+            <script src="//unpkg.com/react-grab/dist/index.global.js" crossOrigin="anonymous" />
+            <script src="//unpkg.com/@react-grab/claude-code/dist/client.global.js" crossOrigin="anonymous" />
+          </>
+        )}
       </head>
       <body>
         {children}
