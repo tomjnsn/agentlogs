@@ -1,7 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { getTranscriptBySessionId } from "../lib/server-functions";
+import { getTranscriptBySessionId } from "../../lib/server-functions";
 
-export const Route = createFileRoute("/s/$sessionId")({
+export const Route = createFileRoute("/_app/s/$sessionId")({
   loader: async ({ params }) => {
     const transcript = await getTranscriptBySessionId({ data: params.sessionId });
 

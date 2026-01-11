@@ -1,17 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { createFileRoute, Link, redirect, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
-import { getPrivateTranscriptsByCwd, getRepos, getSession } from "../lib/server-functions";
+import { getPrivateTranscriptsByCwd, getRepos } from "../../lib/server-functions";
 
-export const Route = createFileRoute("/app")({
-  beforeLoad: async () => {
-    const session = await getSession();
-    if (!session) {
-      throw redirect({ to: "/" });
-    }
-  },
+export const Route = createFileRoute("/_app/app")({
   loader: async () => {
     try {
       const [repos, privateTranscripts] = await Promise.all([getRepos(), getPrivateTranscriptsByCwd()]);

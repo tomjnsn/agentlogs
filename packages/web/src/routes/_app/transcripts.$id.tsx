@@ -13,10 +13,10 @@ import {
   getToolSummary,
   replaceImageReferencesForDisplay,
   type ImageReference,
-} from "../lib/message-utils";
-import { getTranscript } from "../lib/server-functions";
+} from "../../lib/message-utils";
+import { getTranscript } from "../../lib/server-functions";
 
-export const Route = createFileRoute("/transcripts/$id")({
+export const Route = createFileRoute("/_app/transcripts/$id")({
   loader: ({ params }) => getTranscript({ data: params.id }),
   component: TranscriptDetailComponent,
 });

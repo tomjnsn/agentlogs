@@ -4,19 +4,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { getTranscriptsByCwd } from "../lib/server-functions";
+import { getTranscriptsByRepo } from "../../lib/server-functions";
 
-type PrivateTranscripts = Awaited<ReturnType<typeof getTranscriptsByCwd>>;
+type RepoTranscripts = Awaited<ReturnType<typeof getTranscriptsByRepo>>;
 
-export const Route = createFileRoute("/private/$cwd")({
-  loader: ({ params }) => getTranscriptsByCwd({ data: params.cwd }),
-  component: PrivateDetailComponent,
+export const Route = createFileRoute("/_app/repos/$id")({
+  loader: ({ params }) => getTranscriptsByRepo({ data: params.id }),
+  component: RepoDetailComponent,
 });
 
-function PrivateDetailComponent() {
-  const transcripts = Route.useLoaderData() as PrivateTranscripts;
-  const { cwd } = Route.useParams();
-  const formatSource = (source: PrivateTranscripts[number]["source"]) => {
+function RepoDetailComponent() {
+  const transcripts = Route.useLoaderData() as RepoTranscripts;
+  const { id } = Route.useParams();
+  const formatSource = (source: RepoTranscripts[number]["source"]) => {
     switch (source) {
       case "claude-code":
         return "Claude Code";
@@ -31,9 +31,9 @@ function PrivateDetailComponent() {
     <div className="space-y-6">
       <div className="space-y-2">
         <Button variant="ghost" size="sm" asChild>
-          <Link to="/">← Back to Dashboard</Link>
+          <Link to="/app">← Back to Dashboard</Link>
         </Button>
-        <h2 className="text-2xl font-bold tracking-tight">Private Transcripts: {decodeURIComponent(cwd)}</h2>
+        <h2 className="text-2xl font-bold tracking-tight">Repository: {decodeURIComponent(id)}</h2>
       </div>
 
       <Card>

@@ -9,54 +9,29 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as DeviceRouteImport } from './routes/device'
-import { Route as AppRouteImport } from './routes/app'
+import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as TranscriptsIdRouteImport } from './routes/transcripts.$id'
-import { Route as SSessionIdRouteImport } from './routes/s.$sessionId'
-import { Route as ReposIdRouteImport } from './routes/repos.$id'
-import { Route as PrivateCwdRouteImport } from './routes/private.$cwd'
 import { Route as AuthSplatRouteImport } from './routes/auth.$'
 import { Route as ApiTranscriptsRouteImport } from './routes/api/transcripts'
 import { Route as ApiIngestRouteImport } from './routes/api/ingest'
 import { Route as ApiCommitTrackRouteImport } from './routes/api/commit-track'
+import { Route as AppDeviceRouteImport } from './routes/_app/device'
+import { Route as AppAppRouteImport } from './routes/_app/app'
 import { Route as ApiTranscriptsClearRouteImport } from './routes/api/transcripts/clear'
 import { Route as ApiBlobsSha256RouteImport } from './routes/api/blobs.$sha256'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth.$'
+import { Route as AppTranscriptsIdRouteImport } from './routes/_app/transcripts.$id'
+import { Route as AppSSessionIdRouteImport } from './routes/_app/s.$sessionId'
+import { Route as AppReposIdRouteImport } from './routes/_app/repos.$id'
+import { Route as AppPrivateCwdRouteImport } from './routes/_app/private.$cwd'
 
-const DeviceRoute = DeviceRouteImport.update({
-  id: '/device',
-  path: '/device',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AppRoute = AppRouteImport.update({
-  id: '/app',
-  path: '/app',
+  id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TranscriptsIdRoute = TranscriptsIdRouteImport.update({
-  id: '/transcripts/$id',
-  path: '/transcripts/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SSessionIdRoute = SSessionIdRouteImport.update({
-  id: '/s/$sessionId',
-  path: '/s/$sessionId',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ReposIdRoute = ReposIdRouteImport.update({
-  id: '/repos/$id',
-  path: '/repos/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PrivateCwdRoute = PrivateCwdRouteImport.update({
-  id: '/private/$cwd',
-  path: '/private/$cwd',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthSplatRoute = AuthSplatRouteImport.update({
@@ -79,6 +54,16 @@ const ApiCommitTrackRoute = ApiCommitTrackRouteImport.update({
   path: '/api/commit-track',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppDeviceRoute = AppDeviceRouteImport.update({
+  id: '/device',
+  path: '/device',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAppRoute = AppAppRouteImport.update({
+  id: '/app',
+  path: '/app',
+  getParentRoute: () => AppRoute,
+} as any)
 const ApiTranscriptsClearRoute = ApiTranscriptsClearRouteImport.update({
   id: '/clear',
   path: '/clear',
@@ -94,35 +79,55 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppTranscriptsIdRoute = AppTranscriptsIdRouteImport.update({
+  id: '/transcripts/$id',
+  path: '/transcripts/$id',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSSessionIdRoute = AppSSessionIdRouteImport.update({
+  id: '/s/$sessionId',
+  path: '/s/$sessionId',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppReposIdRoute = AppReposIdRouteImport.update({
+  id: '/repos/$id',
+  path: '/repos/$id',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPrivateCwdRoute = AppPrivateCwdRouteImport.update({
+  id: '/private/$cwd',
+  path: '/private/$cwd',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/app': typeof AppRoute
-  '/device': typeof DeviceRoute
+  '/app': typeof AppAppRoute
+  '/device': typeof AppDeviceRoute
   '/api/commit-track': typeof ApiCommitTrackRoute
   '/api/ingest': typeof ApiIngestRoute
   '/api/transcripts': typeof ApiTranscriptsRouteWithChildren
   '/auth/$': typeof AuthSplatRoute
-  '/private/$cwd': typeof PrivateCwdRoute
-  '/repos/$id': typeof ReposIdRoute
-  '/s/$sessionId': typeof SSessionIdRoute
-  '/transcripts/$id': typeof TranscriptsIdRoute
+  '/private/$cwd': typeof AppPrivateCwdRoute
+  '/repos/$id': typeof AppReposIdRoute
+  '/s/$sessionId': typeof AppSSessionIdRoute
+  '/transcripts/$id': typeof AppTranscriptsIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/blobs/$sha256': typeof ApiBlobsSha256Route
   '/api/transcripts/clear': typeof ApiTranscriptsClearRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/app': typeof AppRoute
-  '/device': typeof DeviceRoute
+  '/app': typeof AppAppRoute
+  '/device': typeof AppDeviceRoute
   '/api/commit-track': typeof ApiCommitTrackRoute
   '/api/ingest': typeof ApiIngestRoute
   '/api/transcripts': typeof ApiTranscriptsRouteWithChildren
   '/auth/$': typeof AuthSplatRoute
-  '/private/$cwd': typeof PrivateCwdRoute
-  '/repos/$id': typeof ReposIdRoute
-  '/s/$sessionId': typeof SSessionIdRoute
-  '/transcripts/$id': typeof TranscriptsIdRoute
+  '/private/$cwd': typeof AppPrivateCwdRoute
+  '/repos/$id': typeof AppReposIdRoute
+  '/s/$sessionId': typeof AppSSessionIdRoute
+  '/transcripts/$id': typeof AppTranscriptsIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/blobs/$sha256': typeof ApiBlobsSha256Route
   '/api/transcripts/clear': typeof ApiTranscriptsClearRoute
@@ -130,16 +135,17 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/app': typeof AppRoute
-  '/device': typeof DeviceRoute
+  '/_app': typeof AppRouteWithChildren
+  '/_app/app': typeof AppAppRoute
+  '/_app/device': typeof AppDeviceRoute
   '/api/commit-track': typeof ApiCommitTrackRoute
   '/api/ingest': typeof ApiIngestRoute
   '/api/transcripts': typeof ApiTranscriptsRouteWithChildren
   '/auth/$': typeof AuthSplatRoute
-  '/private/$cwd': typeof PrivateCwdRoute
-  '/repos/$id': typeof ReposIdRoute
-  '/s/$sessionId': typeof SSessionIdRoute
-  '/transcripts/$id': typeof TranscriptsIdRoute
+  '/_app/private/$cwd': typeof AppPrivateCwdRoute
+  '/_app/repos/$id': typeof AppReposIdRoute
+  '/_app/s/$sessionId': typeof AppSSessionIdRoute
+  '/_app/transcripts/$id': typeof AppTranscriptsIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/blobs/$sha256': typeof ApiBlobsSha256Route
   '/api/transcripts/clear': typeof ApiTranscriptsClearRoute
@@ -180,16 +186,17 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/app'
-    | '/device'
+    | '/_app'
+    | '/_app/app'
+    | '/_app/device'
     | '/api/commit-track'
     | '/api/ingest'
     | '/api/transcripts'
     | '/auth/$'
-    | '/private/$cwd'
-    | '/repos/$id'
-    | '/s/$sessionId'
-    | '/transcripts/$id'
+    | '/_app/private/$cwd'
+    | '/_app/repos/$id'
+    | '/_app/s/$sessionId'
+    | '/_app/transcripts/$id'
     | '/api/auth/$'
     | '/api/blobs/$sha256'
     | '/api/transcripts/clear'
@@ -197,33 +204,21 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AppRoute: typeof AppRoute
-  DeviceRoute: typeof DeviceRoute
+  AppRoute: typeof AppRouteWithChildren
   ApiCommitTrackRoute: typeof ApiCommitTrackRoute
   ApiIngestRoute: typeof ApiIngestRoute
   ApiTranscriptsRoute: typeof ApiTranscriptsRouteWithChildren
   AuthSplatRoute: typeof AuthSplatRoute
-  PrivateCwdRoute: typeof PrivateCwdRoute
-  ReposIdRoute: typeof ReposIdRoute
-  SSessionIdRoute: typeof SSessionIdRoute
-  TranscriptsIdRoute: typeof TranscriptsIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiBlobsSha256Route: typeof ApiBlobsSha256Route
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/device': {
-      id: '/device'
-      path: '/device'
-      fullPath: '/device'
-      preLoaderRoute: typeof DeviceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/app': {
-      id: '/app'
-      path: '/app'
-      fullPath: '/app'
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: ''
       preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -232,34 +227,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/transcripts/$id': {
-      id: '/transcripts/$id'
-      path: '/transcripts/$id'
-      fullPath: '/transcripts/$id'
-      preLoaderRoute: typeof TranscriptsIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/s/$sessionId': {
-      id: '/s/$sessionId'
-      path: '/s/$sessionId'
-      fullPath: '/s/$sessionId'
-      preLoaderRoute: typeof SSessionIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/repos/$id': {
-      id: '/repos/$id'
-      path: '/repos/$id'
-      fullPath: '/repos/$id'
-      preLoaderRoute: typeof ReposIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/private/$cwd': {
-      id: '/private/$cwd'
-      path: '/private/$cwd'
-      fullPath: '/private/$cwd'
-      preLoaderRoute: typeof PrivateCwdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/$': {
@@ -290,6 +257,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCommitTrackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/device': {
+      id: '/_app/device'
+      path: '/device'
+      fullPath: '/device'
+      preLoaderRoute: typeof AppDeviceRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/app': {
+      id: '/_app/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AppAppRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/api/transcripts/clear': {
       id: '/api/transcripts/clear'
       path: '/clear'
@@ -311,8 +292,56 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/transcripts/$id': {
+      id: '/_app/transcripts/$id'
+      path: '/transcripts/$id'
+      fullPath: '/transcripts/$id'
+      preLoaderRoute: typeof AppTranscriptsIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/s/$sessionId': {
+      id: '/_app/s/$sessionId'
+      path: '/s/$sessionId'
+      fullPath: '/s/$sessionId'
+      preLoaderRoute: typeof AppSSessionIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/repos/$id': {
+      id: '/_app/repos/$id'
+      path: '/repos/$id'
+      fullPath: '/repos/$id'
+      preLoaderRoute: typeof AppReposIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/private/$cwd': {
+      id: '/_app/private/$cwd'
+      path: '/private/$cwd'
+      fullPath: '/private/$cwd'
+      preLoaderRoute: typeof AppPrivateCwdRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
+
+interface AppRouteChildren {
+  AppAppRoute: typeof AppAppRoute
+  AppDeviceRoute: typeof AppDeviceRoute
+  AppPrivateCwdRoute: typeof AppPrivateCwdRoute
+  AppReposIdRoute: typeof AppReposIdRoute
+  AppSSessionIdRoute: typeof AppSSessionIdRoute
+  AppTranscriptsIdRoute: typeof AppTranscriptsIdRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppAppRoute: AppAppRoute,
+  AppDeviceRoute: AppDeviceRoute,
+  AppPrivateCwdRoute: AppPrivateCwdRoute,
+  AppReposIdRoute: AppReposIdRoute,
+  AppSSessionIdRoute: AppSSessionIdRoute,
+  AppTranscriptsIdRoute: AppTranscriptsIdRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 interface ApiTranscriptsRouteChildren {
   ApiTranscriptsClearRoute: typeof ApiTranscriptsClearRoute
@@ -328,16 +357,11 @@ const ApiTranscriptsRouteWithChildren = ApiTranscriptsRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AppRoute: AppRoute,
-  DeviceRoute: DeviceRoute,
+  AppRoute: AppRouteWithChildren,
   ApiCommitTrackRoute: ApiCommitTrackRoute,
   ApiIngestRoute: ApiIngestRoute,
   ApiTranscriptsRoute: ApiTranscriptsRouteWithChildren,
   AuthSplatRoute: AuthSplatRoute,
-  PrivateCwdRoute: PrivateCwdRoute,
-  ReposIdRoute: ReposIdRoute,
-  SSessionIdRoute: SSessionIdRoute,
-  TranscriptsIdRoute: TranscriptsIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiBlobsSha256Route: ApiBlobsSha256Route,
 }
