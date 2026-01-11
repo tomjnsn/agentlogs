@@ -57,7 +57,7 @@ async function filterNewBlobs(
 }
 
 /**
- * Upload transcript to Vibe Insights server.
+ * Upload transcript to AgentLogs server.
  * Returns success status and optional transcript ID.
  */
 export async function uploadTranscript(

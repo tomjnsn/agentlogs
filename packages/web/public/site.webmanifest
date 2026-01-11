@@ -1,6 +1,6 @@
 {
-  "name": "Vibe Insights",
-  "short_name": "Vibe Insights",
+  "name": "AgentLogs",
+  "short_name": "AgentLogs",
   "description": "Insights from your transcripts with agentic coding tools",
   "icons": [
     {

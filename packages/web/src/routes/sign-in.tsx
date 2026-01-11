@@ -19,7 +19,7 @@ function SignInComponent() {
     <div className="flex min-h-[60vh] items-center justify-center">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Welcome to Vibe Insights</CardTitle>
+          <CardTitle className="text-2xl">Welcome to AgentLogs</CardTitle>
           <CardDescription>Sign in with your GitHub account to access your engineering insights</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-4">

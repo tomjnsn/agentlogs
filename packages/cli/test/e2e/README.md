@@ -1,6 +1,6 @@
 # E2E Testing Guide
 
-This directory contains end-to-end tests for the Vibe Insights CLI.
+This directory contains end-to-end tests for the AgentLogs CLI.
 
 ## Test: `hook.test.ts`
 

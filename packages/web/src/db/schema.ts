@@ -107,7 +107,7 @@ export const deviceCode = sqliteTable("device_code", {
 });
 
 // =============================================================================
-// Vibe Insights tables (with userId for multi-tenancy)
+// AgentLogs tables (with userId for multi-tenancy)
 // =============================================================================
 export const repos = sqliteTable("repos", {
   id: text("id")
@@ -244,7 +244,7 @@ export const accountRelations = relations(account, ({ one }) => ({
   }),
 }));
 
-// Vibe Insights relations
+// AgentLogs relations
 export const reposRelations = relations(repos, ({ many }) => ({
   transcripts: many(transcripts),
 }));
