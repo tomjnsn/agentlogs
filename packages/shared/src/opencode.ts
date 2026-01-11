@@ -208,7 +208,7 @@ export function convertOpenCodeTranscript(
 
   for (const message of sortedMessages) {
     const msgInfo = message.info;
-    const model = msgInfo.modelID ?? msgInfo.model?.modelID ?? null;
+    const model = computeModelIdentifier(msgInfo);
 
     // Track primary model from assistant messages
     if (msgInfo.role === "assistant" && model && !primaryModel) {
@@ -330,7 +330,7 @@ export function convertOpenCodeTranscript(
       : unifiedGitContextSchema.parse({
           repo: null,
           branch: null,
-          relativeCwd: null,
+          relativeCwd: extractRelativeCwd(sortedMessages),
         });
 
   const formattedCwd = cwd ? formatCwdWithTilde(cwd) : null;
@@ -369,6 +369,45 @@ export function convertOpenCodeTranscript(
 function normalizeToolName(name: string): string {
   const lower = name.toLowerCase();
   return TOOL_NAME_MAP[lower] ?? name;
+}
+
+/**
+ * Compute the model identifier from message info.
+ * Returns `${providerID}/${modelID}` when both are available.
+ */
+function computeModelIdentifier(msgInfo: OpenCodeMessageInfo): string | null {
+  const modelID = msgInfo.modelID ?? msgInfo.model?.modelID;
+  const providerID = msgInfo.providerID ?? msgInfo.model?.providerID;
+
+  if (!modelID) return null;
+  if (providerID) return `${providerID}/${modelID}`;
+  return modelID;
+}
+
+/**
+ * Extract relativeCwd from OpenCode message path data.
+ * Computes the relative path from root (git worktree) to cwd.
+ */
+function extractRelativeCwd(messages: OpenCodeMessage[]): string | null {
+  // Find the first message with path info
+  for (const message of messages) {
+    const msgPath = message.info.path;
+    if (msgPath?.root && msgPath?.cwd) {
+      if (msgPath.root === msgPath.cwd) {
+        return null; // At root, no relative path
+      }
+      try {
+        const relative = path.relative(msgPath.root, msgPath.cwd).replace(/\\/g, "/");
+        if (relative && !relative.startsWith("..") && !path.isAbsolute(relative)) {
+          return relative;
+        }
+      } catch {
+        // Ignore errors
+      }
+    }
+  }
+
+  return null;
 }
 
 function derivePreview(userTexts: string[]): string | null {

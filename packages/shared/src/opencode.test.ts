@@ -9,7 +9,7 @@ const FIXTURE_DIR = path.resolve(import.meta.dir, "../../../fixtures/opencode");
 const TEST_NOW = new Date("2026-01-15T12:00:00Z");
 
 const TEST_PRICING = {
-  "gpt-5.2-codex": {
+  "openai/gpt-5.2-codex": {
     input_cost_per_token: 1.25e-6,
     output_cost_per_token: 5e-6,
     cache_read_input_token_cost: 3.125e-7,
@@ -22,11 +22,18 @@ async function loadFixture(filename: string): Promise<OpenCodeExport> {
   return JSON.parse(content) as OpenCodeExport;
 }
 
+const TEST_GIT_CONTEXT = {
+  repo: "github.com/agentlogs/agentlogs",
+  branch: "main",
+  relativeCwd: null,
+};
+
 async function loadAndConvert(filename: string) {
   const data = await loadFixture(filename);
   const result = convertOpenCodeTranscript(data, {
     now: TEST_NOW,
     pricing: TEST_PRICING,
+    gitContext: TEST_GIT_CONTEXT,
   });
   return result;
 }
@@ -51,9 +58,9 @@ describe("convertOpenCodeTranscript", () => {
         "costUsd": 0.047218750000000004,
         "cwd": "~/dev/agentlogs",
         "git": {
-          "branch": null,
+          "branch": "main",
           "relativeCwd": null,
-          "repo": null,
+          "repo": "github.com/agentlogs/agentlogs",
         },
         "id": "ses_450b70e67ffeoaXH496F8i0fVA",
         "messageCount": 6,
@@ -80,7 +87,7 @@ describe("convertOpenCodeTranscript", () => {
               "filePath": "./JOKE.md",
             },
             "isError": false,
-            "model": "gpt-5.2-codex",
+            "model": "openai/gpt-5.2-codex",
             "output": {
               "created": true,
             },
@@ -95,7 +102,7 @@ describe("convertOpenCodeTranscript", () => {
               "filePath": "./JOKE.md",
             },
             "isError": false,
-            "model": "gpt-5.2-codex",
+            "model": "openai/gpt-5.2-codex",
             "output": {
               "content": 
       "# The Elevator
@@ -120,7 +127,7 @@ describe("convertOpenCodeTranscript", () => {
               "oldString": "Just a random footer line.",
             },
             "isError": false,
-            "model": "gpt-5.2-codex",
+            "model": "openai/gpt-5.2-codex",
             "output": {
               "additions": 1,
               "deletions": 1,
@@ -153,7 +160,7 @@ describe("convertOpenCodeTranscript", () => {
               "description": "Delete the JOKE.md file",
             },
             "isError": false,
-            "model": "gpt-5.2-codex",
+            "model": "openai/gpt-5.2-codex",
             "output": {
               "description": "Delete the JOKE.md file",
               "exitCode": 0,
@@ -165,16 +172,16 @@ describe("convertOpenCodeTranscript", () => {
           },
           {
             "id": "msg_baf491bb5001iGYYlAIx76nKgI",
-            "model": "gpt-5.2-codex",
+            "model": "openai/gpt-5.2-codex",
             "text": "All done: created \`JOKE.md\`, read it, updated the footer, and deleted the file. Want me to recreate it with a different joke or format?",
             "timestamp": "2026-01-11T22:59:22.677Z",
             "type": "agent",
           },
         ],
-        "model": "gpt-5.2-codex",
+        "model": "openai/gpt-5.2-codex",
         "modelUsage": [
           {
-            "model": "gpt-5.2-codex",
+            "model": "openai/gpt-5.2-codex",
             "usage": {
               "cachedInputTokens": 71936,
               "inputTokens": 18635,
