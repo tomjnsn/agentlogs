@@ -18,6 +18,11 @@
 - Follow linted defaults: 2-space indentation via oxfmt, 120 char print width
 - Always run `bun run format` before committing (auto-runs via pre-commit hook)
 
+## Migrations
+
+- Do not create .sql files yourself. Always use `bun db:generate` to generate them.
+- Run migrations locally using `bun db:migrate`
+
 ## Logging
 
 - All development logs collected in `logs/dev.log`

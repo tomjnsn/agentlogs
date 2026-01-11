@@ -11,7 +11,6 @@
     "predeploy": "bun run cf-typegen && bun run build",
     "deploy": "wrangler deploy",
     "cf-typegen": "test -f .env || cp .env.example .env; wrangler types",
-    "db:setup": "bun run db:generate && bun run db:migrate:local",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "wrangler d1 migrations apply agentlogs --local",
     "db:migrate:remote": "wrangler d1 migrations apply agentlogs --remote",
