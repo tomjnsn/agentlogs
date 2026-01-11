@@ -1,0 +1,523 @@
+{
+  "info": {
+    "id": "ses_450b70e67ffeoaXH496F8i0fVA",
+    "version": "1.1.13",
+    "projectID": "2d98053251b0c57dde35a7c7a971bf206009a6c6",
+    "directory": "/Users/philipp/dev/agentlogs",
+    "title": "New session - 2026-01-11T22:59:11.896Z",
+    "time": {
+      "created": 1768172351896,
+      "updated": 1768172351896
+    }
+  },
+  "messages": [
+    {
+      "info": {
+        "id": "msg_baf48f19a001Bt3EEPzRxclLuC",
+        "sessionID": "ses_450b70e67ffeoaXH496F8i0fVA",
+        "role": "user",
+        "time": {
+          "created": 1768172351902
+        },
+        "summary": {
+          "title": "File lifecycle: JOKE.md creation, read, modify, delete",
+          "diffs": []
+        },
+        "agent": "build",
+        "model": {
+          "providerID": "openai",
+          "modelID": "gpt-5.2-codex"
+        }
+      },
+      "parts": [
+        {
+          "id": "prt_baf48f19a002Mz45f1UoNJLady",
+          "sessionID": "ses_450b70e67ffeoaXH496F8i0fVA",
+          "messageID": "msg_baf48f19a001Bt3EEPzRxclLuC",
+          "type": "text",
+          "text": "create a file JOKE.md with a random joke with a title and a footer with some random text, then read this file, then make change to the file, then delete the file."
+        }
+      ]
+    },
+    {
+      "info": {
+        "id": "msg_baf48f1a40011EevmGxxYiE4t6",
+        "sessionID": "ses_450b70e67ffeoaXH496F8i0fVA",
+        "role": "assistant",
+        "time": {
+          "created": 1768172351908,
+          "completed": 1768172357148
+        },
+        "parentID": "msg_baf48f19a001Bt3EEPzRxclLuC",
+        "modelID": "gpt-5.2-codex",
+        "providerID": "openai",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/philipp/dev/agentlogs",
+          "root": "/Users/philipp/dev/agentlogs"
+        },
+        "cost": 0,
+        "tokens": {
+          "input": 17857,
+          "output": 134,
+          "reasoning": 64,
+          "cache": {
+            "read": 0,
+            "write": 0
+          }
+        },
+        "finish": "tool-calls"
+      },
+      "parts": [
+        {
+          "id": "prt_baf48f89b001gdKRbCPLLgTG6D",
+          "sessionID": "ses_450b70e67ffeoaXH496F8i0fVA",
+          "messageID": "msg_baf48f1a40011EevmGxxYiE4t6",
+          "type": "step-start",
+          "snapshot": "8d0157f6fddf2aa1f4b54d7978a41f79368d1e20"
+        },
+        {
+          "id": "prt_baf48f89c001wHMA7mfFW3HDFT",
+          "sessionID": "ses_450b70e67ffeoaXH496F8i0fVA",
+          "messageID": "msg_baf48f1a40011EevmGxxYiE4t6",
+          "type": "reasoning",
+          "text": "",
+          "metadata": {
+            "openai": {
+              "itemId": "rs_0a673777bfbba9ed0169642b41b1b4819194fdb9dd1b8a1978",
+              "reasoningEncryptedContent": "gAAAAABpZCtEjmcKWwy9vHMLr4OihctxGBZBabmALhSy-IOvPYxxHXPg9gKC-9NuGCTk2MGrjy4XjsAa9JxFTO6VAXSZLIrfwP1vemK3PHYTJ10gJjNm1pcl9tRHIWkO8IH7nbWEWPQ_5ioqcENVcJ-rV-CxnM5wF_-stUETpyaLF7jRk1d7C5FA_deSU_F4hVTd7Ec43LPAvRemfztmsV5mNxnqqF8KYrFyxQ8U-rq0V9UN2JQjkIYz4Xf3d7Ts6RGR7S4wJJ368eji2N4d4Lm3_Om2Hl-Qmn5lyHTTYVz2Swsaj1VBPFV9r_PBwq4jfY_5g9-2SmY1HtDRetaoRhzwknDqAlwdjyrBpgs3wSYy3iTKp3VlYrANE-qHfDm3FhCB3aTePjenUh1rg6EfPaXxHaNqiR6XLEEqhcQEBF2cFBMGL2MdqnUySbH5ylDCngKKKJNU2UV3g46BhrSSv9TYFX0mumIEutEgSPOiddjSaz3Z-7dP-JITHP669h8miERnzEAylbZi3KGEs-mPkJePCLrWPCGieIuqMQoEWaubCQ2bjlvZEN_rpXzN4Xk4QqoTP5JKg4rWZP5JmbKDNh86683lNE42M6VQYhESautMK7jQthTlILXb_xQgwr9n13XjP3GHtk7IZ3YRr5hwkMkewJJRY8yceVGil6xga44_fQyCUeNaBuJIpt9C9fYyWrVSqCSVGP6gXPUJZsZZaL-ZrULHbsZhg797SUTWSYsyfq9hb2ndHEIN-1zcQ1iU9_nAmviKLRweYcVqQ7pCvwKoAEbSEubSOD08UjTGAGkJaxRvwQYaPUzv1rz4q6d4QjblODfIWxllQmpvtsxzbRffJSvAVhLdG0iqlNh5Y3r05qB79lOwDKnoGKhM-Gzlt7dhGTef6cJMytltArRu8RkMQemMbk-KLNUicrt_Mvlhk0NhmSLV43uFkbib1HPf86C6_EHm49WhDdOKtf6fTJu_UfJGASBvkRh917zcWP96vpHTZK2pmH8ubOZOKQEO6i2dQ3E2qnxhQtiNXedBYtyOwZWOqWpU1L67HNg6W38kfIhqap8bkJEcW-YAaiOCUjwlMTLcz59e8503my28NOWDZOnUrHQa8lzojrWiFw1ToLUaP6zX93u2vYAngB7OLV1Ot_kRC1VApwe-8JjrXW3LM0aW5MO4Ycwfc9tUSA73kQfvSHRhrC8KFQXprYF1xaxYB8_twyBsWlF1B8f4_jmnv6bqFrf419TZtM-9PTWBM9BERZGvEmYlyov-j25GyXUJUPQCRBBYGLPWCu4Iym0FCCa_Xu1k7by4dwJ6DCHF5zMW1anV8IhmgwYHmzDkyxkQHW159UEi7AmKV-oS6HGNta_R3508JpEWwCLwNzzWnxf5c8olQVgJi8Byb0BjRXhvKtnu3p7qYc1nvniiBLCK8u0NN6LiEuZzgVBaiX2VhydpeNFRUV7cUA01VW1aQR42HDtCQDGd3_YO55pYQrnFvxIvAa-i_qfEYc77fZR_Ixbz61W-J9MWb41qcm1P2DY1vjDmNOU1"
+            }
+          },
+          "time": {
+            "start": 1768172353692,
+            "end": 1768172356094
+          }
+        },
+        {
+          "id": "prt_baf4901ff0014MZ1VNMKOdaiiK",
+          "sessionID": "ses_450b70e67ffeoaXH496F8i0fVA",
+          "messageID": "msg_baf48f1a40011EevmGxxYiE4t6",
+          "type": "tool",
+          "callID": "call_5FYki1ZoTLYkanx60w7fuvAX",
+          "tool": "write",
+          "state": {
+            "status": "completed",
+            "input": {
+              "filePath": "/Users/philipp/dev/agentlogs/JOKE.md",
+              "content": "# The Elevator\n\nWhy did the elevator break up with the staircase?\nIt felt the relationship was going nowhere fast.\n\n---\nJust a random footer line."
+            },
+            "output": "",
+            "title": "JOKE.md",
+            "metadata": {
+              "diagnostics": {},
+              "filepath": "/Users/philipp/dev/agentlogs/JOKE.md",
+              "exists": false,
+              "truncated": false
+            },
+            "time": {
+              "start": 1768172357050,
+              "end": 1768172357052
+            }
+          },
+          "metadata": {
+            "openai": {
+              "itemId": "fc_0a673777bfbba9ed0169642b4425008191bcc151b58b401574"
+            }
+          }
+        },
+        {
+          "id": "prt_baf4905c3001cE0g9igE5jjLPQ",
+          "sessionID": "ses_450b70e67ffeoaXH496F8i0fVA",
+          "messageID": "msg_baf48f1a40011EevmGxxYiE4t6",
+          "type": "step-finish",
+          "reason": "tool-calls",
+          "snapshot": "5d9e296ec5449a16959a22d93186241b22448915",
+          "cost": 0,
+          "tokens": {
+            "input": 17857,
+            "output": 134,
+            "reasoning": 64,
+            "cache": {
+              "read": 0,
+              "write": 0
+            }
+          }
+        },
+        {
+          "id": "prt_baf49061a001HiaKZQNvTsdYRR",
+          "sessionID": "ses_450b70e67ffeoaXH496F8i0fVA",
+          "messageID": "msg_baf48f1a40011EevmGxxYiE4t6",
+          "type": "patch",
+          "hash": "8d0157f6fddf2aa1f4b54d7978a41f79368d1e20",
+          "files": ["/Users/philipp/dev/agentlogs/JOKE.md"]
+        }
+      ]
+    },
+    {
+      "info": {
+        "id": "msg_baf49061d001cVeqkK3lw1Ig6S",
+        "sessionID": "ses_450b70e67ffeoaXH496F8i0fVA",
+        "role": "assistant",
+        "time": {
+          "created": 1768172357149,
+          "completed": 1768172358511
+        },
+        "parentID": "msg_baf48f19a001Bt3EEPzRxclLuC",
+        "modelID": "gpt-5.2-codex",
+        "providerID": "openai",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/philipp/dev/agentlogs",
+          "root": "/Users/philipp/dev/agentlogs"
+        },
+        "cost": 0,
+        "tokens": {
+          "input": 140,
+          "output": 29,
+          "reasoning": 0,
+          "cache": {
+            "read": 17920,
+            "write": 0
+          }
+        },
+        "finish": "tool-calls"
+      },
+      "parts": [
+        {
+          "id": "prt_baf4907c0001TOMELNioGsje0M",
+          "sessionID": "ses_450b70e67ffeoaXH496F8i0fVA",
+          "messageID": "msg_baf49061d001cVeqkK3lw1Ig6S",
+          "type": "step-start",
+          "snapshot": "5d9e296ec5449a16959a22d93186241b22448915"
+        },
+        {
+          "id": "prt_baf490942001ovyF79d36hWx98",
+          "sessionID": "ses_450b70e67ffeoaXH496F8i0fVA",
+          "messageID": "msg_baf49061d001cVeqkK3lw1Ig6S",
+          "type": "tool",
+          "callID": "call_mO9J7UcA7rft4D8zUXSxS4nL",
+          "tool": "read",
+          "state": {
+            "status": "completed",
+            "input": {
+              "filePath": "/Users/philipp/dev/agentlogs/JOKE.md"
+            },
+            "output": "<file>\n00001| # The Elevator\n00002| \n00003| Why did the elevator break up with the staircase?\n00004| It felt the relationship was going nowhere fast.\n00005| \n00006| ---\n00007| Just a random footer line.\n\n(End of file - total 7 lines)\n</file>",
+            "title": "JOKE.md",
+            "metadata": {
+              "preview": "# The Elevator\n\nWhy did the elevator break up with the staircase?\nIt felt the relationship was going nowhere fast.\n\n---\nJust a random footer line.",
+              "truncated": false
+            },
+            "time": {
+              "start": 1768172358426,
+              "end": 1768172358427
+            }
+          },
+          "metadata": {
+            "openai": {
+              "itemId": "fc_0a673777bfbba9ed0169642b4601e481919a395d0f4ac3f6e2"
+            }
+          }
+        },
+        {
+          "id": "prt_baf490b25001R0X5pDu3YNr7sY",
+          "sessionID": "ses_450b70e67ffeoaXH496F8i0fVA",
+          "messageID": "msg_baf49061d001cVeqkK3lw1Ig6S",
+          "type": "step-finish",
+          "reason": "tool-calls",
+          "snapshot": "5d9e296ec5449a16959a22d93186241b22448915",
+          "cost": 0,
+          "tokens": {
+            "input": 140,
+            "output": 29,
+            "reasoning": 0,
+            "cache": {
+              "read": 17920,
+              "write": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "info": {
+        "id": "msg_baf490b72001tCz71WX65GJ0Vs",
+        "sessionID": "ses_450b70e67ffeoaXH496F8i0fVA",
+        "role": "assistant",
+        "time": {
+          "created": 1768172358514,
+          "completed": 1768172361109
+        },
+        "parentID": "msg_baf48f19a001Bt3EEPzRxclLuC",
+        "modelID": "gpt-5.2-codex",
+        "providerID": "openai",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/philipp/dev/agentlogs",
+          "root": "/Users/philipp/dev/agentlogs"
+        },
+        "cost": 0,
+        "tokens": {
+          "input": 245,
+          "output": 48,
+          "reasoning": 0,
+          "cache": {
+            "read": 17920,
+            "write": 0
+          }
+        },
+        "finish": "tool-calls"
+      },
+      "parts": [
+        {
+          "id": "prt_baf490d09001fXKU2gMtc4r76N",
+          "sessionID": "ses_450b70e67ffeoaXH496F8i0fVA",
+          "messageID": "msg_baf490b72001tCz71WX65GJ0Vs",
+          "type": "step-start",
+          "snapshot": "5d9e296ec5449a16959a22d93186241b22448915"
+        },
+        {
+          "id": "prt_baf491066001jHRVssnJ01N9h9",
+          "sessionID": "ses_450b70e67ffeoaXH496F8i0fVA",
+          "messageID": "msg_baf490b72001tCz71WX65GJ0Vs",
+          "type": "tool",
+          "callID": "call_AzA1yNZKBASsQGiBlGCAJJdc",
+          "tool": "edit",
+          "state": {
+            "status": "completed",
+            "input": {
+              "filePath": "/Users/philipp/dev/agentlogs/JOKE.md",
+              "oldString": "Just a random footer line.",
+              "newString": "Footer: totally unrelated text."
+            },
+            "output": "",
+            "title": "JOKE.md",
+            "metadata": {
+              "diagnostics": {},
+              "diff": "Index: /Users/philipp/dev/agentlogs/JOKE.md\n===================================================================\n--- /Users/philipp/dev/agentlogs/JOKE.md\n+++ /Users/philipp/dev/agentlogs/JOKE.md\n@@ -3,5 +3,5 @@\n Why did the elevator break up with the staircase?\n It felt the relationship was going nowhere fast.\n \n ---\n-Just a random footer line.\n\\ No newline at end of file\n+Footer: totally unrelated text.\n\\ No newline at end of file\n",
+              "filediff": {
+                "file": "/Users/philipp/dev/agentlogs/JOKE.md",
+                "before": "# The Elevator\n\nWhy did the elevator break up with the staircase?\nIt felt the relationship was going nowhere fast.\n\n---\nJust a random footer line.",
+                "after": "# The Elevator\n\nWhy did the elevator break up with the staircase?\nIt felt the relationship was going nowhere fast.\n\n---\nFooter: totally unrelated text.",
+                "additions": 1,
+                "deletions": 1
+              },
+              "truncated": false
+            },
+            "time": {
+              "start": 1768172361012,
+              "end": 1768172361017
+            }
+          },
+          "metadata": {
+            "openai": {
+              "itemId": "fc_0a673777bfbba9ed0169642b47d550819189a3ed28f61a66af"
+            }
+          }
+        },
+        {
+          "id": "prt_baf491539001tQ35lEN63ShaQs",
+          "sessionID": "ses_450b70e67ffeoaXH496F8i0fVA",
+          "messageID": "msg_baf490b72001tCz71WX65GJ0Vs",
+          "type": "step-finish",
+          "reason": "tool-calls",
+          "snapshot": "627279ad5323baba8d1537e6565ddd0ca934093b",
+          "cost": 0,
+          "tokens": {
+            "input": 245,
+            "output": 48,
+            "reasoning": 0,
+            "cache": {
+              "read": 17920,
+              "write": 0
+            }
+          }
+        },
+        {
+          "id": "prt_baf491594001ONcAYurp4pRApQ",
+          "sessionID": "ses_450b70e67ffeoaXH496F8i0fVA",
+          "messageID": "msg_baf490b72001tCz71WX65GJ0Vs",
+          "type": "patch",
+          "hash": "5d9e296ec5449a16959a22d93186241b22448915",
+          "files": ["/Users/philipp/dev/agentlogs/JOKE.md"]
+        }
+      ]
+    },
+    {
+      "info": {
+        "id": "msg_baf491597001p2f6KzIFRO4XYr",
+        "sessionID": "ses_450b70e67ffeoaXH496F8i0fVA",
+        "role": "assistant",
+        "time": {
+          "created": 1768172361111,
+          "completed": 1768172362675
+        },
+        "parentID": "msg_baf48f19a001Bt3EEPzRxclLuC",
+        "modelID": "gpt-5.2-codex",
+        "providerID": "openai",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/philipp/dev/agentlogs",
+          "root": "/Users/philipp/dev/agentlogs"
+        },
+        "cost": 0,
+        "tokens": {
+          "input": 172,
+          "output": 41,
+          "reasoning": 0,
+          "cache": {
+            "read": 18048,
+            "write": 0
+          }
+        },
+        "finish": "tool-calls"
+      },
+      "parts": [
+        {
+          "id": "prt_baf491767001Wn151ZtUkCRzjE",
+          "sessionID": "ses_450b70e67ffeoaXH496F8i0fVA",
+          "messageID": "msg_baf491597001p2f6KzIFRO4XYr",
+          "type": "step-start",
+          "snapshot": "627279ad5323baba8d1537e6565ddd0ca934093b"
+        },
+        {
+          "id": "prt_baf491905001Fg5dCvh54CMHzd",
+          "sessionID": "ses_450b70e67ffeoaXH496F8i0fVA",
+          "messageID": "msg_baf491597001p2f6KzIFRO4XYr",
+          "type": "tool",
+          "callID": "call_POT8dJbvw37zVltWEQww460Q",
+          "tool": "bash",
+          "state": {
+            "status": "completed",
+            "input": {
+              "description": "Delete the JOKE.md file",
+              "command": "rm \"/Users/philipp/dev/agentlogs/JOKE.md\""
+            },
+            "output": "",
+            "title": "Delete the JOKE.md file",
+            "metadata": {
+              "output": "",
+              "exit": 0,
+              "description": "Delete the JOKE.md file",
+              "truncated": false
+            },
+            "time": {
+              "start": 1768172362554,
+              "end": 1768172362591
+            }
+          },
+          "metadata": {
+            "openai": {
+              "itemId": "fc_0a673777bfbba9ed0169642b4a09c88191b2510f5c3a33b6d6"
+            }
+          }
+        },
+        {
+          "id": "prt_baf491b5f001HIAexdHrwKzf5Z",
+          "sessionID": "ses_450b70e67ffeoaXH496F8i0fVA",
+          "messageID": "msg_baf491597001p2f6KzIFRO4XYr",
+          "type": "step-finish",
+          "reason": "tool-calls",
+          "snapshot": "8d0157f6fddf2aa1f4b54d7978a41f79368d1e20",
+          "cost": 0,
+          "tokens": {
+            "input": 172,
+            "output": 41,
+            "reasoning": 0,
+            "cache": {
+              "read": 18048,
+              "write": 0
+            }
+          }
+        },
+        {
+          "id": "prt_baf491bb2001yt8BskWZdDqpwS",
+          "sessionID": "ses_450b70e67ffeoaXH496F8i0fVA",
+          "messageID": "msg_baf491597001p2f6KzIFRO4XYr",
+          "type": "patch",
+          "hash": "627279ad5323baba8d1537e6565ddd0ca934093b",
+          "files": ["/Users/philipp/dev/agentlogs/JOKE.md"]
+        }
+      ]
+    },
+    {
+      "info": {
+        "id": "msg_baf491bb5001iGYYlAIx76nKgI",
+        "sessionID": "ses_450b70e67ffeoaXH496F8i0fVA",
+        "role": "assistant",
+        "time": {
+          "created": 1768172362677,
+          "completed": 1768172363942
+        },
+        "parentID": "msg_baf48f19a001Bt3EEPzRxclLuC",
+        "modelID": "gpt-5.2-codex",
+        "providerID": "openai",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/philipp/dev/agentlogs",
+          "root": "/Users/philipp/dev/agentlogs"
+        },
+        "cost": 0,
+        "tokens": {
+          "input": 221,
+          "output": 37,
+          "reasoning": 0,
+          "cache": {
+            "read": 18048,
+            "write": 0
+          }
+        },
+        "finish": "stop"
+      },
+      "parts": [
+        {
+          "id": "prt_baf491c9d0017gGziuvwOMEU7G",
+          "sessionID": "ses_450b70e67ffeoaXH496F8i0fVA",
+          "messageID": "msg_baf491bb5001iGYYlAIx76nKgI",
+          "type": "step-start",
+          "snapshot": "8d0157f6fddf2aa1f4b54d7978a41f79368d1e20"
+        },
+        {
+          "id": "prt_baf491dcb001xLF2KHbR1El1eE",
+          "sessionID": "ses_450b70e67ffeoaXH496F8i0fVA",
+          "messageID": "msg_baf491bb5001iGYYlAIx76nKgI",
+          "type": "text",
+          "text": "All done: created `JOKE.md`, read it, updated the footer, and deleted the file. Want me to recreate it with a different joke or format?",
+          "time": {
+            "start": 1768172363858,
+            "end": 1768172363858
+          },
+          "metadata": {
+            "openai": {
+              "itemId": "msg_0a673777bfbba9ed0169642b4b3f7081919ee493b2a1b29dae"
+            }
+          }
+        },
+        {
+          "id": "prt_baf4920580011LDFa61f7vLl2i",
+          "sessionID": "ses_450b70e67ffeoaXH496F8i0fVA",
+          "messageID": "msg_baf491bb5001iGYYlAIx76nKgI",
+          "type": "step-finish",
+          "reason": "stop",
+          "snapshot": "8d0157f6fddf2aa1f4b54d7978a41f79368d1e20",
+          "cost": 0,
+          "tokens": {
+            "input": 221,
+            "output": 37,
+            "reasoning": 0,
+            "cache": {
+              "read": 18048,
+              "write": 0
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "_source": "events"
+}

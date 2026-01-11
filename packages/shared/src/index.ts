@@ -8,9 +8,11 @@ export { convertCodexTranscript, convertCodexFile, convertCodexFiles, type Conve
 export {
   convertOpenCodeTranscript,
   type ConvertOpenCodeOptions,
+  type OpenCodeExport,
   type OpenCodeMessage,
+  type OpenCodeMessageInfo,
   type OpenCodePart,
-  type OpenCodeSession,
+  type OpenCodeSessionInfo,
   type OpenCodeToolState,
 } from "./opencode";
 export * from "./pricing";

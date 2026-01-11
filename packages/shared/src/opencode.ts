@@ -10,45 +10,123 @@ import {
 } from "./schemas";
 
 // ============================================================================
-// OpenCode Types
+// OpenCode Export Types (Real format from `opencode export`)
 // ============================================================================
 
-export type OpenCodeSession = {
+export type OpenCodeExport = {
+  info: OpenCodeSessionInfo;
+  messages: OpenCodeMessage[];
+};
+
+export type OpenCodeSessionInfo = {
   id: string;
-  parentSessionId?: string | null;
-  title?: string | null;
-  messageCount?: number;
-  promptTokens?: number;
-  completionTokens?: number;
-  cost?: number;
-  createdAt: string;
-  updatedAt?: string;
+  version?: string;
+  projectID?: string;
+  directory?: string;
+  title?: string;
+  time: {
+    created: number; // milliseconds since epoch
+    updated?: number;
+  };
+  summary?: {
+    additions?: number;
+    deletions?: number;
+    files?: number;
+  };
 };
 
 export type OpenCodeMessage = {
-  id: string;
-  sessionId: string;
-  role: "user" | "assistant";
+  info: OpenCodeMessageInfo;
   parts: OpenCodePart[];
-  model?: string | null;
-  createdAt: string;
-  updatedAt?: string;
-  finishedAt?: string | null;
+};
+
+export type OpenCodeMessageInfo = {
+  id: string;
+  sessionID: string;
+  role: "user" | "assistant";
+  time: {
+    created: number;
+    completed?: number;
+  };
+  parentID?: string;
+  modelID?: string;
+  providerID?: string;
+  mode?: string;
+  agent?: string;
+  path?: {
+    cwd?: string;
+    root?: string;
+  };
+  cost?: number;
+  tokens?: {
+    input: number;
+    output: number;
+    reasoning?: number;
+    cache?: {
+      read: number;
+      write: number;
+    };
+  };
+  finish?: string;
+  summary?: {
+    title?: string;
+    diffs?: unknown[];
+  };
+  model?: {
+    providerID?: string;
+    modelID?: string;
+  };
 };
 
 export type OpenCodeToolState = {
+  status?: "pending" | "running" | "completed" | "error";
   input?: unknown;
   output?: unknown;
   error?: string;
-  status?: "pending" | "running" | "completed" | "error";
+  title?: string;
+  metadata?: {
+    diagnostics?: unknown;
+    filepath?: string;
+    exists?: boolean;
+    truncated?: boolean;
+    diff?: string;
+    filediff?: {
+      file?: string;
+      before?: string;
+      after?: string;
+      additions?: number;
+      deletions?: number;
+    };
+    preview?: string;
+    output?: string;
+    exit?: number;
+    description?: string;
+  };
+  time?: {
+    start?: number;
+    end?: number;
+  };
 };
 
 export type OpenCodePart =
-  | { type: "text"; text: string }
-  | { type: "tool"; id: string; name: string; state?: OpenCodeToolState }
-  | { type: "reasoning"; text: string }
-  | { type: "compaction"; summary: string }
-  | { type: "file"; url: string; mime: string };
+  | { type: "text"; id?: string; text: string; time?: { start?: number; end?: number } }
+  | {
+      type: "tool";
+      id?: string;
+      callID: string;
+      tool: string;
+      state?: OpenCodeToolState;
+      metadata?: unknown;
+    }
+  | { type: "reasoning"; id?: string; text: string; metadata?: unknown; time?: { start?: number; end?: number } }
+  | { type: "step-start"; id?: string }
+  | {
+      type: "step-finish";
+      id?: string;
+      reason?: string;
+      cost?: number;
+      tokens?: { input: number; output: number; reasoning?: number; cache?: { read: number; write: number } };
+    };
 
 export type ConvertOpenCodeOptions = {
   now?: Date;
@@ -101,49 +179,74 @@ const DEFAULT_TIERED_THRESHOLD = 200_000;
 // ============================================================================
 
 /**
- * Convert an OpenCode session and messages to a unified transcript.
+ * Convert an OpenCode export to a unified transcript.
  */
 export function convertOpenCodeTranscript(
-  session: OpenCodeSession,
-  messages: OpenCodeMessage[],
+  data: OpenCodeExport,
   options: ConvertOpenCodeOptions = {},
 ): UnifiedTranscript | null {
-  if (messages.length === 0) {
+  const { info, messages } = data;
+
+  if (!messages || messages.length === 0) {
     return null;
   }
 
-  const cwd = options.cwd ?? null;
+  const cwd = options.cwd ?? info.directory ?? null;
   const unifiedMessages: UnifiedTranscriptMessage[] = [];
   const userTexts: string[] = [];
   let primaryModel: string | null = null;
+  let totalCost = 0;
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
+  let totalReasoningTokens = 0;
+  let totalCacheReadTokens = 0;
 
   // Sort messages by creation time
   const sortedMessages = [...messages].sort((a, b) => {
-    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    return a.info.time.created - b.info.time.created;
   });
 
   for (const message of sortedMessages) {
+    const msgInfo = message.info;
+    const model = msgInfo.modelID ?? msgInfo.model?.modelID ?? null;
+
     // Track primary model from assistant messages
-    if (message.role === "assistant" && message.model && !primaryModel) {
-      primaryModel = message.model;
+    if (msgInfo.role === "assistant" && model && !primaryModel) {
+      primaryModel = model;
+    }
+
+    // Accumulate token usage from assistant messages
+    if (msgInfo.role === "assistant" && msgInfo.tokens) {
+      totalInputTokens += msgInfo.tokens.input ?? 0;
+      totalOutputTokens += msgInfo.tokens.output ?? 0;
+      totalReasoningTokens += msgInfo.tokens.reasoning ?? 0;
+      totalCacheReadTokens += msgInfo.tokens.cache?.read ?? 0;
+    }
+
+    if (msgInfo.role === "assistant" && msgInfo.cost) {
+      totalCost += msgInfo.cost;
     }
 
     for (const part of message.parts) {
-      const timestamp = message.createdAt;
-      const model = message.role === "assistant" ? (message.model ?? undefined) : undefined;
+      // Skip step-start and step-finish parts
+      if (part.type === "step-start" || part.type === "step-finish") {
+        continue;
+      }
+
+      const timestamp = new Date(msgInfo.time.created).toISOString();
 
       switch (part.type) {
         case "text": {
-          const text = collapseWhitespace(part.text);
+          const text = part.text?.trim();
           if (!text) break;
 
-          if (message.role === "user") {
+          if (msgInfo.role === "user") {
             userTexts.push(text);
             unifiedMessages.push(
               unifiedTranscriptMessageSchema.parse({
                 type: "user",
                 text,
-                id: message.id,
+                id: msgInfo.id,
                 timestamp,
               }),
             );
@@ -152,9 +255,9 @@ export function convertOpenCodeTranscript(
               unifiedTranscriptMessageSchema.parse({
                 type: "agent",
                 text,
-                id: message.id,
+                id: msgInfo.id,
                 timestamp,
-                model,
+                model: model ?? undefined,
               }),
             );
           }
@@ -162,7 +265,7 @@ export function convertOpenCodeTranscript(
         }
 
         case "reasoning": {
-          const text = collapseWhitespace(part.text);
+          const text = part.text?.trim();
           if (!text) break;
 
           unifiedMessages.push(
@@ -170,25 +273,25 @@ export function convertOpenCodeTranscript(
               type: "thinking",
               text,
               timestamp,
-              model,
+              model: model ?? undefined,
             }),
           );
           break;
         }
 
         case "tool": {
-          const toolName = normalizeToolName(part.name);
+          const toolName = normalizeToolName(part.tool);
           const state = part.state ?? {};
 
           const sanitizedInput = sanitizeToolInput(toolName, state.input, cwd);
-          const sanitizedOutput = sanitizeToolOutput(toolName, state.output, cwd);
+          const sanitizedOutput = sanitizeToolOutput(toolName, state.output, state.metadata, cwd);
 
           unifiedMessages.push(
             unifiedTranscriptMessageSchema.parse({
               type: "tool-call",
-              id: part.id,
+              id: part.callID,
               timestamp,
-              model,
+              model: model ?? undefined,
               toolName,
               input: sanitizedInput,
               output: sanitizedOutput,
@@ -196,25 +299,6 @@ export function convertOpenCodeTranscript(
               isError: state.status === "error" || !!state.error,
             }),
           );
-          break;
-        }
-
-        case "compaction": {
-          const text = collapseWhitespace(part.summary);
-          if (!text) break;
-
-          unifiedMessages.push(
-            unifiedTranscriptMessageSchema.parse({
-              type: "compaction-summary",
-              text,
-              timestamp,
-            }),
-          );
-          break;
-        }
-
-        case "file": {
-          // Skip file/image parts - not supported in current schema
           break;
         }
       }
@@ -225,19 +309,19 @@ export function convertOpenCodeTranscript(
     return null;
   }
 
-  // Build token usage from session metadata
+  // Build token usage
   const tokenUsage: UnifiedTokenUsage = {
-    inputTokens: session.promptTokens ?? 0,
-    cachedInputTokens: 0, // OpenCode doesn't expose cache tokens yet
-    outputTokens: session.completionTokens ?? 0,
-    reasoningOutputTokens: 0, // Would need to extract from reasoning parts
-    totalTokens: (session.promptTokens ?? 0) + (session.completionTokens ?? 0),
+    inputTokens: totalInputTokens,
+    cachedInputTokens: totalCacheReadTokens,
+    outputTokens: totalOutputTokens,
+    reasoningOutputTokens: totalReasoningTokens,
+    totalTokens: totalInputTokens + totalOutputTokens,
   };
 
   const blendedTokens = tokenUsage.inputTokens + tokenUsage.outputTokens;
-  const costUsd = session.cost ?? calculateCostFromUsage(primaryModel, tokenUsage, options.pricing);
+  const costUsd = totalCost > 0 ? totalCost : calculateCostFromUsage(primaryModel, tokenUsage, options.pricing);
 
-  const timestamp = parseDate(session.createdAt) ?? options.now ?? new Date();
+  const timestamp = new Date(info.time.created);
   const preview = derivePreview(userTexts);
 
   const gitContext =
@@ -253,7 +337,7 @@ export function convertOpenCodeTranscript(
 
   const transcript: UnifiedTranscript = unifiedTranscriptSchema.parse({
     v: 1 as const,
-    id: session.id,
+    id: info.id,
     source: "opencode" as const,
     timestamp,
     preview,
@@ -287,23 +371,15 @@ function normalizeToolName(name: string): string {
   return TOOL_NAME_MAP[lower] ?? name;
 }
 
-function collapseWhitespace(value: string): string {
-  return value.replace(/\s+/g, " ").trim();
-}
-
-function parseDate(value: string | undefined): Date | null {
-  if (!value) return null;
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
 function derivePreview(userTexts: string[]): string | null {
   for (const text of userTexts) {
     const trimmed = text.trim();
     if (!trimmed) continue;
     // Skip system-like messages
     if (trimmed.startsWith("<") && trimmed.includes(">")) continue;
-    return truncate(trimmed, 80);
+    // Remove surrounding quotes if present
+    const unquoted = trimmed.replace(/^["']|["']$/g, "");
+    return truncate(unquoted, 80);
   }
   return userTexts.length > 0 ? truncate(userTexts[0], 80) : null;
 }
@@ -324,6 +400,9 @@ function sanitizeToolInput(toolName: string, input: unknown, cwd: string | null)
   const record = { ...(input as Record<string, unknown>) };
 
   // Relativize file paths
+  if (typeof record.filePath === "string" && cwd) {
+    record.filePath = relativizePath(record.filePath, cwd);
+  }
   if (typeof record.file_path === "string" && cwd) {
     record.file_path = relativizePath(record.file_path, cwd);
   }
@@ -337,27 +416,44 @@ function sanitizeToolInput(toolName: string, input: unknown, cwd: string | null)
   return record;
 }
 
-function sanitizeToolOutput(toolName: string, output: unknown, _cwd: string | null): unknown {
-  if (!output) return output;
-
-  // Shell/Bash output normalization
-  if (toolName === "Bash" && typeof output === "object") {
-    const record = output as Record<string, unknown>;
+function sanitizeToolOutput(
+  toolName: string,
+  output: unknown,
+  metadata: OpenCodeToolState["metadata"],
+  _cwd: string | null,
+): unknown {
+  // For Bash, extract from metadata
+  if (toolName === "Bash" && metadata) {
     const result: Record<string, unknown> = {};
+    if (typeof metadata.output === "string") {
+      result.stdout = metadata.output;
+    }
+    if (typeof metadata.exit === "number") {
+      result.exitCode = metadata.exit;
+    }
+    if (typeof metadata.description === "string") {
+      result.description = metadata.description;
+    }
+    return Object.keys(result).length > 0 ? result : output;
+  }
 
-    if (typeof record.stdout === "string") {
-      result.stdout = record.stdout;
-    } else if (typeof record.output === "string") {
-      result.stdout = record.output;
-    }
-    if (typeof record.stderr === "string") {
-      result.stderr = record.stderr;
-    }
-    if (typeof record.exitCode === "number" || typeof record.exit_code === "number") {
-      result.exitCode = record.exitCode ?? record.exit_code;
-    }
+  // For Read, extract content from metadata.preview or output
+  if (toolName === "Read" && metadata?.preview) {
+    return { content: metadata.preview };
+  }
 
-    return Object.keys(result).length > 0 ? result : undefined;
+  // For Edit, extract diff from metadata
+  if (toolName === "Edit" && metadata?.filediff) {
+    return {
+      diff: metadata.diff,
+      additions: metadata.filediff.additions,
+      deletions: metadata.filediff.deletions,
+    };
+  }
+
+  // For Write, check if file existed
+  if (toolName === "Write" && metadata) {
+    return { created: !metadata.exists };
   }
 
   return output;

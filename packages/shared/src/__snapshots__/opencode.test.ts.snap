@@ -1,0 +1,240 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`convertOpenCodeTranscript crud.json 1`] = `
+{
+  "blendedTokens": 9321,
+  "costUsd": 0.035632000000000004,
+  "cwd": "/private/tmp/opencode-test",
+  "git": {
+    "branch": null,
+    "relativeCwd": null,
+    "repo": null,
+  },
+  "id": "ses_450cd0841ffe37rmqx5xDcmF01",
+  "messageCount": 14,
+  "messages": [
+    {
+      "id": "msg_baf32f7c6001bVMkBKnZqThMKt",
+      "text": ""create a file JOKE.md with a random joke with a title and a footer with some random text, then read this file, then make change to the file, then delete the file."",
+      "timestamp": "2026-01-11T22:35:11.686Z",
+      "type": "user",
+    },
+    {
+      "model": "google/gemini-3-pro-preview",
+      "text": 
+"**Defining the Workflow**
+
+I'm currently formalizing the file operations workflow. I've broken down the user's request into discrete, manageable steps. I'm focusing now on the dependencies between creating, reading, modifying, and deleting the file, ensuring each step functions correctly before integrating them.
+
+
+**Chaining File Operations**
+
+I've decided to tackle the file operations sequentially, ensuring each step's success before moving on. Initially, I'll attempt to create and immediately read the \`JOKE.md\` file within the same turn. This tests the write and read capabilities in immediate succession, allowing for swift error detection and adjustment of the workflow. The dependency chain is clear now.
+
+
+**Planning the Execution**
+
+The plan is now set. I'll initiate with the file creation, including content and an absolute path within \`/private/tmp/opencode-test/JOKE.md\`, as the initial step. Following that, I'll attempt a read operation to confirm the file's successful creation and content integrity. This will lead to modifying the file. Finally, I'll delete the file. The critical path is now established, and execution of the first step is imminent."
+,
+      "timestamp": "2026-01-11T22:35:11.701Z",
+      "type": "thinking",
+    },
+    {
+      "id": "msg_baf32f7d5001deSQUvKr3J30fp",
+      "model": "google/gemini-3-pro-preview",
+      "text": 
+"I will create the file \`JOKE.md\`, read it, modify it, and then delete it as requested.
+
+First, creating the file."
+,
+      "timestamp": "2026-01-11T22:35:11.701Z",
+      "type": "agent",
+    },
+    {
+      "model": "google/gemini-3-pro-preview",
+      "text": "[REDACTED]",
+      "timestamp": "2026-01-11T22:35:11.701Z",
+      "type": "thinking",
+    },
+    {
+      "error": undefined,
+      "id": "tool_write_Cmlj9muJpsZQ1YERco7Q",
+      "input": {
+        "content": 
+"# Random Joke
+
+Why did the scarecrow win an award?
+Because he was outstanding in his field!
+
+---
+Footer: Random text 987654321
+"
+,
+        "filePath": "./JOKE.md",
+      },
+      "isError": false,
+      "model": "google/gemini-3-pro-preview",
+      "output": {
+        "created": true,
+      },
+      "timestamp": "2026-01-11T22:35:11.701Z",
+      "toolName": "Write",
+      "type": "tool-call",
+    },
+    {
+      "model": "google/gemini-3-pro-preview",
+      "text": 
+"**Reading the File's Contents**
+
+I've successfully opened the file and am now starting to parse the data within. Initial scans suggest a straightforward structure, which is a good sign. The goal is to efficiently extract the key information.
+
+
+[REDACTED]"
+,
+      "timestamp": "2026-01-11T22:35:20.103Z",
+      "type": "thinking",
+    },
+    {
+      "error": undefined,
+      "id": "tool_read_FvfZ2znQFt7XX5BL1bre",
+      "input": {
+        "filePath": "./JOKE.md",
+      },
+      "isError": false,
+      "model": "google/gemini-3-pro-preview",
+      "output": {
+        "content": 
+"# Random Joke
+
+Why did the scarecrow win an award?
+Because he was outstanding in his field!
+
+---
+Footer: Random text 987654321
+"
+,
+      },
+      "timestamp": "2026-01-11T22:35:20.103Z",
+      "toolName": "Read",
+      "type": "tool-call",
+    },
+    {
+      "model": "google/gemini-3-pro-preview",
+      "text": 
+"**Analyzing the Document's Footer**
+
+I've just reviewed the file. My focus is now on the footer. I plan to modify its contents specifically, updating the existing text. The aim is a subtle but noticeable adjustment to enhance clarity.
+
+
+[REDACTED]"
+,
+      "timestamp": "2026-01-11T22:35:23.087Z",
+      "type": "thinking",
+    },
+    {
+      "error": undefined,
+      "id": "tool_edit_f95SiferX5oTj75LvlIj",
+      "input": {
+        "filePath": "./JOKE.md",
+        "newString": "Footer: Updated random text ABCXYZ",
+        "oldString": "Footer: Random text 987654321",
+      },
+      "isError": false,
+      "model": "google/gemini-3-pro-preview",
+      "output": {
+        "additions": 1,
+        "deletions": 1,
+        "diff": 
+"Index: /private/tmp/opencode-test/JOKE.md
+===================================================================
+--- /private/tmp/opencode-test/JOKE.md
++++ /private/tmp/opencode-test/JOKE.md
+@@ -3,5 +3,5 @@
+ Why did the scarecrow win an award?
+ Because he was outstanding in his field!
+ 
+ ---
+-Footer: Random text 987654321
++Footer: Updated random text ABCXYZ
+"
+,
+      },
+      "timestamp": "2026-01-11T22:35:23.087Z",
+      "toolName": "Edit",
+      "type": "tool-call",
+    },
+    {
+      "model": "google/gemini-3-pro-preview",
+      "text": 
+"**Deleting a File**
+
+I've just modified the file and now am prepping to remove it. Before proceeding with \`rm\`, I'm double-checking the file path: \`/private/tmp/opencode-test/JOKE. md\` to ensure I'm targeting the correct file."
+,
+      "timestamp": "2026-01-11T22:35:26.265Z",
+      "type": "thinking",
+    },
+    {
+      "id": "msg_baf3330b90018rZ6v8xZR1XITW",
+      "model": "google/gemini-3-pro-preview",
+      "text": "I will now delete the file.",
+      "timestamp": "2026-01-11T22:35:26.265Z",
+      "type": "agent",
+    },
+    {
+      "model": "google/gemini-3-pro-preview",
+      "text": "[REDACTED]",
+      "timestamp": "2026-01-11T22:35:26.265Z",
+      "type": "thinking",
+    },
+    {
+      "error": undefined,
+      "id": "tool_bash_PQ6LCieFiIuLa1lNTt1J",
+      "input": {
+        "command": "rm /private/tmp/opencode-test/JOKE.md",
+        "description": "Delete the file JOKE.md",
+      },
+      "isError": false,
+      "model": "google/gemini-3-pro-preview",
+      "output": {
+        "description": "Delete the file JOKE.md",
+        "exitCode": 0,
+        "stdout": "",
+      },
+      "timestamp": "2026-01-11T22:35:26.265Z",
+      "toolName": "Bash",
+      "type": "tool-call",
+    },
+    {
+      "id": "msg_baf333f02001ml9cEXliMTd4KD",
+      "model": "google/gemini-3-pro-preview",
+      "text": "All steps completed: created \`JOKE.md\`, read it, modified it, and deleted it.",
+      "timestamp": "2026-01-11T22:35:29.922Z",
+      "type": "agent",
+    },
+  ],
+  "model": "google/gemini-3-pro-preview",
+  "modelUsage": [
+    {
+      "model": "google/gemini-3-pro-preview",
+      "usage": {
+        "cachedInputTokens": 46928,
+        "inputTokens": 8432,
+        "outputTokens": 889,
+        "reasoningOutputTokens": 675,
+        "totalTokens": 9321,
+      },
+    },
+  ],
+  "preview": "create a file JOKE.md with a random joke with a title and a footer with some ra…",
+  "source": "opencode",
+  "timestamp": "2026-01-11T22:35:11.678Z",
+  "tokenUsage": {
+    "cachedInputTokens": 46928,
+    "inputTokens": 8432,
+    "outputTokens": 889,
+    "reasoningOutputTokens": 675,
+    "totalTokens": 9321,
+  },
+  "v": 1,
+}
+`;

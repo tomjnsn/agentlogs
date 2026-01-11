@@ -1,10 +1,5 @@
 import { createHash } from "node:crypto";
-import {
-  convertOpenCodeTranscript,
-  type OpenCodeMessage,
-  type OpenCodeSession,
-  type UnifiedGitContext,
-} from "@agentlogs/shared";
+import { convertOpenCodeTranscript, type OpenCodeExport, type UnifiedGitContext } from "@agentlogs/shared";
 import { LiteLLMPricingFetcher } from "@agentlogs/shared/pricing";
 import { uploadTranscript, type UploadOptions } from "@agentlogs/shared/upload";
 
@@ -16,8 +11,8 @@ export interface UploadResult {
 }
 
 export interface UploadParams {
-  session: OpenCodeSession;
-  messages: OpenCodeMessage[];
+  /** The OpenCode export data (from `opencode export <sessionID>`) */
+  exportData: OpenCodeExport;
   gitContext: UnifiedGitContext;
   cwd: string;
   serverUrl?: string;
@@ -28,7 +23,7 @@ export interface UploadParams {
  * Upload an OpenCode transcript to AgentLogs.
  */
 export async function uploadOpenCodeTranscript(params: UploadParams): Promise<UploadResult> {
-  const { session, messages, gitContext, cwd, serverUrl, authToken } = params;
+  const { exportData, gitContext, cwd, serverUrl, authToken } = params;
 
   try {
     // Fetch pricing data for cost calculation
@@ -37,7 +32,7 @@ export async function uploadOpenCodeTranscript(params: UploadParams): Promise<Up
     const pricing = Object.fromEntries(pricingData);
 
     // Convert to unified format
-    const unifiedTranscript = convertOpenCodeTranscript(session, messages, {
+    const unifiedTranscript = convertOpenCodeTranscript(exportData, {
       gitContext,
       cwd,
       pricing,
@@ -51,7 +46,7 @@ export async function uploadOpenCodeTranscript(params: UploadParams): Promise<Up
     }
 
     // Create raw transcript representation for upload
-    const rawTranscript = createRawTranscript(session, messages);
+    const rawTranscript = JSON.stringify(exportData);
     const sha256 = createHash("sha256").update(rawTranscript).digest("hex");
 
     // Upload to server
@@ -88,24 +83,6 @@ export async function uploadOpenCodeTranscript(params: UploadParams): Promise<Up
       error: error instanceof Error ? error.message : "Unknown error",
     };
   }
-}
-
-/**
- * Create a raw transcript representation from OpenCode session/messages.
- * This creates a JSONL-like format for storage.
- */
-function createRawTranscript(session: OpenCodeSession, messages: OpenCodeMessage[]): string {
-  const lines: string[] = [];
-
-  // Add session metadata
-  lines.push(JSON.stringify({ type: "session", ...session }));
-
-  // Add each message
-  for (const message of messages) {
-    lines.push(JSON.stringify({ type: "message", ...message }));
-  }
-
-  return lines.join("\n");
 }
 
 /**
