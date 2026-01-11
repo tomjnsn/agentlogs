@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Toggle Vibe Insights Plugin Development Mode
+# Toggle AgentLogs Plugin Development Mode
 #
 # This script automatically detects the current plugin mode and switches to the opposite:
 # - Production → Local Development: Sets VI_CLI_PATH and VI_SERVER_URL
@@ -38,9 +38,9 @@ if [ -n "$VI_CLI_PATH" ]; then
   echo "🚀 Switching to PRODUCTION mode..."
   echo
 
-  # Remove the Vibe Insights section from RC file
-  if grep -q "# Vibe Insights - Local Development" "$SHELL_RC" 2>/dev/null; then
-    sed -i.bak '/# Vibe Insights - Local Development/,/^$/d' "$SHELL_RC"
+  # Remove the AgentLogs section from RC file
+  if grep -q "# AgentLogs - Local Development" "$SHELL_RC" 2>/dev/null; then
+    sed -i.bak '/# AgentLogs - Local Development/,/^$/d' "$SHELL_RC"
     echo "  ✅ Removed local dev config from $SHELL_RC"
   fi
 
@@ -49,7 +49,7 @@ if [ -n "$VI_CLI_PATH" ]; then
 
   echo
   echo "✅ Now in PRODUCTION mode"
-  echo "  CLI: npx -y @vibeinsights/cli@latest"
+  echo "  CLI: npx -y @agentlogs/cli@latest"
   echo
   echo "⚠️  Restart your terminal or run: source $SHELL_RC"
 else
@@ -58,14 +58,14 @@ else
   echo
 
   # Remove existing config if present
-  if grep -q "# Vibe Insights - Local Development" "$SHELL_RC" 2>/dev/null; then
-    sed -i.bak '/# Vibe Insights - Local Development/,/^$/d' "$SHELL_RC"
+  if grep -q "# AgentLogs - Local Development" "$SHELL_RC" 2>/dev/null; then
+    sed -i.bak '/# AgentLogs - Local Development/,/^$/d' "$SHELL_RC"
   fi
 
   # Add exports to RC file
   cat >> "$SHELL_RC" << EOF
 
-# Vibe Insights - Local Development
+# AgentLogs - Local Development
 export VI_CLI_PATH="$CLI_PATH"
 export VI_SERVER_URL="http://localhost:3000"
 

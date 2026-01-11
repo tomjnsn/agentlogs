@@ -37,7 +37,7 @@ function LandingPage() {
             </Link>
           </div>
 
-          <h1 className="mb-4 text-2xl text-neutral-100">vibeinsights</h1>
+          <h1 className="mb-4 text-2xl text-neutral-100">agentlogs</h1>
           <p className="text-neutral-400">
             observability for ai coding agents. capture transcripts. see what your ai actually does.
           </p>
@@ -71,11 +71,11 @@ function LandingPage() {
               <pre className="text-sm leading-loose">
                 <code>
                   {`# add plugin
-$ /plugin marketplace add vibeinsights/claude-code
-$ /plugin install vibeinsights
+$ /plugin marketplace add agentlogs/claude-code
+$ /plugin install agentlogs
 
 # login
-$ vibeinsights login
+$ agentlogs login
 
 # done. transcripts auto-captured.`}
                 </code>
@@ -86,15 +86,15 @@ $ vibeinsights login
               <pre className="text-sm leading-loose">
                 <code>
                   {`# install cli
-$ npm install -g @vibeinsights/cli
+$ npm install -g @agentlogs/cli
 
 # login
-$ vibeinsights login
+$ agentlogs login
 
 # add to ~/.codex/config.yaml
 hooks:
   session_end:
-    - vibeinsights codex upload`}
+    - agentlogs codex upload`}
                 </code>
               </pre>
             )}
@@ -129,7 +129,7 @@ hooks:
             <pre className="text-sm leading-loose">
               <code>
                 {`$ export VIBEINSIGHTS_BASE_URL=https://your-instance.com
-$ vibeinsights login`}
+$ agentlogs login`}
               </code>
             </pre>
           </div>
@@ -149,7 +149,7 @@ $ vibeinsights login`}
         {/* Footer */}
         <footer className="text-xs text-neutral-600">
           <a
-            href="https://github.com/vibeinsights"
+            href="https://github.com/agentlogs"
             target="_blank"
             rel="noopener noreferrer"
             className="hover:text-neutral-400"

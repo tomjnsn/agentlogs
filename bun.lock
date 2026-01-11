@@ -16,42 +16,43 @@
       },
     },
     "packages/cli": {
-      "name": "@vibeinsights/cli",
+      "name": "@agentlogs/cli",
       "version": "0.0.5",
       "bin": {
-        "vibeinsights": "dist/index.js",
+        "agentlogs": "src/index.ts",
       },
       "dependencies": {
         "@napi-rs/keyring": "^1.2.0",
         "commander": "^14.0.0",
       },
       "devDependencies": {
-        "@vibeinsights/shared": "workspace:*",
+        "@agentlogs/shared": "workspace:*",
         "better-auth": "^1.3.27",
         "open": "^10.2.0",
       },
     },
     "packages/opencode": {
-      "name": "@vibeinsights/opencode",
+      "name": "@agentlogs/opencode",
       "version": "0.0.1",
       "dependencies": {
-        "@vibeinsights/shared": "workspace:*",
+        "@agentlogs/shared": "workspace:*",
       },
       "peerDependencies": {
         "bun": ">=1.0.0",
       },
     },
     "packages/shared": {
-      "name": "@vibeinsights/shared",
+      "name": "@agentlogs/shared",
       "version": "0.1.0",
       "dependencies": {
         "zod": "^3.22.4",
       },
     },
     "packages/web": {
-      "name": "@vibeinsights/web",
+      "name": "@agentlogs/web",
       "version": "0.1.0",
       "dependencies": {
+        "@agentlogs/shared": "workspace:*",
         "@paralleldrive/cuid2": "^2.3.0",
         "@radix-ui/react-avatar": "^1.1.10",
         "@radix-ui/react-collapsible": "^1.1.12",
@@ -59,7 +60,6 @@
         "@sentry/tanstackstart-react": "^10.20.0",
         "@tanstack/react-router": "^1.145.11",
         "@tanstack/react-start": "^1.145.11",
-        "@vibeinsights/shared": "workspace:*",
         "better-auth": "^1.3.27",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
@@ -92,6 +92,14 @@
     "vite": "npm:rolldown-vite@latest",
   },
   "packages": {
+    "@agentlogs/cli": ["@agentlogs/cli@workspace:packages/cli"],
+
+    "@agentlogs/opencode": ["@agentlogs/opencode@workspace:packages/opencode"],
+
+    "@agentlogs/shared": ["@agentlogs/shared@workspace:packages/shared"],
+
+    "@agentlogs/web": ["@agentlogs/web@workspace:packages/web"],
+
     "@anthropic-ai/sdk": ["@anthropic-ai/sdk@0.71.2", "", { "dependencies": { "json-schema-to-ts": "^3.1.1" }, "peerDependencies": { "zod": "^3.25.0 || ^4.0.0" }, "optionalPeers": ["zod"], "bin": { "anthropic-ai-sdk": "bin/cli" } }, "sha512-TGNDEUuEstk/DKu0/TflXAEt+p+p/WhTlFzEnoosvbaDU2LTjm42igSdlL0VijrKpWejtOKxX0b8A7uc+XiSAQ=="],
 
     "@apm-js-collab/code-transformer": ["@apm-js-collab/code-transformer@0.8.2", "", {}, "sha512-YRjJjNq5KFSjDUoqu5pFUWrrsvGOxl6c3bu+uMFc9HNNptZ2rNU/TI2nLw4jnhQNtka972Ee2m3uqbvDQtPeCA=="],
@@ -739,14 +747,6 @@
     "@typescript/native-preview-win32-arm64": ["@typescript/native-preview-win32-arm64@7.0.0-dev.20251204.1", "", { "os": "win32", "cpu": "arm64" }, "sha512-eDXYR5qfPFA8EfQ0d9SbWGLn02VbAaeTM9jQ5VeLlPLcBP81nGRaGQ9Quta5zeEHev1S9iCdyRj5BqCRtl0ohw=="],
 
     "@typescript/native-preview-win32-x64": ["@typescript/native-preview-win32-x64@7.0.0-dev.20251204.1", "", { "os": "win32", "cpu": "x64" }, "sha512-CRWI2OPdqXbzOU52R2abWMb3Ie2Wp6VPrCFzR3pzP53JabTAe8+XoBWlont9bw/NsqbPKp2aQbdfbLQX5RI44g=="],
-
-    "@vibeinsights/cli": ["@vibeinsights/cli@workspace:packages/cli"],
-
-    "@vibeinsights/opencode": ["@vibeinsights/opencode@workspace:packages/opencode"],
-
-    "@vibeinsights/shared": ["@vibeinsights/shared@workspace:packages/shared"],
-
-    "@vibeinsights/web": ["@vibeinsights/web@workspace:packages/web"],
 
     "@vitejs/plugin-react": ["@vitejs/plugin-react@5.0.4", "", { "dependencies": { "@babel/core": "^7.28.4", "@babel/plugin-transform-react-jsx-self": "^7.27.1", "@babel/plugin-transform-react-jsx-source": "^7.27.1", "@rolldown/pluginutils": "1.0.0-beta.38", "@types/babel__core": "^7.20.5", "react-refresh": "^0.17.0" }, "peerDependencies": { "vite": "^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0" } }, "sha512-La0KD0vGkVkSk6K+piWDKRUyg8Rl5iAIKRMH0vMJI0Eg47bq1eOxmoObAaQG37WMW9MSyk7Cs8EIWwJC1PtzKA=="],
 

@@ -16,7 +16,7 @@ export function logoutCommand(): void {
     deleteToken();
 
     // Delete config file
-    const configFile = join(homedir(), ".config", "vibeinsights", "config.json");
+    const configFile = join(homedir(), ".config", "agentlogs", "config.json");
     unlinkSync(configFile);
 
     console.log("✅ Logged out successfully");
@@ -25,6 +25,6 @@ export function logoutCommand(): void {
       "⚠️  Warning: Could not completely clear credentials:",
       err instanceof Error ? err.message : "Unknown error",
     );
-    console.log("You may need to manually delete ~/.config/vibeinsights/config.json");
+    console.log("You may need to manually delete ~/.config/agentlogs/config.json");
   }
 }

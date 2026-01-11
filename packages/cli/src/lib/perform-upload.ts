@@ -1,12 +1,12 @@
 import { createHash } from "crypto";
 import { existsSync, readFileSync } from "fs";
 import { dirname, isAbsolute, resolve } from "path";
-import type { TranscriptSource, UploadBlob, UploadPayload } from "@vibeinsights/shared";
-import { convertClaudeCodeTranscript, type UnifiedTranscript } from "@vibeinsights/shared/claudecode";
-import { convertCodexTranscript } from "@vibeinsights/shared/codex";
-import { LiteLLMPricingFetcher } from "@vibeinsights/shared/pricing";
-import { uploadTranscript } from "@vibeinsights/shared/upload";
-import type { UploadOptions } from "@vibeinsights/shared/upload";
+import type { TranscriptSource, UploadBlob, UploadPayload } from "@agentlogs/shared";
+import { convertClaudeCodeTranscript, type UnifiedTranscript } from "@agentlogs/shared/claudecode";
+import { convertCodexTranscript } from "@agentlogs/shared/codex";
+import { LiteLLMPricingFetcher } from "@agentlogs/shared/pricing";
+import { uploadTranscript } from "@agentlogs/shared/upload";
+import type { UploadOptions } from "@agentlogs/shared/upload";
 
 export interface PerformUploadParams {
   transcriptPath: string;

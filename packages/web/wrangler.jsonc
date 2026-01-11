@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "vibeinsights",
+  "name": "agentlogs",
   "account_id": "d024011cfcb16e10d259663efa2f21eb",
   "compatibility_date": "2025-01-10",
   "compatibility_flags": ["nodejs_compat", "enable_nodejs_http_modules", "enable_nodejs_http_server_modules"],
@@ -8,7 +8,7 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "vibeinsights",
+      "database_name": "agentlogs",
       "database_id": "a6422c62-c246-4e37-886a-5b97edcfdc4a",
       "migrations_dir": "migrations",
     },
@@ -16,7 +16,7 @@
   "r2_buckets": [
     {
       "binding": "BUCKET",
-      "bucket_name": "vibeinsights",
+      "bucket_name": "agentlogs",
     },
   ],
   "observability": {
@@ -29,7 +29,7 @@
     },
   },
   "vars": {
-    "WEB_URL": "https://vibeinsights.dev",
+    "WEB_URL": "https://agentlogs.ai",
     "GITHUB_CLIENT_ID": "Ov23liVfRvpwBO5yaLun",
   },
 }

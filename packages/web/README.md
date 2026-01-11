@@ -1,4 +1,4 @@
-# VibeInsights Web Application
+# AgentLogs Web Application
 
 A unified TanStack Start application that combines the web UI and API server.
 
@@ -51,7 +51,7 @@ WEB_URL=http://localhost:3000
 1. Go to https://github.com/settings/developers
 2. Click "New OAuth App"
 3. Configure:
-   - **Application name**: VibeInsights (or your preferred name)
+   - **Application name**: AgentLogs (or your preferred name)
    - **Homepage URL**: `http://localhost:8787`
    - **Authorization callback URL**: `http://localhost:8787/api/auth/callback/github`
 4. Copy the Client ID and Client Secret to your `.dev.vars` file
@@ -189,7 +189,7 @@ packages/web/
 ### 1. Create D1 Database
 
 ```bash
-wrangler d1 create vibeinsights
+wrangler d1 create agentlogs
 ```
 
 Copy the `database_id` from the output and update `wrangler.jsonc`:
@@ -199,7 +199,7 @@ Copy the `database_id` from the output and update `wrangler.jsonc`:
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "vibeinsights",
+      "database_name": "agentlogs",
       "database_id": "your-database-id-here",
       "migrations_dir": "migrations",
     },
@@ -245,7 +245,7 @@ bun run build
 bun run deploy
 ```
 
-Your app will be deployed to `https://vibeinsights.your-subdomain.workers.dev`!
+Your app will be deployed to `https://agentlogs.your-subdomain.workers.dev`!
 
 ## Development
 
@@ -255,7 +255,7 @@ The application uses TypeScript throughout with:
 
 - Type-safe routing via TanStack Router
 - Type-safe database queries via Drizzle ORM
-- Shared types via `@vibeinsights/shared` package
+- Shared types via `@agentlogs/shared` package
 - Generated route types
 
 ### Code Style

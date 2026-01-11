@@ -1,4 +1,4 @@
-# Vibe Insights
+# AgentLogs
 
 Capture and analyze coding agent session transcripts to understand AI assistant usage patterns.
 
@@ -70,8 +70,8 @@ bun run typecheck    # Type check
 
 ### Prerequisites
 
-- Clone plugin repo: `git clone https://github.com/vibeinsights/claude-code ../vibeinsights-claude-code-plugin`
-- Install plugin locally: `claude plugins install ../vibeinsights-claude-code-plugin`
+- Clone plugin repo: `git clone https://github.com/agentlogs/claude-code ../agentlogs-claude-code-plugin`
+- Install plugin locally: `claude plugins install ../agentlogs-claude-code-plugin`
 
 ### Setup
 
@@ -143,7 +143,7 @@ WEB_URL=http://localhost:8787
 cd packages/web
 
 # Create D1 database
-wrangler d1 create vibeinsights
+wrangler d1 create agentlogs
 
 # Run migrations
 bun db:migrate:remote

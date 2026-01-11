@@ -2,7 +2,7 @@ import { createHash } from "crypto";
 import { promises as fs } from "fs";
 import { homedir } from "os";
 import { basename, extname, join, relative, resolve } from "path";
-import { fetchTranscriptMetadata, getRepoMetadata } from "@vibeinsights/shared";
+import { fetchTranscriptMetadata, getRepoMetadata } from "@agentlogs/shared";
 import { getToken } from "../config";
 import { performUpload } from "../lib/perform-upload";
 

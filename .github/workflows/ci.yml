@@ -44,7 +44,7 @@ jobs:
     if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
     environment:
       name: Production
-      url: https://vibeinsights.com
+      url: https://agentlogs.ai
 
     steps:
       - name: Checkout repository

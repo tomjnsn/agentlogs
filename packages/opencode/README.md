@@ -1,6 +1,6 @@
-# @vibeinsights/opencode
+# @agentlogs/opencode
 
-OpenCode plugin for [Vibe Insights](https://vibeinsights.dev) - automatically capture and upload AI coding session transcripts.
+OpenCode plugin for [AgentLogs](https://agentlogs.ai) - automatically capture and upload AI coding session transcripts.
 
 ## Features
 
@@ -14,9 +14,9 @@ OpenCode plugin for [Vibe Insights](https://vibeinsights.dev) - automatically ca
 ### From npm
 
 ```bash
-npm install -g @vibeinsights/opencode
+npm install -g @agentlogs/opencode
 # or
-bun add -g @vibeinsights/opencode
+bun add -g @agentlogs/opencode
 ```
 
 ### Configure OpenCode
@@ -26,7 +26,7 @@ Add the plugin to your `opencode.json` config file:
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["@vibeinsights/opencode"]
+  "plugin": ["@agentlogs/opencode"]
 }
 ```
 
@@ -34,7 +34,7 @@ Or for local development:
 
 ```json
 {
-  "plugin": [".opencode/plugin/vibeinsights.ts"]
+  "plugin": [".opencode/plugin/agentlogs.ts"]
 }
 ```
 
@@ -42,10 +42,10 @@ Or for local development:
 
 ### Environment Variables
 
-| Variable        | Required | Description                                      |
-| --------------- | -------- | ------------------------------------------------ |
-| `VI_AUTH_TOKEN` | Yes      | Your Vibe Insights authentication token          |
-| `VI_SERVER_URL` | No       | Server URL (default: `https://vibeinsights.dev`) |
+| Variable        | Required | Description                                  |
+| --------------- | -------- | -------------------------------------------- |
+| `VI_AUTH_TOKEN` | Yes      | Your AgentLogs authentication token          |
+| `VI_SERVER_URL` | No       | Server URL (default: `https://agentlogs.ai`) |
 
 Alternative variable names are also supported:
 
@@ -54,7 +54,7 @@ Alternative variable names are also supported:
 
 ### Getting an Auth Token
 
-1. Visit [vibeinsights.dev](https://vibeinsights.dev)
+1. Visit [agentlogs.ai](https://agentlogs.ai)
 2. Sign in with GitHub
 3. Go to Settings → API Tokens
 4. Generate a new token
@@ -83,7 +83,7 @@ Example enhanced commit:
 ```
 feat: add user authentication
 
-Transcript: https://vibeinsights.dev/transcripts/abc123
+Transcript: https://agentlogs.ai/transcripts/abc123
 ```
 
 ## Plugin Events
@@ -104,12 +104,12 @@ The plugin responds to these OpenCode events:
 
 ```typescript
 import {
-  vibeInsightsPlugin, // Main plugin function
+  agentLogsPlugin, // Main plugin function
   extractGitContext, // Extract git repo/branch info
   isGitCommitCommand, // Check if command is git commit
   uploadOpenCodeTranscript, // Manual transcript upload
   buildTranscriptUrl, // Build transcript URL from ID
-} from "@vibeinsights/opencode";
+} from "@agentlogs/opencode";
 ```
 
 ### Manual Upload
@@ -117,7 +117,7 @@ import {
 You can also upload transcripts programmatically:
 
 ```typescript
-import { uploadOpenCodeTranscript } from "@vibeinsights/opencode";
+import { uploadOpenCodeTranscript } from "@agentlogs/opencode";
 
 const result = await uploadOpenCodeTranscript({
   session: { id: "...", createdAt: "...", ... },
@@ -136,8 +136,8 @@ if (result.success) {
 ### Transcript not uploading
 
 1. Check that `VI_AUTH_TOKEN` is set correctly
-2. Verify network connectivity to vibeinsights.dev
-3. Check plugin logs for errors (look for `[vibeinsights]` prefix)
+2. Verify network connectivity to agentlogs.ai
+3. Check plugin logs for errors (look for `[agentlogs]` prefix)
 
 ### Commit message not enhanced
 
@@ -151,8 +151,8 @@ if (result.success) {
 
 ```bash
 # Clone the repo
-git clone https://github.com/vibeinsights/vibeinsights.git
-cd vibeinsights
+git clone https://github.com/agentlogs/agentlogs.git
+cd agentlogs
 
 # Install dependencies
 bun install

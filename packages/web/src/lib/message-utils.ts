@@ -1,4 +1,4 @@
-import type { UnifiedTranscriptMessage } from "@vibeinsights/shared/claudecode";
+import type { UnifiedTranscriptMessage } from "@agentlogs/shared/claudecode";
 
 /**
  * Type guard to safely check if value is a plain object

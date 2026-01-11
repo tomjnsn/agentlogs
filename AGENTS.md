@@ -10,7 +10,7 @@
 - `bun run lint` — runs `oxlint` with `--fix --deny-warnings` across the repo
 - `bun run format` — formats with `oxfmt` and then lint-fixes
 - `bun run test:e2e` — runs e2e tests for CLI package
-- `bun vibeinsights` — run the CLI tool
+- `bun agentlogs` — run the CLI tool
 
 ## Code Style
 

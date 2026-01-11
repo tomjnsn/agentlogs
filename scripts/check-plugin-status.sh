@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Check Vibe Insights Plugin Development Mode Status
+# Check AgentLogs Plugin Development Mode Status
 #
 # This script displays the current plugin mode (local development or production)
 # and validates that the CLI is accessible and working correctly.
@@ -8,7 +8,7 @@
 # Usage: npm run plugin:status
 #
 
-echo "📊 Vibe Insights Plugin Status"
+echo "📊 AgentLogs Plugin Status"
 echo "==============================="
 echo
 
@@ -31,11 +31,11 @@ else
   echo "🚀 Mode: PRODUCTION"
   echo
   echo "Configuration:"
-  echo "  CLI: npx -y @vibeinsights/cli@latest"
+  echo "  CLI: npx -y @agentlogs/cli@latest"
   echo
   echo "Testing npx access:"
   # Status command may exit non-zero if not logged in, but that's ok
-  if npx -y @vibeinsights/cli@latest status 2>&1 | grep -q "logged in\|Not logged in"; then
+  if npx -y @agentlogs/cli@latest status 2>&1 | grep -q "logged in\|Not logged in"; then
     echo "  ✅ CLI accessible via npx"
   else
     echo "  ⚠️  npx access check failed"

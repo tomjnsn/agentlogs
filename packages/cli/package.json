@@ -1,8 +1,8 @@
 {
-  "name": "@vibeinsights/cli",
+  "name": "@agentlogs/cli",
   "version": "0.0.5",
   "bin": {
-    "vibeinsights": "src/index.ts"
+    "agentlogs": "src/index.ts"
   },
   "files": [
     "dist"
@@ -12,13 +12,13 @@
   "publishConfig": {
     "access": "public",
     "bin": {
-      "vibeinsights": "dist/index.js"
+      "agentlogs": "dist/index.js"
     },
     "main": "dist/index.js"
   },
   "scripts": {
     "start": "bun run src/index.ts",
-    "build": "bun build ./src/index.ts --outdir ./dist --target node --external @napi-rs/keyring --production --define '__NODE_ENV__=\"production\"' --define 'process.env.SERVER_URL=\"https://vibeinsights.dev\"'",
+    "build": "bun build ./src/index.ts --outdir ./dist --target node --external @napi-rs/keyring --production --define '__NODE_ENV__=\"production\"' --define 'process.env.SERVER_URL=\"https://agentlogs.ai\"'",
     "prepublishOnly": "bun run build",
     "test:e2e": "bun test ./test/e2e/*.e2e.ts",
     "check": "tsgo --project tsconfig.json"
@@ -28,7 +28,7 @@
     "commander": "^14.0.0"
   },
   "devDependencies": {
-    "@vibeinsights/shared": "workspace:*",
+    "@agentlogs/shared": "workspace:*",
     "better-auth": "^1.3.27",
     "open": "^10.2.0"
   }

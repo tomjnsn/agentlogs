@@ -1,5 +1,5 @@
 /**
- * Vibe Insights OpenCode Plugin
+ * AgentLogs OpenCode Plugin
  *
  * Automatically captures and uploads transcripts from OpenCode sessions.
  * Also enhances git commits with transcript links.
@@ -7,16 +7,16 @@
  * @example
  * // opencode.json
  * {
- *   "plugin": ["@vibeinsights/opencode-plugin"]
+ *   "plugin": ["@agentlogs/opencode-plugin"]
  * }
  *
  * @example
  * // Environment variables
  * VI_AUTH_TOKEN=your_auth_token
- * VI_SERVER_URL=https://vibeinsights.dev  // optional
+ * VI_SERVER_URL=https://agentlogs.ai  // optional
  */
 
-import type { OpenCodeMessage, OpenCodeSession } from "@vibeinsights/shared";
+import type { OpenCodeMessage, OpenCodeSession } from "@agentlogs/shared";
 import { appendTranscriptLinkToCommit, extractGitContext, isGitCommitCommand, type PluginContext } from "./git";
 import { buildTranscriptUrl, uploadOpenCodeTranscript } from "./upload";
 
@@ -78,14 +78,14 @@ interface PluginState {
 // ============================================================================
 
 /**
- * Vibe Insights plugin for OpenCode.
+ * AgentLogs plugin for OpenCode.
  *
  * Features:
  * - Automatically uploads transcripts when sessions become idle
  * - Enhances git commits with transcript links
  * - Tracks session and message state
  */
-export const vibeInsightsPlugin: Plugin = async (ctx) => {
+export const agentLogsPlugin: Plugin = async (ctx) => {
   // Initialize state
   const state: PluginState = {
     currentSessionId: null,
@@ -96,7 +96,7 @@ export const vibeInsightsPlugin: Plugin = async (ctx) => {
   };
 
   // Log plugin initialization
-  console.log("[vibeinsights] Plugin initialized");
+  console.log("[agentlogs] Plugin initialized");
 
   return {
     /**
@@ -126,7 +126,7 @@ export const vibeInsightsPlugin: Plugin = async (ctx) => {
             break;
         }
       } catch (error) {
-        console.error("[vibeinsights] Event handler error:", error);
+        console.error("[agentlogs] Event handler error:", error);
       }
     },
 
@@ -148,7 +148,7 @@ export const vibeInsightsPlugin: Plugin = async (ctx) => {
                 const modifiedInput = appendTranscriptLinkToCommit(args.input, transcriptUrl);
 
                 if (modifiedInput) {
-                  console.log("[vibeinsights] Added transcript link to commit message");
+                  console.log("[agentlogs] Added transcript link to commit message");
                   return { ...args, input: modifiedInput };
                 }
               } else {
@@ -160,14 +160,14 @@ export const vibeInsightsPlugin: Plugin = async (ctx) => {
                   const modifiedInput = appendTranscriptLinkToCommit(args.input, transcriptUrl);
 
                   if (modifiedInput) {
-                    console.log("[vibeinsights] Uploaded transcript and added link to commit");
+                    console.log("[agentlogs] Uploaded transcript and added link to commit");
                     return { ...args, input: modifiedInput };
                   }
                 }
               }
             }
           } catch (error) {
-            console.error("[vibeinsights] tool.execute.before error:", error);
+            console.error("[agentlogs] tool.execute.before error:", error);
           }
 
           return args;
@@ -187,7 +187,7 @@ function handleSessionCreated(state: PluginState, event: PluginEvent): void {
     state.currentSession = event.session;
     state.messages = [];
     state.pendingTranscriptId = null;
-    console.log(`[vibeinsights] Session created: ${event.session.id}`);
+    console.log(`[agentlogs] Session created: ${event.session.id}`);
   }
 }
 
@@ -219,7 +219,7 @@ async function handleSessionIdle(state: PluginState, ctx: OpenCodePluginContext)
     return;
   }
 
-  console.log(`[vibeinsights] Session idle, uploading transcript...`);
+  console.log(`[agentlogs] Session idle, uploading transcript...`);
   await uploadCurrentSession(state, ctx);
 }
 
@@ -264,17 +264,17 @@ async function uploadCurrentSession(
 
     if (result.success && result.transcriptId) {
       state.pendingTranscriptId = result.transcriptId;
-      console.log(`[vibeinsights] Transcript uploaded: ${result.transcriptUrl}`);
+      console.log(`[agentlogs] Transcript uploaded: ${result.transcriptUrl}`);
       return { transcriptId: result.transcriptId };
     }
 
     if (result.error) {
-      console.error(`[vibeinsights] Upload failed: ${result.error}`);
+      console.error(`[agentlogs] Upload failed: ${result.error}`);
     }
 
     return null;
   } catch (error) {
-    console.error("[vibeinsights] Upload error:", error);
+    console.error("[agentlogs] Upload error:", error);
     return null;
   } finally {
     state.isUploading = false;
@@ -285,6 +285,6 @@ async function uploadCurrentSession(
 // Exports
 // ============================================================================
 
-export default vibeInsightsPlugin;
+export default agentLogsPlugin;
 export { extractGitContext, isGitCommitCommand } from "./git";
 export { uploadOpenCodeTranscript, buildTranscriptUrl } from "./upload";

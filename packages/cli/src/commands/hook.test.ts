@@ -17,7 +17,7 @@ describe("containsGitCommit", () => {
 
 describe("appendTranscriptLink", () => {
   const sessionId = "test-session-123";
-  const expectedLink = `🔮 View transcript: https://vibeinsights.dev/s/${sessionId}`;
+  const expectedLink = `🔮 View transcript: https://agentlogs.ai/s/${sessionId}`;
 
   describe("git commit -m with double quotes", () => {
     it("appends link to message", () => {

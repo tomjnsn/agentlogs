@@ -4,9 +4,9 @@ import {
   type OpenCodeMessage,
   type OpenCodeSession,
   type UnifiedGitContext,
-} from "@vibeinsights/shared";
-import { LiteLLMPricingFetcher } from "@vibeinsights/shared/pricing";
-import { uploadTranscript, type UploadOptions } from "@vibeinsights/shared/upload";
+} from "@agentlogs/shared";
+import { LiteLLMPricingFetcher } from "@agentlogs/shared/pricing";
+import { uploadTranscript, type UploadOptions } from "@agentlogs/shared/upload";
 
 export interface UploadResult {
   success: boolean;
@@ -25,7 +25,7 @@ export interface UploadParams {
 }
 
 /**
- * Upload an OpenCode transcript to Vibe Insights.
+ * Upload an OpenCode transcript to AgentLogs.
  */
 export async function uploadOpenCodeTranscript(params: UploadParams): Promise<UploadResult> {
   const { session, messages, gitContext, cwd, serverUrl, authToken } = params;
@@ -70,7 +70,7 @@ export async function uploadOpenCodeTranscript(params: UploadParams): Promise<Up
     );
 
     if (result.success && result.transcriptId) {
-      const baseUrl = uploadOptions.serverUrl ?? "https://vibeinsights.dev";
+      const baseUrl = uploadOptions.serverUrl ?? "https://agentlogs.ai";
       return {
         success: true,
         transcriptId: result.transcriptId,
@@ -112,6 +112,6 @@ function createRawTranscript(session: OpenCodeSession, messages: OpenCodeMessage
  * Build transcript URL from server URL and transcript ID.
  */
 export function buildTranscriptUrl(transcriptId: string, serverUrl?: string): string {
-  const baseUrl = serverUrl ?? process.env.VI_SERVER_URL ?? "https://vibeinsights.dev";
+  const baseUrl = serverUrl ?? process.env.VI_SERVER_URL ?? "https://agentlogs.ai";
   return `${baseUrl}/transcripts/${transcriptId}`;
 }

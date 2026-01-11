@@ -1,5 +1,5 @@
 import path from "node:path";
-import type { UnifiedGitContext } from "@vibeinsights/shared";
+import type { UnifiedGitContext } from "@agentlogs/shared";
 
 /**
  * Plugin context interface (subset of what OpenCode provides)

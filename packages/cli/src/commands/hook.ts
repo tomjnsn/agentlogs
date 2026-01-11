@@ -1,6 +1,6 @@
-import { createLogger } from "@vibeinsights/shared/logger";
-import { getDevLogPath } from "@vibeinsights/shared/paths";
-import type { UploadOptions } from "@vibeinsights/shared/upload";
+import { createLogger } from "@agentlogs/shared/logger";
+import { getDevLogPath } from "@agentlogs/shared/paths";
+import type { UploadOptions } from "@agentlogs/shared/upload";
 import { getToken, readConfig } from "../config";
 import { performUpload } from "../lib/perform-upload";
 
@@ -331,7 +331,7 @@ export function containsGitCommit(command: string): boolean {
 }
 
 export function appendTranscriptLink(command: string, sessionId: string): string {
-  const linkText = `🔮 View transcript: https://vibeinsights.dev/s/${sessionId}`;
+  const linkText = `🔮 View transcript: https://agentlogs.ai/s/${sessionId}`;
 
   if (command.includes(linkText)) {
     return command;
@@ -386,7 +386,7 @@ async function trackCommit(payload: { sessionId: string; repoPath: string; times
 
   const authToken = getToken();
   if (!authToken) {
-    logger.warn("Commit tracking skipped: no auth token. Run 'vibeinsights login' first.", {
+    logger.warn("Commit tracking skipped: no auth token. Run 'agentlogs login' first.", {
       sessionId: payload.sessionId.substring(0, 8),
     });
     return;
@@ -458,7 +458,7 @@ async function uploadPartialTranscript(payload: {
 
   const authToken = getToken();
   if (!authToken) {
-    logger.warn("Commit tracking transcript upload skipped: no auth token. Run 'vibeinsights login' first.", {
+    logger.warn("Commit tracking transcript upload skipped: no auth token. Run 'agentlogs login' first.", {
       sessionId: payload.sessionId.substring(0, 8),
     });
     return;

@@ -1,5 +1,5 @@
-import type { TranscriptSource } from "@vibeinsights/shared";
-import type { UploadOptions } from "@vibeinsights/shared/upload";
+import type { TranscriptSource } from "@agentlogs/shared";
+import type { UploadOptions } from "@agentlogs/shared/upload";
 import { getToken } from "../config";
 import { performUpload, resolveTranscriptPath } from "../lib/perform-upload";
 
@@ -32,7 +32,7 @@ export async function uploadCommand(transcriptArg: string, source: TranscriptSou
 
   try {
     const sourceLabel = source === "codex" ? "Codex" : "Claude Code";
-    console.log(`Uploading ${sourceLabel} transcript events from ${transcriptPath} to Vibe Insights...`);
+    console.log(`Uploading ${sourceLabel} transcript events from ${transcriptPath} to AgentLogs...`);
     const result = await performUpload(
       {
         transcriptPath,
@@ -50,7 +50,7 @@ export async function uploadCommand(transcriptArg: string, source: TranscriptSou
       return;
     }
 
-    console.error("✗ Failed to upload transcript to Vibe Insights server.");
+    console.error("✗ Failed to upload transcript to AgentLogs server.");
   } catch (error) {
     console.error(error instanceof Error ? error.message : "Unexpected error occurred while uploading transcript.");
   }

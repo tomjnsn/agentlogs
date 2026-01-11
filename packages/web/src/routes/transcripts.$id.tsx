@@ -5,8 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import type { UnifiedTranscriptMessage } from "@vibeinsights/shared/claudecode";
-import { unifiedTranscriptSchema } from "@vibeinsights/shared/schemas";
+import type { UnifiedTranscriptMessage } from "@agentlogs/shared/claudecode";
+import { unifiedTranscriptSchema } from "@agentlogs/shared/schemas";
 import { useEffect, useState } from "react";
 import {
   extractImageReferences,

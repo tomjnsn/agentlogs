@@ -1,17 +1,17 @@
 {
-  "name": "@vibeinsights/opencode",
+  "name": "@agentlogs/opencode",
   "version": "0.0.1",
   "keywords": [
+    "agentlogs",
     "ai-coding",
     "opencode",
     "plugin",
-    "transcript",
-    "vibeinsights"
+    "transcript"
   ],
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/vibeinsights/vibeinsights.git",
+    "url": "https://github.com/agentlogs/agentlogs.git",
     "directory": "packages/opencode"
   },
   "files": [
@@ -27,12 +27,12 @@
     "types": "dist/index.d.ts"
   },
   "scripts": {
-    "build": "bun build ./src/index.ts --outdir ./dist --target node --external @vibeinsights/shared",
+    "build": "bun build ./src/index.ts --outdir ./dist --target node --external @agentlogs/shared",
     "prepublishOnly": "bun run build",
     "check": "tsgo --project tsconfig.json"
   },
   "dependencies": {
-    "@vibeinsights/shared": "workspace:*"
+    "@agentlogs/shared": "workspace:*"
   },
   "peerDependencies": {
     "bun": ">=1.0.0"

@@ -4,9 +4,9 @@ import { join } from "path";
 import { Entry } from "@napi-rs/keyring";
 import { NODE_ENV } from "./env-config";
 
-const CONFIG_DIR = join(homedir(), ".config", "vibeinsights");
+const CONFIG_DIR = join(homedir(), ".config", "agentlogs");
 const CONFIG_FILE = join(CONFIG_DIR, "config.json");
-const KEYRING_SERVICE = "vibeinsights-cli";
+const KEYRING_SERVICE = "agentlogs-cli";
 
 /**
  * Get the environment-specific account name for keyring storage

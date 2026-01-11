@@ -2,7 +2,7 @@ import { deviceAuthorizationClient } from "better-auth/plugins";
 import { createAuthClient } from "better-auth/react";
 
 export const authClient = createAuthClient({
-  baseURL: import.meta.env.PROD ? "https://vibeinsights.dev" : "http://localhost:3000",
+  baseURL: import.meta.env.PROD ? "https://agentlogs.ai" : "http://localhost:3000",
   plugins: [deviceAuthorizationClient()],
 });
 

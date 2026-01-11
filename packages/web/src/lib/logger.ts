@@ -1,4 +1,4 @@
-import { createLogger } from "@vibeinsights/shared";
+import { createLogger } from "@agentlogs/shared";
 
 /**
  * Logger for the web package (server-side code)

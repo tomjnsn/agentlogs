@@ -1,8 +1,8 @@
 import { createDrizzle } from "@/db";
 import { createFileRoute } from "@tanstack/react-router";
 import { json } from "@tanstack/react-start";
-import type { TranscriptSource } from "@vibeinsights/shared";
-import { unifiedTranscriptSchema } from "@vibeinsights/shared/schemas";
+import type { TranscriptSource } from "@agentlogs/shared";
+import { unifiedTranscriptSchema } from "@agentlogs/shared/schemas";
 import { env } from "cloudflare:workers";
 import { and, eq } from "drizzle-orm";
 import { blobs, repos, transcriptBlobs, transcripts } from "../../db/schema";

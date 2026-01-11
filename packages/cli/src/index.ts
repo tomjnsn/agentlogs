@@ -10,12 +10,12 @@ import { uploadCommand } from "./commands/upload";
 const program = new Command();
 
 program
-  .name("vibeinsights")
-  .description("CLI tools for working with Vibe Insights accounts and transcripts from Claude Code and Codex");
+  .name("agentlogs")
+  .description("CLI tools for working with AgentLogs accounts and transcripts from Claude Code and Codex");
 
 program
   .command("login")
-  .description("Authenticate with Vibe Insights using device authorization")
+  .description("Authenticate with AgentLogs using device authorization")
   .action(async () => {
     await loginCommand();
   });
@@ -34,12 +34,12 @@ program
     await logoutCommand();
   });
 
-const claudecode = program.command("claudecode").description("Claude Code transcript utilities for Vibe Insights");
+const claudecode = program.command("claudecode").description("Claude Code transcript utilities for AgentLogs");
 
 claudecode
   .command("upload")
   .argument("<transcript>", "Path or alias for a transcript JSONL file")
-  .description("Upload a transcript JSONL file to Vibe Insights")
+  .description("Upload a transcript JSONL file to AgentLogs")
   .action(async (transcript: string) => {
     await uploadCommand(transcript, "claude-code");
   });
@@ -51,12 +51,12 @@ claudecode
     await hookCommand();
   });
 
-const codex = program.command("codex").description("Codex transcript utilities for Vibe Insights");
+const codex = program.command("codex").description("Codex transcript utilities for AgentLogs");
 
 codex
   .command("upload")
   .argument("<transcript>", "Path or alias for a Codex transcript JSONL file")
-  .description("Upload a Codex transcript JSONL file to Vibe Insights")
+  .description("Upload a Codex transcript JSONL file to AgentLogs")
   .action(async (transcript: string) => {
     await uploadCommand(transcript, "codex");
   });

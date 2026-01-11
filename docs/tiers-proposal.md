@@ -2,7 +2,7 @@
 
 ## Overview
 
-Add pricing tiers to vibeinsights: **Free** (unlimited open-source, 10 commits/month private), **Pro** (unlimited), **Enterprise** (TBD).
+Add pricing tiers to agentlogs: **Free** (unlimited open-source, 10 commits/month private), **Pro** (unlimited), **Enterprise** (TBD).
 
 ## Key Decisions
 
@@ -26,7 +26,7 @@ bun add @polar-sh/better-auth @polar-sh/sdk
 1. Create products in Polar dashboard:
    - **Pro Monthly** (e.g., $19/mo) → note the `productId`
    - **Pro Annual** (e.g., $190/yr) → note the `productId`
-2. Create webhook endpoint pointing to `https://vibeinsights.dev/api/polar/webhooks`
+2. Create webhook endpoint pointing to `https://agentlogs.ai/api/polar/webhooks`
 3. Get webhook secret and access token
 
 ### 3. Environment Variables
@@ -189,8 +189,8 @@ if (response.status === 403) {
     // Log warning (not blocking git commit)
     logger.warn("Commit tracking blocked: quota exceeded", { ... });
     // Show user-friendly message to stderr
-    console.error(`\n⚠️  Vibe Insights: ${body.message}`);
-    console.error(`   Upgrade at: https://vibeinsights.dev/settings/billing\n`);
+    console.error(`\n⚠️  AgentLogs: ${body.message}`);
+    console.error(`   Upgrade at: https://agentlogs.ai/settings/billing\n`);
     return; // Don't block the git commit itself
   }
 }

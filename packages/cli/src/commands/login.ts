@@ -3,13 +3,13 @@ import { authClient } from "../auth";
 import { readConfig, setToken, writeConfig } from "../config";
 
 export async function loginCommand(): Promise<void> {
-  console.log("🔐 VibeInsights Device Authorization");
+  console.log("🔐 AgentLogs Device Authorization");
   console.log("⏳ Requesting device authorization...");
 
   try {
     // Request device code
     const { data, error } = await authClient.device.code({
-      client_id: "vibeinsights-cli",
+      client_id: "agentlogs-cli",
       scope: "openid profile email",
     });
 
@@ -50,7 +50,7 @@ async function pollForToken(deviceCode: string, interval: number): Promise<void>
         const { data, error } = await authClient.device.token({
           grant_type: "urn:ietf:params:oauth:grant-type:device_code",
           device_code: deviceCode,
-          client_id: "vibeinsights-cli",
+          client_id: "agentlogs-cli",
         });
 
         if (data?.access_token) {
