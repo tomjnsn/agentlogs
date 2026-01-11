@@ -9,7 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as DeviceRouteImport } from './routes/device'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
@@ -17,6 +16,7 @@ import { Route as TranscriptsIdRouteImport } from './routes/transcripts.$id'
 import { Route as SSessionIdRouteImport } from './routes/s.$sessionId'
 import { Route as ReposIdRouteImport } from './routes/repos.$id'
 import { Route as PrivateCwdRouteImport } from './routes/private.$cwd'
+import { Route as AuthSplatRouteImport } from './routes/auth.$'
 import { Route as ApiTranscriptsRouteImport } from './routes/api/transcripts'
 import { Route as ApiIngestRouteImport } from './routes/api/ingest'
 import { Route as ApiCommitTrackRouteImport } from './routes/api/commit-track'
@@ -24,11 +24,6 @@ import { Route as ApiTranscriptsClearRouteImport } from './routes/api/transcript
 import { Route as ApiBlobsSha256RouteImport } from './routes/api/blobs.$sha256'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth.$'
 
-const SignInRoute = SignInRouteImport.update({
-  id: '/sign-in',
-  path: '/sign-in',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const DeviceRoute = DeviceRouteImport.update({
   id: '/device',
   path: '/device',
@@ -62,6 +57,11 @@ const ReposIdRoute = ReposIdRouteImport.update({
 const PrivateCwdRoute = PrivateCwdRouteImport.update({
   id: '/private/$cwd',
   path: '/private/$cwd',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthSplatRoute = AuthSplatRouteImport.update({
+  id: '/auth/$',
+  path: '/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiTranscriptsRoute = ApiTranscriptsRouteImport.update({
@@ -99,10 +99,10 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRoute
   '/device': typeof DeviceRoute
-  '/sign-in': typeof SignInRoute
   '/api/commit-track': typeof ApiCommitTrackRoute
   '/api/ingest': typeof ApiIngestRoute
   '/api/transcripts': typeof ApiTranscriptsRouteWithChildren
+  '/auth/$': typeof AuthSplatRoute
   '/private/$cwd': typeof PrivateCwdRoute
   '/repos/$id': typeof ReposIdRoute
   '/s/$sessionId': typeof SSessionIdRoute
@@ -115,10 +115,10 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/app': typeof AppRoute
   '/device': typeof DeviceRoute
-  '/sign-in': typeof SignInRoute
   '/api/commit-track': typeof ApiCommitTrackRoute
   '/api/ingest': typeof ApiIngestRoute
   '/api/transcripts': typeof ApiTranscriptsRouteWithChildren
+  '/auth/$': typeof AuthSplatRoute
   '/private/$cwd': typeof PrivateCwdRoute
   '/repos/$id': typeof ReposIdRoute
   '/s/$sessionId': typeof SSessionIdRoute
@@ -132,10 +132,10 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/app': typeof AppRoute
   '/device': typeof DeviceRoute
-  '/sign-in': typeof SignInRoute
   '/api/commit-track': typeof ApiCommitTrackRoute
   '/api/ingest': typeof ApiIngestRoute
   '/api/transcripts': typeof ApiTranscriptsRouteWithChildren
+  '/auth/$': typeof AuthSplatRoute
   '/private/$cwd': typeof PrivateCwdRoute
   '/repos/$id': typeof ReposIdRoute
   '/s/$sessionId': typeof SSessionIdRoute
@@ -150,10 +150,10 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/device'
-    | '/sign-in'
     | '/api/commit-track'
     | '/api/ingest'
     | '/api/transcripts'
+    | '/auth/$'
     | '/private/$cwd'
     | '/repos/$id'
     | '/s/$sessionId'
@@ -166,10 +166,10 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/device'
-    | '/sign-in'
     | '/api/commit-track'
     | '/api/ingest'
     | '/api/transcripts'
+    | '/auth/$'
     | '/private/$cwd'
     | '/repos/$id'
     | '/s/$sessionId'
@@ -182,10 +182,10 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/device'
-    | '/sign-in'
     | '/api/commit-track'
     | '/api/ingest'
     | '/api/transcripts'
+    | '/auth/$'
     | '/private/$cwd'
     | '/repos/$id'
     | '/s/$sessionId'
@@ -199,10 +199,10 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRoute
   DeviceRoute: typeof DeviceRoute
-  SignInRoute: typeof SignInRoute
   ApiCommitTrackRoute: typeof ApiCommitTrackRoute
   ApiIngestRoute: typeof ApiIngestRoute
   ApiTranscriptsRoute: typeof ApiTranscriptsRouteWithChildren
+  AuthSplatRoute: typeof AuthSplatRoute
   PrivateCwdRoute: typeof PrivateCwdRoute
   ReposIdRoute: typeof ReposIdRoute
   SSessionIdRoute: typeof SSessionIdRoute
@@ -213,13 +213,6 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/sign-in': {
-      id: '/sign-in'
-      path: '/sign-in'
-      fullPath: '/sign-in'
-      preLoaderRoute: typeof SignInRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/device': {
       id: '/device'
       path: '/device'
@@ -267,6 +260,13 @@ declare module '@tanstack/react-router' {
       path: '/private/$cwd'
       fullPath: '/private/$cwd'
       preLoaderRoute: typeof PrivateCwdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/$': {
+      id: '/auth/$'
+      path: '/auth/$'
+      fullPath: '/auth/$'
+      preLoaderRoute: typeof AuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/transcripts': {
@@ -330,10 +330,10 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRoute,
   DeviceRoute: DeviceRoute,
-  SignInRoute: SignInRoute,
   ApiCommitTrackRoute: ApiCommitTrackRoute,
   ApiIngestRoute: ApiIngestRoute,
   ApiTranscriptsRoute: ApiTranscriptsRouteWithChildren,
+  AuthSplatRoute: AuthSplatRoute,
   PrivateCwdRoute: PrivateCwdRoute,
   ReposIdRoute: ReposIdRoute,
   SSessionIdRoute: SSessionIdRoute,

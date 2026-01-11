@@ -32,7 +32,11 @@ function LandingPage() {
         <header className="mb-16">
           <div className="mb-8 flex items-center justify-between">
             <span className="text-xl">🔮</span>
-            <Link to="/sign-in" className="text-sm text-neutral-500 hover:text-neutral-300">
+            <Link
+              to="/auth/$"
+              params={{ _splat: "github" }}
+              className="text-sm text-neutral-500 hover:text-neutral-300"
+            >
               sign in
             </Link>
           </div>
@@ -139,7 +143,8 @@ $ agentlogs login`}
         {/* CTA */}
         <section className="mb-16 border-t border-neutral-800 pt-12">
           <Link
-            to="/sign-in"
+            to="/auth/$"
+            params={{ _splat: "github" }}
             className="inline-block border border-neutral-700 px-6 py-3 text-sm hover:border-neutral-500 hover:text-neutral-100"
           >
             get started →
