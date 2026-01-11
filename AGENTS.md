@@ -31,7 +31,6 @@
 
 ## Commits
 
-- Use conventional commits: `<type>(<scope>): <message>`
-- Types: feat|fix|refactor|build|ci|chore|docs|style|perf|test
 - Do atomic and small commits
 - Capitalize the first letter of the commit message
+- Prefix the commit with the package name or area if necessary, e.g. web,plugin,shared,ci
