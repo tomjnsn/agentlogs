@@ -6,9 +6,7 @@ import { blobs, transcriptBlobs, transcripts } from "../../db/schema";
 import { createAuth } from "../../lib/auth";
 import { logger } from "../../lib/logger";
 
-type BlobAccessResult =
-  | { authorized: true; mediaType: string }
-  | { authorized: false; response: Response };
+type BlobAccessResult = { authorized: true; mediaType: string } | { authorized: false; response: Response };
 
 async function checkBlobAccess(request: Request, sha256: string): Promise<BlobAccessResult> {
   const db = createDrizzle(env.DB);

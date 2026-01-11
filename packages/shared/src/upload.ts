@@ -16,11 +16,7 @@ export interface UploadOptions {
  * Check if a blob exists on the server using HEAD request.
  * Returns true if blob exists, false otherwise.
  */
-async function checkBlobExists(
-  sha256: string,
-  serverUrl: string,
-  authToken: string | null,
-): Promise<boolean> {
+async function checkBlobExists(sha256: string, serverUrl: string, authToken: string | null): Promise<boolean> {
   try {
     const response = await fetch(`${serverUrl}/api/blobs/${sha256}`, {
       method: "HEAD",

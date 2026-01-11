@@ -31,8 +31,8 @@
         "open": "^10.2.0",
       },
     },
-    "packages/opencode-plugin": {
-      "name": "@vibeinsights/opencode-plugin",
+    "packages/opencode": {
+      "name": "@vibeinsights/opencode",
       "version": "0.0.1",
       "dependencies": {
         "@vibeinsights/shared": "workspace:*",
@@ -742,7 +742,7 @@
 
     "@vibeinsights/cli": ["@vibeinsights/cli@workspace:packages/cli"],
 
-    "@vibeinsights/opencode-plugin": ["@vibeinsights/opencode-plugin@workspace:packages/opencode-plugin"],
+    "@vibeinsights/opencode": ["@vibeinsights/opencode@workspace:packages/opencode"],
 
     "@vibeinsights/shared": ["@vibeinsights/shared@workspace:packages/shared"],
 
