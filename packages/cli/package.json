@@ -1,6 +1,6 @@
 {
-  "name": "@agentlogs/cli",
-  "version": "0.0.5",
+  "name": "agentlogs",
+  "version": "0.0.1",
   "bin": {
     "agentlogs": "src/index.ts"
   },
