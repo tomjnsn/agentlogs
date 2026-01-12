@@ -1,15 +1,16 @@
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { useState } from "react";
-import { getPrivateTranscriptsByCwd, getRepos } from "../../lib/server-functions";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { ChevronDown, Folder, Search } from "lucide-react";
+import { useMemo, useState } from "react";
+import { getAllTranscripts } from "../../lib/server-functions";
 
 export const Route = createFileRoute("/_app/app")({
   loader: async () => {
     try {
-      const [repos, privateTranscripts] = await Promise.all([getRepos(), getPrivateTranscriptsByCwd()]);
-      return { repos, privateTranscripts };
+      const transcripts = await getAllTranscripts();
+      return { transcripts };
     } catch (error) {
       console.error("Failed to load data:", error);
       throw error;
@@ -31,136 +32,190 @@ function ErrorComponent({ error }: { error: Error }) {
   );
 }
 
+function formatTimeAgo(date: Date): string {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffSeconds = Math.floor(diffMs / 1000);
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  const diffHours = Math.floor(diffMinutes / 60);
+  const diffDays = Math.floor(diffHours / 24);
+  const diffWeeks = Math.floor(diffDays / 7);
+  const diffMonths = Math.floor(diffDays / 30);
+
+  if (diffMonths > 0) return `${diffMonths}mo ago`;
+  if (diffWeeks > 0) return `${diffWeeks}w ago`;
+  if (diffDays > 0) return `${diffDays}d ago`;
+  if (diffHours > 0) return `${diffHours}h ago`;
+  if (diffMinutes > 0) return `${diffMinutes}m ago`;
+  return "just now";
+}
+
+function getInitials(name: string | null): string {
+  if (!name) return "?";
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
+
 function HomeComponent() {
-  const { repos, privateTranscripts } = Route.useLoaderData();
-  const router = useRouter();
-  const [isClearing, setIsClearing] = useState(false);
+  const { transcripts } = Route.useLoaderData();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedRepo, setSelectedRepo] = useState<string>("all");
 
-  const handleClearAll = async () => {
-    if (!confirm("Are you sure you want to delete ALL transcripts? This action cannot be undone.")) {
-      return;
+  // Get unique repos from transcripts for the filter
+  const repoOptions = useMemo(() => {
+    const uniqueRepos = new Map<string, string>();
+    for (const t of transcripts) {
+      if (t.repoName && t.repoId) {
+        uniqueRepos.set(t.repoId, t.repoName);
+      }
     }
+    return Array.from(uniqueRepos.entries()).map(([id, name]) => ({ id, name }));
+  }, [transcripts]);
 
-    setIsClearing(true);
-    try {
-      const response = await fetch("/api/transcripts/clear", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to clear transcripts");
+  // Filter transcripts based on search and repo selection
+  const filteredTranscripts = useMemo(() => {
+    return transcripts.filter((t) => {
+      // Search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchesPreview = t.preview?.toLowerCase().includes(query);
+        const matchesRepo = t.repoName?.toLowerCase().includes(query);
+        if (!matchesPreview && !matchesRepo) return false;
       }
 
-      const data = (await response.json()) as {
-        success: boolean;
-        deletedCount: number;
-      };
-      alert(`Successfully deleted ${data.deletedCount} transcripts`);
+      // Repo filter
+      if (selectedRepo !== "all") {
+        if (selectedRepo === "private") {
+          if (t.repoId) return false;
+        } else {
+          if (t.repoId !== selectedRepo) return false;
+        }
+      }
 
-      // Reload the page to refresh the data
-      router.invalidate();
-    } catch (error) {
-      alert("Failed to clear transcripts: " + (error instanceof Error ? error.message : "Unknown error"));
-    } finally {
-      setIsClearing(false);
-    }
-  };
+      return true;
+    });
+  }, [transcripts, searchQuery, selectedRepo]);
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold tracking-tight">Repositories</h2>
-        <Button variant="destructive" size="sm" onClick={handleClearAll} disabled={isClearing}>
-          {isClearing ? "Clearing..." : "Clear All Transcripts"}
-        </Button>
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[200px] max-w-[300px]">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search threads..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+
+        <Select value={selectedRepo} onValueChange={setSelectedRepo}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="All repositories" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All repositories</SelectItem>
+            <SelectItem value="private">Private only</SelectItem>
+            {repoOptions.map((repo) => (
+              <SelectItem key={repo.id} value={repo.id}>
+                {repo.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
-      {repos.length === 0 && privateTranscripts.length === 0 ? (
-        <p className="text-muted-foreground">No repositories or transcripts yet. Start capturing transcripts!</p>
+      {/* Transcript List */}
+      {filteredTranscripts.length === 0 ? (
+        <p className="text-muted-foreground py-8 text-center">
+          {transcripts.length === 0
+            ? "No transcripts yet. Start capturing transcripts!"
+            : "No transcripts match your filters."}
+        </p>
       ) : (
-        <>
-          {repos.length > 0 && (
-            <Card>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Repository</TableHead>
-                      <TableHead>Transcripts</TableHead>
-                      <TableHead>Avg Health</TableHead>
-                      <TableHead>Last Activity</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {repos.map((repo: (typeof repos)[0]) => (
-                      <TableRow key={repo.id}>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{repo.repo}</div>
-                            <div className="text-sm text-muted-foreground">{repo.id}</div>
-                          </div>
-                        </TableCell>
-                        <TableCell>{repo.transcriptCount}</TableCell>
-                        <TableCell>N/A</TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {repo.lastActivity ? new Date(repo.lastActivity).toLocaleString() : "Never"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="sm" asChild>
-                            <Link to="/repos/$id" params={{ id: repo.id }}>
-                              View
-                            </Link>
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          )}
-
-          {privateTranscripts.length > 0 && (
-            <div className="space-y-4">
-              <h3 className="text-xl font-semibold">Private Transcripts</h3>
-              <Card>
-                <CardContent className="p-0">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Directory</TableHead>
-                        <TableHead>Transcripts</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {privateTranscripts.map((item: (typeof privateTranscripts)[0]) => (
-                        <TableRow key={item.cwd}>
-                          <TableCell>
-                            <div className="font-medium">{item.cwd || "(unknown)"}</div>
-                          </TableCell>
-                          <TableCell>{item.transcriptCount}</TableCell>
-                          <TableCell className="text-right">
-                            <Button variant="ghost" size="sm" asChild>
-                              <Link to="/private/$cwd" params={{ cwd: item.cwd || "" }}>
-                                View
-                              </Link>
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-        </>
+        <div className="space-y-4">
+          {filteredTranscripts.map((transcript) => (
+            <TranscriptItem key={transcript.id} transcript={transcript} />
+          ))}
+        </div>
       )}
     </div>
+  );
+}
+
+type TranscriptData = Awaited<ReturnType<typeof getAllTranscripts>>[number];
+
+function TranscriptItem({ transcript }: { transcript: TranscriptData }) {
+  const [expanded, setExpanded] = useState(false);
+  const timeAgo = formatTimeAgo(new Date(transcript.createdAt));
+
+  return (
+    <Link to="/transcripts/$id" params={{ id: transcript.id }} className="block group">
+      <div className="flex gap-4 py-3 px-2 rounded-lg hover:bg-accent/50 transition-colors">
+        {/* Avatar */}
+        <Avatar className="h-10 w-10 shrink-0">
+          <AvatarImage src={transcript.userImage || undefined} alt={transcript.userName || "User"} />
+          <AvatarFallback>{getInitials(transcript.userName)}</AvatarFallback>
+        </Avatar>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0 space-y-1.5">
+          {/* Meta row */}
+          <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
+            <span className="font-medium text-foreground/80">{transcript.userName || "Unknown"}</span>
+            <span>{timeAgo}</span>
+            <span>—</span>
+            <span>{transcript.messageCount} messages</span>
+            {transcript.costUsd > 0 && (
+              <>
+                <span>•</span>
+                <span>${transcript.costUsd.toFixed(2)}</span>
+              </>
+            )}
+            {transcript.repoName && (
+              <>
+                <span className="flex items-center gap-1">
+                  <Folder className="h-3.5 w-3.5" />
+                  <span>
+                    {transcript.repoName}
+                    {transcript.branch && `:${transcript.branch}`}
+                  </span>
+                </span>
+              </>
+            )}
+          </div>
+
+          {/* Preview */}
+          {transcript.preview && (
+            <div
+              className={`mt-2 bg-secondary/50 rounded-md px-3 py-2 text-sm text-muted-foreground ${
+                !expanded ? "line-clamp-2" : ""
+              }`}
+            >
+              {transcript.preview}
+            </div>
+          )}
+        </div>
+
+        {/* Expand button */}
+        {transcript.preview && transcript.preview.length > 150 && (
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setExpanded(!expanded);
+            }}
+            className="self-start p-1 hover:bg-accent rounded shrink-0"
+          >
+            <ChevronDown className={`h-4 w-4 transition-transform ${expanded ? "rotate-180" : ""}`} />
+          </button>
+        )}
+      </div>
+    </Link>
   );
 }
