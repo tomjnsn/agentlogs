@@ -2,7 +2,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ChevronDown, Folder, Search } from "lucide-react";
+import { ChevronDown, Folder, Search, Terminal } from "lucide-react";
+import { ClaudeCodeIcon, CodexIcon, OpenCodeIcon } from "../../components/icons/source-icons";
 import { useMemo, useState } from "react";
 import { getAllTranscripts } from "../../lib/server-functions";
 
@@ -58,6 +59,19 @@ function getInitials(name: string | null): string {
     .join("")
     .toUpperCase()
     .slice(0, 2);
+}
+
+function getSourceIcon(source: string, className?: string) {
+  switch (source) {
+    case "codex":
+      return <CodexIcon className={className} />;
+    case "claude-code":
+      return <ClaudeCodeIcon className={className} />;
+    case "opencode":
+      return <OpenCodeIcon className={className} />;
+    default:
+      return <Terminal className={className} />;
+  }
 }
 
 function HomeComponent() {
@@ -178,6 +192,7 @@ function TranscriptItem({ transcript }: { transcript: TranscriptData }) {
 
           {/* Meta row */}
           <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
+            {getSourceIcon(transcript.source, "h-3.5 w-3.5")}
             <span className="font-medium text-foreground/80">{transcript.userName || "Unknown"}</span>
             <span>{timeAgo}</span>
             <span>•</span>
