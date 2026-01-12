@@ -32,13 +32,9 @@ function LandingPage() {
         <header className="mb-16">
           <div className="mb-8 flex items-center justify-between">
             <span className="text-xl">🔮</span>
-            <Link
-              to="/auth/$"
-              params={{ _splat: "github" }}
-              className="text-sm text-neutral-500 hover:text-neutral-300"
-            >
+            <a href="/auth/github" className="text-sm text-neutral-500 hover:text-neutral-300">
               sign in
-            </Link>
+            </a>
           </div>
 
           <h1 className="mb-4 text-2xl text-neutral-100">agentlogs</h1>

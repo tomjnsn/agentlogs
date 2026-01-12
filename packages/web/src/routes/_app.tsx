@@ -38,7 +38,7 @@ function AppLayout() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card px-6 py-4">
+      <header className="border-b border-border px-6 py-4">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold">
             <Link to="/app" className="transition-colors hover:text-primary">
