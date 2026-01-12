@@ -158,48 +158,46 @@ function TranscriptItem({ transcript }: { transcript: TranscriptData }) {
     <Link to="/transcripts/$id" params={{ id: transcript.id }} className="block group">
       <div className="flex gap-4 py-3 px-2 rounded-lg hover:bg-accent/50 transition-colors">
         {/* Avatar */}
-        <Avatar className="h-10 w-10 shrink-0">
+        <Avatar className="h-10 w-10 shrink-0 self-center">
           <AvatarImage src={transcript.userImage || undefined} alt={transcript.userName || "User"} />
           <AvatarFallback>{getInitials(transcript.userName)}</AvatarFallback>
         </Avatar>
 
         {/* Content */}
         <div className="flex-1 min-w-0 space-y-1.5">
-          {/* Meta row */}
-          <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
-            <span className="font-medium text-foreground/80">{transcript.userName || "Unknown"}</span>
-            <span>{timeAgo}</span>
-            <span>—</span>
-            <span>{transcript.messageCount} messages</span>
-            {transcript.costUsd > 0 && (
-              <>
-                <span>•</span>
-                <span>${transcript.costUsd.toFixed(2)}</span>
-              </>
-            )}
-            {transcript.repoName && (
-              <>
-                <span className="flex items-center gap-1">
-                  <Folder className="h-3.5 w-3.5" />
-                  <span>
-                    {transcript.repoName}
-                    {transcript.branch && `:${transcript.branch}`}
-                  </span>
-                </span>
-              </>
-            )}
-          </div>
-
           {/* Preview */}
           {transcript.preview && (
             <div
-              className={`mt-2 bg-secondary/50 rounded-md px-3 py-2 text-sm text-muted-foreground ${
+              className={`bg-secondary/50 rounded-md px-3 py-2 text-sm text-muted-foreground ${
                 !expanded ? "line-clamp-2" : ""
               }`}
             >
               {transcript.preview}
             </div>
           )}
+
+          {/* Meta row */}
+          <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
+            <span className="font-medium text-foreground/80">{transcript.userName || "Unknown"}</span>
+            <span>{timeAgo}</span>
+            <span>•</span>
+            <span>{transcript.messageCount} messages</span>
+            {transcript.repoName && (
+              <span className="flex items-center gap-1">
+                <Folder className="h-3.5 w-3.5" />
+                <span>
+                  {transcript.repoName}
+                  {transcript.branch && `:${transcript.branch}`}
+                </span>
+              </span>
+            )}
+            {transcript.costUsd > 0 && (
+              <>
+                <span>•</span>
+                <span>${transcript.costUsd.toFixed(2)}</span>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Expand button */}

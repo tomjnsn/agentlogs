@@ -134,3 +134,41 @@ export async function getTranscriptsByCwd(db: DrizzleDB, userId: string, cwd: st
     .where(and(eq(transcripts.userId, userId), isNull(transcripts.repoId), eq(transcripts.cwd, cwd)))
     .orderBy(desc(transcripts.createdAt));
 }
+
+/**
+ * Get all transcripts for a user, sorted chronologically (newest first)
+ */
+export async function getAllTranscripts(db: DrizzleDB, userId: string) {
+  return await db
+    .select({
+      id: transcripts.id,
+      repoId: transcripts.repoId,
+      userId: transcripts.userId,
+      sha256: transcripts.sha256,
+      transcriptId: transcripts.transcriptId,
+      source: transcripts.source,
+      createdAt: transcripts.createdAt,
+      preview: transcripts.preview,
+      model: transcripts.model,
+      costUsd: transcripts.costUsd,
+      blendedTokens: transcripts.blendedTokens,
+      messageCount: transcripts.messageCount,
+      inputTokens: transcripts.inputTokens,
+      cachedInputTokens: transcripts.cachedInputTokens,
+      outputTokens: transcripts.outputTokens,
+      reasoningOutputTokens: transcripts.reasoningOutputTokens,
+      totalTokens: transcripts.totalTokens,
+      relativeCwd: transcripts.relativeCwd,
+      branch: transcripts.branch,
+      cwd: transcripts.cwd,
+      updatedAt: transcripts.updatedAt,
+      userName: user.name,
+      userImage: user.image,
+      repoName: repos.repo,
+    })
+    .from(transcripts)
+    .leftJoin(user, eq(transcripts.userId, user.id))
+    .leftJoin(repos, eq(transcripts.repoId, repos.id))
+    .where(eq(transcripts.userId, userId))
+    .orderBy(desc(transcripts.createdAt));
+}

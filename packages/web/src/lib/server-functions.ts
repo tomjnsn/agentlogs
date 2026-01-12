@@ -195,3 +195,29 @@ export const getTranscriptBySessionId = createServerFn({ method: "GET" })
 
     return transcript;
   });
+
+/**
+ * Server function to fetch all transcripts for the authenticated user
+ */
+export const getAllTranscripts = createServerFn().handler(async () => {
+  const db = createDrizzle(env.DB);
+  const userId = await getAuthenticatedUserId();
+  const transcripts = await queries.getAllTranscripts(db, userId);
+
+  return transcripts.map((t) => ({
+    id: t.id,
+    repoId: t.repoId,
+    transcriptId: t.transcriptId,
+    source: t.source,
+    preview: t.preview,
+    createdAt: t.createdAt,
+    updatedAt: t.updatedAt,
+    messageCount: t.messageCount,
+    costUsd: t.costUsd,
+    userName: t.userName,
+    userImage: t.userImage,
+    repoName: t.repoName,
+    branch: t.branch,
+    cwd: t.cwd,
+  }));
+});
