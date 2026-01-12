@@ -195,9 +195,10 @@ export function convertClaudeCodeTranscript(
   const timestamp = parseDate(leaf.timestamp) ?? options.now ?? new Date();
   const sessionId = findSessionId(transcriptChain);
   const primaryModel = selectPrimaryModel(modelUsageMap);
-  // Extract git context from transcript records (synchronous)
-  const gitContext = extractGitContextFromRecords(transcriptChain);
   const cwd = deriveWorkingDirectory(transcriptChain);
+  // Use provided git context or fall back to path-based extraction
+  const gitContext =
+    options.gitContext !== undefined ? options.gitContext : extractGitContextFromRecords(transcriptChain);
   const formattedCwd = cwd ? formatCwdWithTilde(cwd) : "";
   const { messages, blobs } = convertTranscriptToMessages(transcriptChain);
 
@@ -786,7 +787,10 @@ function extractGitContextFromRecords(transcript: ClaudeMessageRecord[]): Unifie
   });
 }
 
-async function resolveGitContext(cwd: string | undefined, gitBranch: string | undefined): Promise<UnifiedGitContext> {
+export async function resolveGitContext(
+  cwd: string | undefined,
+  gitBranch: string | undefined,
+): Promise<UnifiedGitContext> {
   if (!cwd) {
     return null;
   }

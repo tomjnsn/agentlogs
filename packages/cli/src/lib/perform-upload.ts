@@ -2,7 +2,7 @@ import { createHash } from "crypto";
 import { existsSync, readFileSync } from "fs";
 import { dirname, isAbsolute, resolve } from "path";
 import type { TranscriptSource, UploadBlob, UploadPayload } from "@agentlogs/shared";
-import { convertClaudeCodeTranscript, type UnifiedTranscript } from "@agentlogs/shared/claudecode";
+import { convertClaudeCodeTranscript, resolveGitContext, type UnifiedTranscript } from "@agentlogs/shared/claudecode";
 import { convertCodexTranscript } from "@agentlogs/shared/codex";
 import { LiteLLMPricingFetcher } from "@agentlogs/shared/pricing";
 import { uploadTranscript } from "@agentlogs/shared/upload";
@@ -83,10 +83,19 @@ export async function performUpload(
       ? params.cwdOverride.trim()
       : (extractCwdFromRecords(records) ?? process.cwd());
 
+  // Resolve git context from .git/config for accurate repo detection
+  const gitBranch = extractGitBranchFromRecords(records);
+  const gitContext = await resolveGitContext(resolvedCwd, gitBranch);
+
+  const converterOptionsWithGit = {
+    ...converterOptions,
+    gitContext,
+  };
+
   const conversionResult =
     source === "codex"
       ? convertCodexTranscript(records, converterOptions)
-      : convertClaudeCodeTranscript(records, converterOptions);
+      : convertClaudeCodeTranscript(records, converterOptionsWithGit);
 
   if (!conversionResult) {
     throw new Error(`Unable to convert ${source} transcript to unified format.`);
@@ -200,4 +209,14 @@ function extractCwdFromRecords(records: Record<string, unknown>[]): string | nul
     }
   }
   return null;
+}
+
+function extractGitBranchFromRecords(records: Record<string, unknown>[]): string | undefined {
+  for (const record of records) {
+    const gitBranch = typeof record.gitBranch === "string" ? record.gitBranch.trim() : "";
+    if (gitBranch) {
+      return gitBranch;
+    }
+  }
+  return undefined;
 }
