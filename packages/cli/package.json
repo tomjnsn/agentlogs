@@ -2,13 +2,13 @@
   "name": "agentlogs",
   "version": "0.0.1",
   "bin": {
-    "agentlogs": "src/index.ts"
+    "agentlogs": "dist/index.js"
   },
   "files": [
     "dist"
   ],
   "type": "module",
-  "main": "src/index.ts",
+  "main": "dist/index.js",
   "publishConfig": {
     "access": "public",
     "bin": {
