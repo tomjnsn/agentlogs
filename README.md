@@ -4,7 +4,7 @@ Capture and analyze coding agent session transcripts to understand AI assistant 
 
 ## What It Does
 
-- **CLI**: Captures Amp transcripts via hooks and uploads them
+- **CLI**: Captures agent transcripts (Claude Code, Amp, OpenCode) via hooks and uploads them
 - **Web App**: Stores transcripts, analyzes patterns, displays insights
 
 ## Tech Stack
@@ -27,12 +27,11 @@ TanStack Start + Cloudflare Workers + D1 (SQLite) + Drizzle ORM + BetterAuth (Gi
 bun install
 
 # Configure
-cd packages/web
-cp .dev.vars.example .dev.vars
+cp packages/web/.dev.vars.example packages/web/.dev.vars
 # Edit .dev.vars with GitHub OAuth credentials
 
 # Initialize database
-bun db:setup
+bun db:migrate
 
 # Start
 bun dev
@@ -44,9 +43,12 @@ Open http://localhost:8787
 
 ```
 packages/
-├── cli/       # Amp transcript capture tool
+├── cli/       # Agent transcript capture tool
 ├── web/       # TanStack Start app on Cloudflare Workers
-└── shared/    # TypeScript types and Zod schemas
+├── shared/    # TypeScript types and Zod schemas
+├── plugin/    # Claude Code plugin
+├── opencode/  # OpenCode integration
+└── e2e/       # End-to-end tests
 ```
 
 ## Commands
@@ -54,16 +56,21 @@ packages/
 ```bash
 # Development
 bun dev              # Start web app
-bun cli              # Run CLI tool
+bun agentlogs        # Run CLI tool
 
-# Database (from packages/web)
-bun db:setup         # Setup database
+# Database
+bun db:migrate       # Run migrations
+bun db:generate      # Generate migrations
 bun db:studio        # Open Drizzle Studio
+bun db:reset         # Reset database
 
 # Quality
+bun run check        # Format check, lint, and type check
 bun run lint         # Lint code
 bun run format       # Format code
-bun run typecheck    # Type check
+
+# Testing
+bun run test:e2e     # Run end-to-end tests
 ```
 
 ## Local Plugin Development
@@ -86,7 +93,7 @@ bun run dev
 
 # Test with Claude
 claude -p "test"
-# Transcripts auto-upload to http://localhost:3000
+# Transcripts auto-upload to http://localhost:8787
 ```
 
 ### Switch Modes
@@ -104,25 +111,23 @@ bun run plugin:status       # Check current mode
 tail -f logs/dev.log
 
 # Check authentication
-bun run cli status
+bun agentlogs status
 
 # Re-authenticate
-bun run cli login
+bun agentlogs login
 ```
 
 ## CLI Usage
 
 ```bash
+# From repo root
+bun agentlogs login                              # Authenticate
+bun agentlogs claudecode upload transcript.jsonl # Upload transcript
+bun agentlogs claudecode hook                    # Hook (receives via stdin)
+
+# Or from packages/cli
 cd packages/cli
-
-# Authenticate
 bun run start login
-
-# Upload transcript
-bun run start claudecode upload path/to/transcript.jsonl
-
-# Hook (receives transcript via stdin)
-bun run start claudecode hook
 ```
 
 ## Environment Variables
@@ -166,10 +171,6 @@ All data scoped by `userId` for multi-tenant isolation.
 
 ## Troubleshooting
 
-**Database issues**: `cd packages/web && bun db:reset`
+**Database issues**: `bun db:reset`
 **Auth issues**: Verify callback URL and clear cookies
-**Build errors**: `bun install && bun run typecheck`
-
-## License
-
-MIT
+**Build errors**: `bun install && bun run check`
