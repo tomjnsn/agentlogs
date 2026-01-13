@@ -57,12 +57,15 @@ describe("convertOpenCodeTranscript", () => {
         "blendedTokens": 18924,
         "costUsd": 0.047218750000000004,
         "cwd": "~/dev/agentlogs",
+        "filesChanged": 0,
         "git": {
           "branch": "main",
           "relativeCwd": null,
           "repo": "github.com/agentlogs/agentlogs",
         },
         "id": "ses_450b70e67ffeoaXH496F8i0fVA",
+        "linesAdded": 0,
+        "linesRemoved": 0,
         "messageCount": 6,
         "messages": [
           {
@@ -201,6 +204,8 @@ describe("convertOpenCodeTranscript", () => {
           "reasoningOutputTokens": 64,
           "totalTokens": 18924,
         },
+        "toolCount": 4,
+        "userMessageCount": 1,
         "v": 1,
       }
     `);

@@ -54,12 +54,15 @@ describe("convertClaudeCodeFile", () => {
           "blendedTokens": 2286,
           "costUsd": 0.0126906,
           "cwd": "~/dev/studio",
+          "filesChanged": 0,
           "git": {
             "branch": "main",
             "relativeCwd": "",
             "repo": "github.com/vibeinsights/vibeinsights",
           },
           "id": "0e26ec2f-937e-482c-b889-bc126f996913",
+          "linesAdded": 0,
+          "linesRemoved": 0,
           "messageCount": 11,
           "messages": [
             {
@@ -140,6 +143,8 @@ describe("convertClaudeCodeFile", () => {
             "reasoningOutputTokens": 0,
             "totalTokens": 15808,
           },
+          "toolCount": 0,
+          "userMessageCount": 5,
           "v": 1,
         },
       }
@@ -159,12 +164,15 @@ describe("convertClaudeCodeFile", () => {
           "blendedTokens": 14126,
           "costUsd": 0.10516139999999999,
           "cwd": "~/dev/vibeinsights/fixtures/claudecode",
+          "filesChanged": 1,
           "git": {
             "branch": "main",
             "relativeCwd": "fixtures/claudecode",
             "repo": "github.com/vibeinsights/vibeinsights",
           },
           "id": "8122657c-fe54-4dc9-89a3-20049e8a84f7",
+          "linesAdded": 3,
+          "linesRemoved": 1,
           "messageCount": 25,
           "messages": [
             {
@@ -651,6 +659,8 @@ describe("convertClaudeCodeFile", () => {
             "reasoningOutputTokens": 0,
             "totalTokens": 163084,
           },
+          "toolCount": 9,
+          "userMessageCount": 1,
           "v": 1,
         },
       }
@@ -670,12 +680,15 @@ describe("convertClaudeCodeFile", () => {
           "blendedTokens": 10896,
           "costUsd": 0.040881600000000004,
           "cwd": "~/dev/studio",
+          "filesChanged": 0,
           "git": {
             "branch": "main",
             "relativeCwd": "",
             "repo": "github.com/vibeinsights/vibeinsights",
           },
           "id": "609efeca-2f51-4118-b077-e91c9fe63f73",
+          "linesAdded": 0,
+          "linesRemoved": 0,
           "messageCount": 7,
           "messages": [
             {
@@ -795,6 +808,8 @@ describe("convertClaudeCodeFile", () => {
             "reasoningOutputTokens": 0,
             "totalTokens": 31848,
           },
+          "toolCount": 1,
+          "userMessageCount": 1,
           "v": 1,
         },
       }
@@ -814,12 +829,15 @@ describe("convertClaudeCodeFile", () => {
           "blendedTokens": 2835,
           "costUsd": 0.04278390000000001,
           "cwd": "~/dev/vibeinsights/fixtures/claudecode",
+          "filesChanged": 0,
           "git": {
             "branch": "main",
             "relativeCwd": "fixtures/claudecode",
             "repo": "github.com/vibeinsights/vibeinsights",
           },
           "id": "0db46778-18a1-4d84-853f-d4dc72a07a1b",
+          "linesAdded": 0,
+          "linesRemoved": 0,
           "messageCount": 17,
           "messages": [
             {
@@ -1146,6 +1164,8 @@ describe("convertClaudeCodeFile", () => {
             "reasoningOutputTokens": 0,
             "totalTokens": 90698,
           },
+          "toolCount": 5,
+          "userMessageCount": 1,
           "v": 1,
         },
       }
@@ -1167,8 +1187,11 @@ describe("convertClaudeCodeFile", () => {
           "blendedTokens": 6098,
           "costUsd": 0,
           "cwd": "~/dev/vibeinsights",
+          "filesChanged": 0,
           "git": null,
           "id": "794b4c5f-6354-422a-9e6d-c9f18e89e427",
+          "linesAdded": 0,
+          "linesRemoved": 0,
           "messageCount": 11,
           "messages": [
             {
@@ -1303,6 +1326,8 @@ describe("convertClaudeCodeFile", () => {
             "reasoningOutputTokens": 0,
             "totalTokens": 73941,
           },
+          "toolCount": 2,
+          "userMessageCount": 1,
           "v": 1,
         },
       }

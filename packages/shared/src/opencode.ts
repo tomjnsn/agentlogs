@@ -1,5 +1,11 @@
 import path from "node:path";
-import type { UnifiedGitContext, UnifiedTokenUsage, UnifiedTranscript, UnifiedTranscriptMessage } from "./claudecode";
+import {
+  calculateTranscriptStats,
+  type UnifiedGitContext,
+  type UnifiedTokenUsage,
+  type UnifiedTranscript,
+  type UnifiedTranscriptMessage,
+} from "./claudecode";
 import { formatCwdWithTilde } from "./paths";
 import type { LiteLLMModelPricing } from "./pricing";
 import {
@@ -334,6 +340,7 @@ export function convertOpenCodeTranscript(
         });
 
   const formattedCwd = cwd ? formatCwdWithTilde(cwd) : null;
+  const stats = calculateTranscriptStats(unifiedMessages);
 
   const transcript: UnifiedTranscript = unifiedTranscriptSchema.parse({
     v: 1 as const,
@@ -345,6 +352,7 @@ export function convertOpenCodeTranscript(
     blendedTokens,
     costUsd,
     messageCount: unifiedMessages.length,
+    ...stats,
     tokenUsage,
     modelUsage: primaryModel
       ? [

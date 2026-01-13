@@ -29,12 +29,15 @@ describe("convertCodexFile", () => {
           "blendedTokens": 7697,
           "costUsd": 0.054657250000000004,
           "cwd": "~/dev/vibeinsights/fixtures",
+          "filesChanged": 1,
           "git": {
             "branch": "main",
             "relativeCwd": "fixtures",
             "repo": "github.com/vibeinsights/vibeinsights",
           },
           "id": "0199f433-233e-74b0-80d8-b9ef1b9fabd7",
+          "linesAdded": 2,
+          "linesRemoved": 2,
           "messageCount": 11,
           "messages": [
             {
@@ -186,6 +189,8 @@ describe("convertCodexFile", () => {
             "reasoningOutputTokens": 1728,
             "totalTokens": 78417,
           },
+          "toolCount": 4,
+          "userMessageCount": 1,
           "v": 1,
         },
       }

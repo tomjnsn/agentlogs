@@ -1,12 +1,13 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import type {
-  ConversionResult,
-  UnifiedGitContext,
-  UnifiedModelUsage,
-  UnifiedTokenUsage,
-  UnifiedTranscript,
-  UnifiedTranscriptMessage,
+import {
+  calculateTranscriptStats,
+  type ConversionResult,
+  type UnifiedGitContext,
+  type UnifiedModelUsage,
+  type UnifiedTokenUsage,
+  type UnifiedTranscript,
+  type UnifiedTranscriptMessage,
 } from "./claudecode";
 import { formatCwdWithTilde, normalizeRelativeCwd } from "./paths";
 import type { LiteLLMModelPricing } from "./pricing";
@@ -337,6 +338,7 @@ export function convertCodexTranscript(
 
   const gitContext = options.gitContext !== undefined ? options.gitContext : buildGitContext(sessionMeta, cwd);
   const formattedCwd = cwd ? formatCwdWithTilde(cwd) : "";
+  const stats = calculateTranscriptStats(messages);
 
   const transcript: UnifiedTranscript = unifiedTranscriptSchema.parse({
     v: 1 as const,
@@ -348,6 +350,7 @@ export function convertCodexTranscript(
     blendedTokens,
     costUsd,
     messageCount: messages.length,
+    ...stats,
     tokenUsage,
     modelUsage: primaryModel
       ? [

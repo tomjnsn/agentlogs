@@ -149,6 +149,63 @@ const PROMPT_KEYWORD_PATTERN = new RegExp(
 const MAX_SUMMARY_LINES = 3;
 
 /**
+ * Calculate aggregate stats from unified messages
+ */
+export type TranscriptStats = {
+  toolCount: number;
+  userMessageCount: number;
+  filesChanged: number;
+  linesAdded: number;
+  linesRemoved: number;
+};
+
+export function calculateTranscriptStats(messages: UnifiedTranscriptMessage[]): TranscriptStats {
+  let toolCount = 0;
+  let userMessageCount = 0;
+  let linesAdded = 0;
+  let linesRemoved = 0;
+  const changedFiles = new Set<string>();
+
+  for (const msg of messages) {
+    if (msg.type === "user") {
+      userMessageCount++;
+    } else if (msg.type === "tool-call") {
+      toolCount++;
+
+      // Track file changes from Edit and Write tools
+      const toolName = msg.toolName;
+      const input = msg.input as Record<string, unknown> | undefined;
+
+      if (input && typeof input.file_path === "string") {
+        if (toolName === "Edit" || toolName === "Write") {
+          changedFiles.add(input.file_path);
+        }
+      }
+
+      // Parse diff to count additions/removals
+      if (toolName === "Edit" && input && typeof input.diff === "string") {
+        const diffLines = input.diff.split("\n");
+        for (const line of diffLines) {
+          if (line.startsWith("+") && !line.startsWith("+++")) {
+            linesAdded++;
+          } else if (line.startsWith("-") && !line.startsWith("---")) {
+            linesRemoved++;
+          }
+        }
+      }
+    }
+  }
+
+  return {
+    toolCount,
+    userMessageCount,
+    filesChanged: changedFiles.size,
+    linesAdded,
+    linesRemoved,
+  };
+}
+
+/**
  * Convert a Claude Code transcript from an array of message records
  * (for testing or in-memory processing)
  */
@@ -201,6 +258,7 @@ export function convertClaudeCodeTranscript(
     options.gitContext !== undefined ? options.gitContext : extractGitContextFromRecords(transcriptChain);
   const formattedCwd = cwd ? formatCwdWithTilde(cwd) : "";
   const { messages, blobs } = convertTranscriptToMessages(transcriptChain);
+  const stats = calculateTranscriptStats(messages);
 
   const transcriptCandidate = {
     v: 1 as const,
@@ -212,6 +270,7 @@ export function convertClaudeCodeTranscript(
     blendedTokens,
     costUsd,
     messageCount: transcriptChain.length,
+    ...stats,
     tokenUsage,
     modelUsage: Array.from(modelUsageMap.entries()).map(([model, usage]) => ({ model, usage })),
     git: gitContext,
@@ -273,6 +332,7 @@ export async function convertClaudeCodeFile(
   const gitContext =
     options.gitContext !== undefined ? options.gitContext : await resolveGitContext(cwd, leaf.gitBranch);
   const { messages, blobs } = convertTranscriptToMessages(transcriptChain);
+  const stats = calculateTranscriptStats(messages);
 
   const transcriptCandidate = {
     v: 1 as const,
@@ -284,6 +344,7 @@ export async function convertClaudeCodeFile(
     blendedTokens,
     costUsd,
     messageCount: transcriptChain.length,
+    ...stats,
     tokenUsage,
     modelUsage: Array.from(modelUsageMap.entries()).map(([model, usage]) => ({ model, usage })),
     git: gitContext,
