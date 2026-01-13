@@ -115,7 +115,8 @@ function startViteServer() {
   });
 
   // Start vite dev in the foreground on port 3009 (this will keep running)
-  const vite = spawn("bun", ["run", "vite", "dev", "--port", "3009"], {
+  // Use --host to bind to all interfaces so subprocess fetch can connect
+  const vite = spawn("bun", ["run", "vite", "dev", "--port", "3009", "--host"], {
     cwd: WEB_DIR,
     stdio: "inherit",
     env: { ...process.env, VITE_USE_TEST_DB: "true" },
