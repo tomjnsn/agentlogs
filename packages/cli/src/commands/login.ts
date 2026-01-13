@@ -1,10 +1,22 @@
 import open from "open";
-import { authClient } from "../auth";
-import { readConfig, setToken, writeConfig } from "../config";
+import { createAuthClientForEnv, DEV_URL, PROD_URL } from "../auth";
+import { setTokenForEnv, upsertEnvironment, type EnvName } from "../config";
 
-export async function loginCommand(): Promise<void> {
-  console.log("🔐 AgentLogs Device Authorization");
+export interface LoginCommandOptions {
+  dev?: boolean;
+}
+
+export async function loginCommand(options: LoginCommandOptions = {}): Promise<void> {
+  const isDev = options.dev ?? false;
+  const envName: EnvName = isDev ? "dev" : "prod";
+  const baseURL = isDev ? DEV_URL : PROD_URL;
+
+  const envLabel = isDev ? "development" : "production";
+  console.log(`🔐 AgentLogs Device Authorization (${envLabel})`);
+  console.log(`🌐 Server: ${baseURL}`);
   console.log("⏳ Requesting device authorization...");
+
+  const authClient = createAuthClientForEnv(baseURL);
 
   try {
     // Request device code
@@ -34,14 +46,20 @@ export async function loginCommand(): Promise<void> {
     console.log(`⏳ Waiting for authorization... (polling every ${interval}s)`);
 
     // Poll for token
-    await pollForToken(device_code, interval);
+    await pollForToken(authClient, device_code, interval, envName, baseURL);
   } catch (err) {
     console.error("❌ Error:", err instanceof Error ? err.message : "Unknown error");
     process.exit(1);
   }
 }
 
-async function pollForToken(deviceCode: string, interval: number): Promise<void> {
+async function pollForToken(
+  authClient: ReturnType<typeof createAuthClientForEnv>,
+  deviceCode: string,
+  interval: number,
+  envName: EnvName,
+  baseURL: string,
+): Promise<void> {
   let pollingInterval = interval;
 
   return new Promise<void>((resolve) => {
@@ -67,13 +85,13 @@ async function pollForToken(deviceCode: string, interval: number): Promise<void>
           });
 
           if (session?.user) {
-            // Store token in keyring
-            setToken(session.user.email, data.access_token);
+            // Store token in keyring for this environment
+            setTokenForEnv(envName, session.user.email, data.access_token);
 
-            // Store user info in config
-            const config = readConfig();
-            writeConfig({
-              ...config,
+            // Store environment info in config
+            upsertEnvironment({
+              name: envName,
+              baseURL,
               user: {
                 id: session.user.id,
                 email: session.user.email,
@@ -84,6 +102,7 @@ async function pollForToken(deviceCode: string, interval: number): Promise<void>
 
             console.log(`👋 Hello, ${session.user.name}!`);
             console.log(`📧 Logged in as: ${session.user.email}`);
+            console.log(`🌐 Environment: ${envName}`);
           } else {
             console.log("⚠️  Warning: Could not retrieve user session");
           }

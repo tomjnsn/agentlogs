@@ -1,30 +1,35 @@
-import { unlinkSync } from "fs";
-import { homedir } from "os";
-import { join } from "path";
-import { deleteToken, readConfig } from "../config";
+import { deleteTokenForEnv, getEnvironment, removeEnvironment, type EnvName } from "../config";
 
-export function logoutCommand(): void {
-  const config = readConfig();
+export interface LogoutCommandOptions {
+  dev?: boolean;
+}
 
-  if (!config.user) {
-    console.log("ℹ️  Not currently logged in");
+export function logoutCommand(options: LogoutCommandOptions = {}): void {
+  const isDev = options.dev ?? false;
+  const envName: EnvName = isDev ? "dev" : "prod";
+
+  const env = getEnvironment(envName);
+
+  if (!env) {
+    const envLabel = isDev ? "development" : "production";
+    console.log(`ℹ️  Not currently logged in to ${envLabel}`);
     return;
   }
 
   try {
     // Delete token from keyring
-    deleteToken();
+    deleteTokenForEnv(envName);
 
-    // Delete config file
-    const configFile = join(homedir(), ".config", "agentlogs", "config.json");
-    unlinkSync(configFile);
+    // Remove environment from config
+    removeEnvironment(envName);
 
-    console.log("✅ Logged out successfully");
+    const envLabel = isDev ? "development" : "production";
+    console.log(`✅ Logged out from ${envLabel} successfully`);
+    console.log(`📧 Was logged in as: ${env.user.email}`);
   } catch (err) {
     console.error(
       "⚠️  Warning: Could not completely clear credentials:",
       err instanceof Error ? err.message : "Unknown error",
     );
-    console.log("You may need to manually delete ~/.config/agentlogs/config.json");
   }
 }

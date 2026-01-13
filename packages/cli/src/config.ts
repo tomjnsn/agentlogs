@@ -2,28 +2,28 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { homedir } from "os";
 import { join } from "path";
 import { Entry } from "@napi-rs/keyring";
-import { NODE_ENV } from "./env-config";
 
 const CONFIG_DIR = join(homedir(), ".config", "agentlogs");
 const CONFIG_FILE = join(CONFIG_DIR, "config.json");
 const KEYRING_SERVICE = "agentlogs-cli";
 
-/**
- * Get the environment-specific account name for keyring storage
- * Development and production accounts are stored separately
- */
-function getKeychainAccount(email: string): string {
-  return NODE_ENV === "production" ? `prod:${email}` : `dev:${email}`;
+export type EnvName = "dev" | "prod";
+
+export interface EnvironmentUser {
+  id: string;
+  email: string;
+  name: string;
+}
+
+export interface Environment {
+  name: EnvName;
+  baseURL: string;
+  user: EnvironmentUser;
+  lastLoginTime: string;
 }
 
 interface Config {
-  baseURL?: string;
-  user?: {
-    id: string;
-    email: string;
-    name: string;
-  };
-  lastLoginTime?: string;
+  environments: Environment[];
 }
 
 /**
@@ -42,15 +42,17 @@ export function readConfig(): Config {
   ensureConfigDir();
 
   if (!existsSync(CONFIG_FILE)) {
-    return {};
+    return { environments: [] };
   }
 
   try {
     const content = readFileSync(CONFIG_FILE, "utf-8");
-    return JSON.parse(content);
-  } catch (error) {
-    console.error("Failed to read config file:", error);
-    return {};
+    const parsed = JSON.parse(content) as Partial<Config>;
+    return {
+      environments: Array.isArray(parsed.environments) ? parsed.environments : [],
+    };
+  } catch {
+    return { environments: [] };
   }
 }
 
@@ -69,38 +71,56 @@ export function writeConfig(config: Config): void {
 }
 
 /**
- * Get the access token from the OS keychain
- * Uses environment-specific account names
+ * Get all configured environments
  */
-export function getToken(): string | null {
+export function getEnvironments(): Environment[] {
+  return readConfig().environments;
+}
+
+/**
+ * Get a specific environment by name
+ */
+export function getEnvironment(envName: EnvName): Environment | undefined {
+  return getEnvironments().find((env) => env.name === envName);
+}
+
+/**
+ * Get the keyring account name for an environment
+ */
+function getKeychainAccount(envName: EnvName, email: string): string {
+  return `${envName}:${email}`;
+}
+
+/**
+ * Get the access token for a specific environment from the OS keychain
+ */
+export function getTokenForEnv(envName: EnvName): string | null {
+  // Check for environment variable override
   const envToken = process.env.AGENTLOGS_AUTH_TOKEN?.trim();
   if (envToken) {
     return envToken;
   }
 
   try {
-    const config = readConfig();
-    if (!config.user?.email) {
+    const env = getEnvironment(envName);
+    if (!env?.user?.email) {
       return null;
     }
 
-    const account = getKeychainAccount(config.user.email);
+    const account = getKeychainAccount(envName, env.user.email);
     const entry = new Entry(KEYRING_SERVICE, account);
-    const token = entry.getPassword();
-    return token;
+    return entry.getPassword();
   } catch {
-    // Token doesn't exist or couldn't be retrieved
     return null;
   }
 }
 
 /**
- * Set the access token in the OS keychain
- * Uses environment-specific account names
+ * Set the access token for a specific environment in the OS keychain
  */
-export function setToken(email: string, token: string): void {
+export function setTokenForEnv(envName: EnvName, email: string, token: string): void {
   try {
-    const account = getKeychainAccount(email);
+    const account = getKeychainAccount(envName, email);
     const entry = new Entry(KEYRING_SERVICE, account);
     entry.setPassword(token);
   } catch (error) {
@@ -110,20 +130,62 @@ export function setToken(email: string, token: string): void {
 }
 
 /**
- * Delete the access token from the OS keychain
- * Uses environment-specific account names
+ * Delete the access token for a specific environment from the OS keychain
  */
-export function deleteToken(): void {
+export function deleteTokenForEnv(envName: EnvName): void {
   try {
-    const config = readConfig();
-    if (!config.user?.email) {
+    const env = getEnvironment(envName);
+    if (!env?.user?.email) {
       return;
     }
 
-    const account = getKeychainAccount(config.user.email);
+    const account = getKeychainAccount(envName, env.user.email);
     const entry = new Entry(KEYRING_SERVICE, account);
     entry.deletePassword();
   } catch {
     // Token doesn't exist or couldn't be deleted - that's okay
   }
+}
+
+/**
+ * Add or update an environment in the config
+ */
+export function upsertEnvironment(env: Environment): void {
+  const config = readConfig();
+  const existingIndex = config.environments.findIndex((e) => e.name === env.name);
+
+  if (existingIndex >= 0) {
+    config.environments[existingIndex] = env;
+  } else {
+    config.environments.push(env);
+  }
+
+  writeConfig(config);
+}
+
+/**
+ * Remove an environment from the config
+ */
+export function removeEnvironment(envName: EnvName): void {
+  const config = readConfig();
+  config.environments = config.environments.filter((e) => e.name !== envName);
+  writeConfig(config);
+}
+
+/**
+ * Get environments with valid auth tokens
+ * Returns environments that have both config and a valid keyring token
+ */
+export function getAuthenticatedEnvironments(): Array<Environment & { token: string }> {
+  const environments = getEnvironments();
+  const result: Array<Environment & { token: string }> = [];
+
+  for (const env of environments) {
+    const token = getTokenForEnv(env.name);
+    if (token) {
+      result.push({ ...env, token });
+    }
+  }
+
+  return result;
 }

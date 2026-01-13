@@ -1,54 +1,69 @@
-import { authClient } from "../auth";
-import { getToken, readConfig } from "../config";
-import { NODE_ENV } from "../env-config";
-
-/**
- * Get the effective server URL being used
- */
-function getEffectiveServerURL(): string {
-  return process.env.SERVER_URL ?? "http://localhost:3000";
-}
+import { createAuthClientForEnv } from "../auth";
+import { getEnvironments, getTokenForEnv } from "../config";
 
 export async function statusCommand(): Promise<void> {
-  const token = getToken();
+  const environments = getEnvironments();
 
-  if (!token) {
+  if (environments.length === 0) {
     console.log("❌ Not logged in");
-    console.log("Run `bun run src/index.ts login` to authenticate");
+    console.log("Run `agentlogs login` to authenticate");
     process.exit(1);
   }
 
-  // Verify token by getting session
-  try {
-    const { data: session, error } = await authClient.getSession({
-      fetchOptions: {
-        headers: {
-          Authorization: `Bearer ${token}`,
+  console.log("🔐 AgentLogs Authentication Status\n");
+
+  let hasValidAuth = false;
+
+  for (const env of environments) {
+    const token = getTokenForEnv(env.name);
+    const envLabel = env.name === "dev" ? "Development" : "Production";
+
+    if (!token) {
+      console.log(`${envLabel} (${env.baseURL})`);
+      console.log(`  ❌ Token not found in keychain`);
+      console.log(`  📧 Was: ${env.user.email}`);
+      console.log("");
+      continue;
+    }
+
+    // Verify token by getting session
+    try {
+      const authClient = createAuthClientForEnv(env.baseURL);
+      const { data: session, error } = await authClient.getSession({
+        fetchOptions: {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         },
-      },
-    });
+      });
 
-    if (error || !session?.user) {
-      console.log("❌ Not logged in (token invalid or expired)");
-      console.log("Run `bun run src/index.ts login` to authenticate");
-      process.exit(1);
+      if (error || !session?.user) {
+        console.log(`${envLabel} (${env.baseURL})`);
+        console.log(`  ⚠️  Token invalid or expired`);
+        console.log(`  📧 Was: ${env.user.email}`);
+        console.log(`  Run \`agentlogs login${env.name === "dev" ? " --dev" : ""}\` to re-authenticate`);
+        console.log("");
+        continue;
+      }
+
+      hasValidAuth = true;
+      console.log(`${envLabel} (${env.baseURL})`);
+      console.log(`  ✅ Logged in`);
+      console.log(`  👤 ${session.user.name}`);
+      console.log(`  📧 ${session.user.email}`);
+      if (env.lastLoginTime) {
+        const lastLogin = new Date(env.lastLoginTime);
+        console.log(`  🕐 Last login: ${lastLogin.toLocaleString()}`);
+      }
+      console.log("");
+    } catch (err) {
+      console.log(`${envLabel} (${env.baseURL})`);
+      console.log(`  ❌ Error verifying session: ${err instanceof Error ? err.message : "Unknown error"}`);
+      console.log("");
     }
+  }
 
-    const config = readConfig();
-    const serverUrl = getEffectiveServerURL();
-
-    console.log("✅ Logged in");
-    console.log(`👤 Name: ${session.user.name}`);
-    console.log(`📧 Email: ${session.user.email}`);
-    console.log(`🌐 Server: ${serverUrl}`);
-    console.log(`🔧 Environment: ${NODE_ENV}`);
-    if (config.lastLoginTime) {
-      const lastLogin = new Date(config.lastLoginTime);
-      console.log(`🕐 Last login: ${lastLogin.toLocaleString()}`);
-    }
-  } catch (err) {
-    console.error("❌ Error verifying session:", err instanceof Error ? err.message : "Unknown error");
-    console.log("Run `bun run src/index.ts login` to authenticate");
+  if (!hasValidAuth) {
     process.exit(1);
   }
 }

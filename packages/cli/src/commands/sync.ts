@@ -3,7 +3,7 @@ import { promises as fs } from "fs";
 import { homedir } from "os";
 import { basename, extname, join, relative, resolve } from "path";
 import { fetchTranscriptMetadata, getRepoMetadata } from "@agentlogs/shared";
-import { getToken } from "../config";
+import { getAuthenticatedEnvironments, type Environment } from "../config";
 import { performUpload } from "../lib/perform-upload";
 
 interface LocalTranscriptInfo {
@@ -25,13 +25,13 @@ export interface SyncCommandOptions {
 export async function syncCommand(options: SyncCommandOptions = {}): Promise<void> {
   const { repoFilter, claudeDir } = options;
 
-  const authToken = getToken();
-  if (!authToken) {
-    console.error("You must be logged in to sync transcripts. Run `bun run src/index.ts login` first.");
+  const authenticatedEnvs = getAuthenticatedEnvironments();
+  if (authenticatedEnvs.length === 0) {
+    console.error("You must be logged in to sync transcripts.");
+    console.error("Run `agentlogs login` to authenticate");
     process.exit(1);
   }
 
-  const serverUrl = process.env.SERVER_URL ?? "http://localhost:3000";
   const claudeHome = claudeDir ? resolve(claudeDir) : (process.env.CLAUDE_HOME ?? DEFAULT_CLAUDE_HOME);
   const projectsRoot = join(claudeHome, "projects");
 
@@ -55,88 +55,104 @@ export async function syncCommand(options: SyncCommandOptions = {}): Promise<voi
     return;
   }
 
-  const remoteTranscripts = await fetchTranscriptMetadata({
-    serverUrl,
-    authToken,
-  });
+  const envNames = authenticatedEnvs.map((e) => e.name).join(", ");
+  console.log(`Syncing to environments: ${envNames}`);
+  console.log(`Found ${candidateLocalTranscripts.length} local transcript(s)\n`);
 
-  const relevantRemoteTranscripts = repoFilter
-    ? remoteTranscripts.filter((transcript) => transcript.repoId === repoFilter)
-    : remoteTranscripts;
-
-  const remoteShaById = new Map<string, string>();
-  for (const transcript of relevantRemoteTranscripts) {
-    remoteShaById.set(transcript.transcriptId, transcript.sha256);
+  // Sync to each environment
+  for (const env of authenticatedEnvs) {
+    await syncToEnvironment(env, candidateLocalTranscripts, repoFilter);
   }
+}
 
-  const transcriptsToUpload = candidateLocalTranscripts.filter((transcript) => {
-    const remoteSha = remoteShaById.get(transcript.transcriptId);
-    return !remoteSha || remoteSha !== transcript.sha256;
-  });
+async function syncToEnvironment(
+  env: Environment & { token: string },
+  localTranscripts: LocalTranscriptInfo[],
+  repoFilter?: string,
+): Promise<void> {
+  const envLabel = env.name === "dev" ? "Development" : "Production";
+  console.log(`\n--- ${envLabel} (${env.baseURL}) ---`);
 
-  if (transcriptsToUpload.length === 0) {
-    console.log("All local Claude Code transcripts are up to date on the server.");
-    return;
-  }
+  try {
+    const remoteTranscripts = await fetchTranscriptMetadata({
+      serverUrl: env.baseURL,
+      authToken: env.token,
+    });
 
-  console.log(
-    `Preparing to upload ${transcriptsToUpload.length} transcript(s) out of ${candidateLocalTranscripts.length} matching local transcript(s).`,
-  );
+    const relevantRemoteTranscripts = repoFilter
+      ? remoteTranscripts.filter((transcript) => transcript.repoId === repoFilter)
+      : remoteTranscripts;
 
-  let successCount = 0;
-  let failureCount = 0;
-  const failures: Array<{ transcriptId: string; displayPath: string; reason: string }> = [];
+    const remoteShaById = new Map<string, string>();
+    for (const transcript of relevantRemoteTranscripts) {
+      remoteShaById.set(transcript.transcriptId, transcript.sha256);
+    }
 
-  for (const [index, transcript] of transcriptsToUpload.entries()) {
-    const label = `${index + 1}/${transcriptsToUpload.length}`;
-    const repoSuffix = transcript.repoId ? ` • ${transcript.repoId}` : "";
-    const context = `${transcript.transcriptId} – ${transcript.displayPath}${repoSuffix}`;
-    try {
-      const result = await performUpload(
-        {
-          transcriptPath: transcript.path,
-          sessionId: transcript.transcriptId,
-          cwdOverride: transcript.cwd ?? undefined,
-        },
-        {
-          serverUrl,
-          authToken,
-        },
-      );
+    const transcriptsToUpload = localTranscripts.filter((transcript) => {
+      const remoteSha = remoteShaById.get(transcript.transcriptId);
+      return !remoteSha || remoteSha !== transcript.sha256;
+    });
 
-      if (result.success) {
-        successCount += 1;
-        console.log(
-          `[${label}] ✓ ${context} • ${result.eventCount} events${result.transcriptId ? ` → ${result.transcriptId}` : ""}`,
+    if (transcriptsToUpload.length === 0) {
+      console.log("All local transcripts are up to date.");
+      return;
+    }
+
+    console.log(`Uploading ${transcriptsToUpload.length} transcript(s)...`);
+
+    let successCount = 0;
+    let failureCount = 0;
+    const failures: Array<{ transcriptId: string; displayPath: string; reason: string }> = [];
+
+    for (const [index, transcript] of transcriptsToUpload.entries()) {
+      const label = `${index + 1}/${transcriptsToUpload.length}`;
+      const repoSuffix = transcript.repoId ? ` • ${transcript.repoId}` : "";
+      const context = `${transcript.transcriptId} – ${transcript.displayPath}${repoSuffix}`;
+      try {
+        const result = await performUpload(
+          {
+            transcriptPath: transcript.path,
+            sessionId: transcript.transcriptId,
+            cwdOverride: transcript.cwd ?? undefined,
+          },
+          {
+            serverUrl: env.baseURL,
+            authToken: env.token,
+          },
         );
-      } else {
+
+        if (result.success) {
+          successCount += 1;
+          console.log(
+            `[${label}] ✓ ${context} • ${result.eventCount} events${result.transcriptId ? ` → ${result.transcriptId}` : ""}`,
+          );
+        } else {
+          failureCount += 1;
+          const reason = "Upload returned unsuccessful response.";
+          console.error(`[${label}] ✗ ${context} • ${reason}`);
+          failures.push({ transcriptId: transcript.transcriptId, displayPath: transcript.displayPath, reason });
+        }
+      } catch (error) {
         failureCount += 1;
-        const reason = "Upload returned unsuccessful response.";
+        const reason = error instanceof Error ? error.message : String(error);
         console.error(`[${label}] ✗ ${context} • ${reason}`);
         failures.push({ transcriptId: transcript.transcriptId, displayPath: transcript.displayPath, reason });
       }
-    } catch (error) {
-      failureCount += 1;
-      const reason = error instanceof Error ? error.message : String(error);
-      console.error(`[${label}] ✗ ${context} • ${reason}`);
-      failures.push({ transcriptId: transcript.transcriptId, displayPath: transcript.displayPath, reason });
     }
-  }
 
-  console.log(`Sync complete. Successful uploads: ${successCount}. Failed uploads: ${failureCount}.`);
+    console.log(`Sync complete: ${successCount} uploaded, ${failureCount} failed.`);
 
-  if (failures.length > 0) {
-    console.error("Failed transcript details:");
-    for (const failure of failures.slice(0, 10)) {
-      console.error(`  - ${failure.transcriptId} (${failure.displayPath}): ${failure.reason}`);
+    if (failures.length > 0) {
+      console.error("Failed transcript details:");
+      for (const failure of failures.slice(0, 10)) {
+        console.error(`  - ${failure.transcriptId} (${failure.displayPath}): ${failure.reason}`);
+      }
+      if (failures.length > 10) {
+        console.error(`  …and ${failures.length - 10} more failures.`);
+      }
     }
-    if (failures.length > 10) {
-      console.error(`  …and ${failures.length - 10} more failures.`);
-    }
-  }
-
-  if (failureCount > 0) {
-    process.exit(1);
+  } catch (error) {
+    console.error(`Error syncing to ${envLabel}: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 

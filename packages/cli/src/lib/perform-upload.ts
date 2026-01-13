@@ -7,6 +7,7 @@ import { convertCodexTranscript } from "@agentlogs/shared/codex";
 import { LiteLLMPricingFetcher } from "@agentlogs/shared/pricing";
 import { uploadTranscript } from "@agentlogs/shared/upload";
 import type { UploadOptions } from "@agentlogs/shared/upload";
+import { getAuthenticatedEnvironments, type EnvName } from "../config";
 
 export interface PerformUploadParams {
   transcriptPath: string;
@@ -219,4 +220,73 @@ function extractGitBranchFromRecords(records: Record<string, unknown>[]): string
     }
   }
   return undefined;
+}
+
+export interface EnvUploadResult {
+  envName: EnvName;
+  baseURL: string;
+  success: boolean;
+  transcriptId?: string;
+  error?: string;
+}
+
+export interface MultiEnvUploadResult {
+  results: EnvUploadResult[];
+  eventCount: number;
+  sessionId: string;
+  anySuccess: boolean;
+  allSuccess: boolean;
+}
+
+/**
+ * Upload a transcript to all authenticated environments.
+ * Each environment is uploaded independently - failures in one don't affect others.
+ */
+export async function performUploadToAllEnvs(params: PerformUploadParams): Promise<MultiEnvUploadResult> {
+  const authenticatedEnvs = getAuthenticatedEnvironments();
+
+  if (authenticatedEnvs.length === 0) {
+    throw new Error("No authenticated environments found. Run `agentlogs login` first.");
+  }
+
+  const results: EnvUploadResult[] = [];
+  let eventCount = 0;
+  let sessionId = "";
+
+  for (const env of authenticatedEnvs) {
+    try {
+      const result = await performUpload(params, {
+        serverUrl: env.baseURL,
+        authToken: env.token,
+      });
+
+      // Capture event count and session ID from first successful upload
+      if (result.success && eventCount === 0) {
+        eventCount = result.eventCount;
+        sessionId = result.sessionId;
+      }
+
+      results.push({
+        envName: env.name,
+        baseURL: env.baseURL,
+        success: result.success,
+        transcriptId: result.transcriptId,
+      });
+    } catch (error) {
+      results.push({
+        envName: env.name,
+        baseURL: env.baseURL,
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  return {
+    results,
+    eventCount,
+    sessionId,
+    anySuccess: results.some((r) => r.success),
+    allSuccess: results.every((r) => r.success),
+  };
 }

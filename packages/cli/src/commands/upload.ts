@@ -1,7 +1,6 @@
 import type { TranscriptSource } from "@agentlogs/shared";
-import type { UploadOptions } from "@agentlogs/shared/upload";
-import { getToken } from "../config";
-import { performUpload, resolveTranscriptPath } from "../lib/perform-upload";
+import { getAuthenticatedEnvironments } from "../config";
+import { performUploadToAllEnvs, resolveTranscriptPath } from "../lib/perform-upload";
 
 export async function uploadCommand(transcriptArg: string, source: TranscriptSource = "claude-code"): Promise<void> {
   if (!transcriptArg) {
@@ -16,43 +15,52 @@ export async function uploadCommand(transcriptArg: string, source: TranscriptSou
     process.exit(1);
   }
 
-  const serverUrl = process.env.SERVER_URL ?? "http://localhost:3000";
-  const authToken = getToken();
-
-  if (!authToken) {
-    console.error("You must be logged in to upload transcripts. Run `bun run src/index.ts login` first.");
+  const authenticatedEnvs = getAuthenticatedEnvironments();
+  if (authenticatedEnvs.length === 0) {
+    console.error("You must be logged in to upload transcripts.");
+    console.error("Run `agentlogs login` to authenticate");
     process.exit(1);
   }
 
-  const options: UploadOptions = {};
-  if (serverUrl) {
-    options.serverUrl = serverUrl;
-  }
-  options.authToken = authToken;
+  const sourceLabel = source === "codex" ? "Codex" : "Claude Code";
+  const envNames = authenticatedEnvs.map((e) => e.name).join(", ");
+  console.log(`Uploading ${sourceLabel} transcript from ${transcriptPath}`);
+  console.log(`Target environments: ${envNames}`);
 
   try {
-    const sourceLabel = source === "codex" ? "Codex" : "Claude Code";
-    console.log(`Uploading ${sourceLabel} transcript events from ${transcriptPath} to AgentLogs...`);
-    const result = await performUpload(
-      {
-        transcriptPath,
-        source,
-      },
-      options,
-    );
+    const result = await performUploadToAllEnvs({
+      transcriptPath,
+      source,
+    });
 
-    if (result.success) {
-      console.log(
-        `✓ Upload successful (${result.eventCount} events${
-          result.transcriptId ? `, transcript ID: ${result.transcriptId}` : ""
-        })`,
-      );
-      return;
+    console.log("");
+    for (const envResult of result.results) {
+      const envLabel = envResult.envName === "dev" ? "Development" : "Production";
+      if (envResult.success) {
+        console.log(`✓ ${envLabel}: uploaded successfully`);
+        if (envResult.transcriptId) {
+          console.log(`  Transcript ID: ${envResult.transcriptId}`);
+        }
+      } else {
+        console.log(`✗ ${envLabel}: upload failed`);
+        if (envResult.error) {
+          console.log(`  Error: ${envResult.error}`);
+        }
+      }
     }
 
-    console.error("✗ Failed to upload transcript to AgentLogs server.");
+    console.log("");
+    if (result.allSuccess) {
+      console.log(`✓ Upload complete (${result.eventCount} events)`);
+    } else if (result.anySuccess) {
+      console.log(`⚠ Partial upload (${result.eventCount} events) - some environments failed`);
+      process.exit(1);
+    } else {
+      console.error("✗ Upload failed for all environments");
+      process.exit(1);
+    }
   } catch (error) {
     console.error(error instanceof Error ? error.message : "Unexpected error occurred while uploading transcript.");
+    process.exit(1);
   }
-  process.exit(1);
 }

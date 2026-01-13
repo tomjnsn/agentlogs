@@ -16,8 +16,9 @@ program
 program
   .command("login")
   .description("Authenticate with AgentLogs using device authorization")
-  .action(async () => {
-    await loginCommand();
+  .option("--dev", "Login to development environment (http://localhost:3000)")
+  .action(async (options: { dev?: boolean }) => {
+    await loginCommand({ dev: options.dev });
   });
 
 program
@@ -30,8 +31,9 @@ program
 program
   .command("logout")
   .description("Log out and clear stored credentials")
-  .action(async () => {
-    await logoutCommand();
+  .option("--dev", "Logout from development environment")
+  .action(async (options: { dev?: boolean }) => {
+    await logoutCommand({ dev: options.dev });
   });
 
 const claudecode = program.command("claudecode").description("Claude Code transcript utilities for AgentLogs");

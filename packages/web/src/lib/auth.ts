@@ -61,7 +61,13 @@ export function createAuth() {
       secret: env.BETTER_AUTH_SECRET,
       baseURL: env.WEB_URL,
       trustedOrigins: [env.WEB_URL],
-      plugins: [bearer(), deviceAuthorization(), tanstackStartCookies()],
+      plugins: [
+        bearer(),
+        deviceAuthorization({
+          verificationUri: "/app/device",
+        }),
+        tanstackStartCookies(),
+      ],
     });
 
     lastEnvHash = currentEnvHash;

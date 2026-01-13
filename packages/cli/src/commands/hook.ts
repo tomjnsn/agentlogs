@@ -1,8 +1,7 @@
 import { createLogger } from "@agentlogs/shared/logger";
 import { getDevLogPath } from "@agentlogs/shared/paths";
-import type { UploadOptions } from "@agentlogs/shared/upload";
-import { getToken, readConfig } from "../config";
-import { performUpload } from "../lib/perform-upload";
+import { getAuthenticatedEnvironments } from "../config";
+import { performUploadToAllEnvs } from "../lib/perform-upload";
 
 // Create logger for CLI hook commands
 // Uses shared getDevLogPath() which finds the monorepo root by looking for package.json with workspaces
@@ -176,37 +175,31 @@ async function handleSessionEnd(hookInput: ClaudeHookInput): Promise<void> {
     return;
   }
 
-  const config = readConfig();
-  const serverUrl =
-    process.env.VI_SERVER_URL ?? process.env.VIBEINSIGHTS_BASE_URL ?? config.baseURL ?? "http://localhost:3000";
-  const authToken = getToken();
-
-  if (!authToken) {
-    logger.error("SessionEnd: no auth token found. Run the CLI login flow first.", { sessionId });
+  const authenticatedEnvs = getAuthenticatedEnvironments();
+  if (authenticatedEnvs.length === 0) {
+    logger.error("SessionEnd: no authenticated environments found. Run the CLI login flow first.", { sessionId });
     return;
   }
 
-  const options: UploadOptions = {};
-  if (serverUrl) options.serverUrl = serverUrl;
-  options.authToken = authToken;
-
   try {
-    const result = await performUpload(
-      {
-        transcriptPath,
-        sessionId: hookInput.session_id,
-        cwdOverride: hookInput.cwd,
-      },
-      options,
-    );
+    const result = await performUploadToAllEnvs({
+      transcriptPath,
+      sessionId: hookInput.session_id,
+      cwdOverride: hookInput.cwd,
+    });
 
-    if (result.success) {
-      logger.info(`SessionEnd: uploaded ${result.eventCount} events`, {
-        transcriptId: result.transcriptId,
-        sessionId: sessionId.substring(0, 8),
-      });
-    } else {
-      logger.error("SessionEnd: upload failed", { sessionId });
+    for (const envResult of result.results) {
+      if (envResult.success) {
+        logger.info(`SessionEnd: uploaded to ${envResult.envName} (${result.eventCount} events)`, {
+          transcriptId: envResult.transcriptId,
+          sessionId: sessionId.substring(0, 8),
+        });
+      } else {
+        logger.error(`SessionEnd: upload to ${envResult.envName} failed`, {
+          sessionId,
+          error: envResult.error,
+        });
+      }
     }
   } catch (error) {
     logger.error("SessionEnd: upload error", {
@@ -231,37 +224,31 @@ async function handleStop(hookInput: ClaudeHookInput): Promise<void> {
     return;
   }
 
-  const config = readConfig();
-  const serverUrl =
-    process.env.VI_SERVER_URL ?? process.env.VIBEINSIGHTS_BASE_URL ?? config.baseURL ?? "http://localhost:3000";
-  const authToken = getToken();
-
-  if (!authToken) {
-    logger.error("Stop: no auth token found. Run the CLI login flow first.", { sessionId });
+  const authenticatedEnvs = getAuthenticatedEnvironments();
+  if (authenticatedEnvs.length === 0) {
+    logger.error("Stop: no authenticated environments found. Run the CLI login flow first.", { sessionId });
     return;
   }
 
-  const options: UploadOptions = {};
-  if (serverUrl) options.serverUrl = serverUrl;
-  options.authToken = authToken;
-
   try {
-    const result = await performUpload(
-      {
-        transcriptPath,
-        sessionId: hookInput.session_id,
-        cwdOverride: hookInput.cwd,
-      },
-      options,
-    );
+    const result = await performUploadToAllEnvs({
+      transcriptPath,
+      sessionId: hookInput.session_id,
+      cwdOverride: hookInput.cwd,
+    });
 
-    if (result.success) {
-      logger.info(`Stop: uploaded ${result.eventCount} events`, {
-        transcriptId: result.transcriptId,
-        sessionId: sessionId.substring(0, 8),
-      });
-    } else {
-      logger.error("Stop: upload failed", { sessionId });
+    for (const envResult of result.results) {
+      if (envResult.success) {
+        logger.info(`Stop: uploaded to ${envResult.envName} (${result.eventCount} events)`, {
+          transcriptId: envResult.transcriptId,
+          sessionId: sessionId.substring(0, 8),
+        });
+      } else {
+        logger.error(`Stop: upload to ${envResult.envName} failed`, {
+          sessionId,
+          error: envResult.error,
+        });
+      }
     }
   } catch (error) {
     logger.error("Stop: upload error", {
@@ -380,63 +367,62 @@ export function getRepoPath(hookInput: ClaudeHookInput): string {
 }
 
 async function trackCommit(payload: { sessionId: string; repoPath: string; timestamp: string }): Promise<void> {
-  const config = readConfig();
-  const serverUrl =
-    process.env.VI_SERVER_URL ?? process.env.VIBEINSIGHTS_BASE_URL ?? config.baseURL ?? "http://localhost:3000";
-
-  const authToken = getToken();
-  if (!authToken) {
-    logger.warn("Commit tracking skipped: no auth token. Run 'agentlogs login' first.", {
+  const authenticatedEnvs = getAuthenticatedEnvironments();
+  if (authenticatedEnvs.length === 0) {
+    logger.warn("Commit tracking skipped: no authenticated environments. Run 'agentlogs login' first.", {
       sessionId: payload.sessionId.substring(0, 8),
     });
     return;
   }
 
-  try {
-    // 5 second timeout for commit tracking - fail silently if it takes too long
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
+  // Track commit in all authenticated environments
+  for (const env of authenticatedEnvs) {
+    try {
+      // 5 second timeout for commit tracking - fail silently if it takes too long
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-    const response = await fetch(new URL("/api/commit-track", serverUrl), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${authToken}`,
-      },
-      body: JSON.stringify({
-        session_id: payload.sessionId,
-        repo_path: payload.repoPath,
-        timestamp: payload.timestamp,
-      }),
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      logger.warn("Commit tracking request failed", {
-        sessionId: payload.sessionId.substring(0, 8),
-        status: response.status,
+      const response = await fetch(new URL("/api/commit-track", env.baseURL), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${env.token}`,
+        },
+        body: JSON.stringify({
+          session_id: payload.sessionId,
+          repo_path: payload.repoPath,
+          timestamp: payload.timestamp,
+        }),
+        signal: controller.signal,
       });
-      return;
-    }
 
-    logger.info("Commit tracking recorded", {
-      sessionId: payload.sessionId.substring(0, 8),
-      repoPath: payload.repoPath,
-    });
-  } catch (error) {
-    // Check if it was a timeout (AbortError)
-    if (error instanceof Error && error.name === "AbortError") {
-      logger.warn("Commit tracking request timed out after 5s", {
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        logger.warn(`Commit tracking request to ${env.name} failed`, {
+          sessionId: payload.sessionId.substring(0, 8),
+          status: response.status,
+        });
+        continue;
+      }
+
+      logger.info(`Commit tracking recorded (${env.name})`, {
         sessionId: payload.sessionId.substring(0, 8),
+        repoPath: payload.repoPath,
       });
-      return;
+    } catch (error) {
+      // Check if it was a timeout (AbortError)
+      if (error instanceof Error && error.name === "AbortError") {
+        logger.warn(`Commit tracking request to ${env.name} timed out after 5s`, {
+          sessionId: payload.sessionId.substring(0, 8),
+        });
+        continue;
+      }
+      logger.error(`Commit tracking request to ${env.name} error`, {
+        sessionId: payload.sessionId.substring(0, 8),
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
-    logger.error("Commit tracking request error", {
-      sessionId: payload.sessionId.substring(0, 8),
-      error: error instanceof Error ? error.message : String(error),
-    });
   }
 }
 
@@ -452,42 +438,37 @@ async function uploadPartialTranscript(payload: {
     return;
   }
 
-  const config = readConfig();
-  const serverUrl =
-    process.env.VI_SERVER_URL ?? process.env.VIBEINSIGHTS_BASE_URL ?? config.baseURL ?? "http://localhost:3000";
-
-  const authToken = getToken();
-  if (!authToken) {
-    logger.warn("Commit tracking transcript upload skipped: no auth token. Run 'agentlogs login' first.", {
-      sessionId: payload.sessionId.substring(0, 8),
-    });
+  const authenticatedEnvs = getAuthenticatedEnvironments();
+  if (authenticatedEnvs.length === 0) {
+    logger.warn(
+      "Commit tracking transcript upload skipped: no authenticated environments. Run 'agentlogs login' first.",
+      {
+        sessionId: payload.sessionId.substring(0, 8),
+      },
+    );
     return;
   }
 
-  const options: UploadOptions = {};
-  if (serverUrl) options.serverUrl = serverUrl;
-  options.authToken = authToken;
-
   try {
-    const result = await performUpload(
-      {
-        transcriptPath: payload.transcriptPath,
-        sessionId: payload.sessionId,
-        cwdOverride: payload.cwd,
-      },
-      options,
-    );
+    const result = await performUploadToAllEnvs({
+      transcriptPath: payload.transcriptPath,
+      sessionId: payload.sessionId,
+      cwdOverride: payload.cwd,
+    });
 
-    if (result.success) {
-      logger.info("Commit tracking: uploaded partial transcript", {
-        transcriptId: result.transcriptId,
-        sessionId: payload.sessionId.substring(0, 8),
-        eventCount: result.eventCount,
-      });
-    } else {
-      logger.error("Commit tracking: transcript upload failed", {
-        sessionId: payload.sessionId.substring(0, 8),
-      });
+    for (const envResult of result.results) {
+      if (envResult.success) {
+        logger.info(`Commit tracking: uploaded partial transcript to ${envResult.envName}`, {
+          transcriptId: envResult.transcriptId,
+          sessionId: payload.sessionId.substring(0, 8),
+          eventCount: result.eventCount,
+        });
+      } else {
+        logger.error(`Commit tracking: transcript upload to ${envResult.envName} failed`, {
+          sessionId: payload.sessionId.substring(0, 8),
+          error: envResult.error,
+        });
+      }
     }
   } catch (error) {
     logger.error("Commit tracking: transcript upload error", {
