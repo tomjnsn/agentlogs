@@ -61,17 +61,23 @@ export function getDevLogPath(): string {
 }
 
 /**
- * Formats a directory path with tilde (~) if it's inside the user's home directory
+ * Formats a directory path with tilde (~) if it's inside a user's home directory.
+ * Uses pattern-based detection to handle paths from any user (e.g., fixtures in CI).
  *
  * @param absolutePath - Absolute path to format
- * @returns Path with tilde if inside home, otherwise absolute path
+ * @returns Path with tilde if inside a home directory, otherwise absolute path
  */
 export function formatCwdWithTilde(absolutePath: string): string {
+  // First try exact home directory match for current user
   const home = homedir();
   if (absolutePath.startsWith(home)) {
     return absolutePath.replace(home, "~");
   }
-  return absolutePath;
+
+  // Fall back to pattern-based detection for cross-user paths (e.g., in CI)
+  // Matches /Users/<username>/ on macOS or /home/<username>/ on Linux
+  const homePattern = /^(\/Users\/[^/]+|\/home\/[^/]+)/;
+  return absolutePath.replace(homePattern, "~");
 }
 
 /**
