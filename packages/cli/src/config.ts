@@ -175,6 +175,7 @@ export function removeEnvironment(envName: EnvName): void {
 /**
  * Get environments with valid auth tokens
  * Returns environments that have both config and a valid keyring token
+ * Also supports CI mode via AGENTLOGS_AUTH_TOKEN environment variable
  */
 export function getAuthenticatedEnvironments(): Array<Environment & { token: string }> {
   const environments = getEnvironments();
@@ -184,6 +185,23 @@ export function getAuthenticatedEnvironments(): Array<Environment & { token: str
     const token = getTokenForEnv(env.name);
     if (token) {
       result.push({ ...env, token });
+    }
+  }
+
+  // Support CI mode: if AGENTLOGS_AUTH_TOKEN is set but no environments are configured,
+  // create a synthetic environment using the token and server URL from env vars
+  if (result.length === 0) {
+    const envToken = process.env.AGENTLOGS_AUTH_TOKEN?.trim();
+    if (envToken) {
+      const serverUrl =
+        process.env.AGENTLOGS_SERVER_URL?.trim() || process.env.SERVER_URL?.trim() || "https://agentlogs.ai";
+      result.push({
+        name: "prod",
+        baseURL: serverUrl,
+        user: { id: "ci", email: "ci@agentlogs.ai", name: "CI" },
+        lastLoginTime: new Date().toISOString(),
+        token: envToken,
+      });
     }
   }
 
