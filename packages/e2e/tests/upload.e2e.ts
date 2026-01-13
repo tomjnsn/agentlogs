@@ -52,7 +52,7 @@ test.describe("CLI Upload", () => {
       uploadCommand: "claudecode",
     } satisfies FixtureCase;
     const output = await uploadFixtureTranscript(fixture);
-    expect(output).toContain("Upload successful");
+    expect(output).toContain("Upload complete");
 
     await assertTranscriptInUi(page, fixture);
   });
@@ -65,7 +65,7 @@ test.describe("CLI Upload", () => {
       uploadCommand: "claudecode",
     } satisfies FixtureCase;
     const output = await uploadFixtureTranscript(fixture);
-    expect(output).toContain("Upload successful");
+    expect(output).toContain("Upload complete");
 
     await assertTranscriptInUi(page, fixture);
   });
@@ -78,7 +78,7 @@ test.describe("CLI Upload", () => {
       uploadCommand: "claudecode",
     } satisfies FixtureCase;
     const output = await uploadFixtureTranscript(fixture);
-    expect(output).toContain("Upload successful");
+    expect(output).toContain("Upload complete");
 
     await assertTranscriptInUi(page, fixture);
   });
@@ -91,7 +91,7 @@ test.describe("CLI Upload", () => {
       uploadCommand: "claudecode",
     } satisfies FixtureCase;
     const output = await uploadFixtureTranscript(fixture);
-    expect(output).toContain("Upload successful");
+    expect(output).toContain("Upload complete");
 
     await assertTranscriptInUi(page, fixture);
   });
@@ -104,7 +104,7 @@ test.describe("CLI Upload", () => {
       uploadCommand: "claudecode",
     } satisfies FixtureCase;
     const output = await uploadFixtureTranscript(fixture);
-    expect(output).toContain("Upload successful");
+    expect(output).toContain("Upload complete");
 
     await assertTranscriptInUi(page, fixture);
   });
@@ -117,7 +117,7 @@ test.describe("CLI Upload", () => {
       uploadCommand: "codex",
     } satisfies FixtureCase;
     const output = await uploadFixtureTranscript(fixture);
-    expect(output).toContain("Upload successful");
+    expect(output).toContain("Upload complete");
 
     await assertTranscriptInUi(page, fixture);
   });
