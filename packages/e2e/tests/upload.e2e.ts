@@ -1,5 +1,5 @@
 import { test, expect, Page } from "@playwright/test";
-import { $ } from "bun";
+import { execSync } from "node:child_process";
 import path from "path";
 
 const ROOT_DIR = path.resolve(import.meta.dirname!, "../../..");
@@ -13,15 +13,16 @@ type FixtureCase = {
   uploadCommand: string;
 };
 
-async function uploadFixtureTranscript(fixture: FixtureCase): Promise<string> {
-  return await $`bun agentlogs ${fixture.uploadCommand} upload ${fixture.fixturePath}`
-    .cwd(ROOT_DIR)
-    .env({
+function uploadFixtureTranscript(fixture: FixtureCase): string {
+  return execSync(`bun agentlogs ${fixture.uploadCommand} upload ${fixture.fixturePath}`, {
+    cwd: ROOT_DIR,
+    env: {
       ...process.env,
       SERVER_URL,
       AGENTLOGS_AUTH_TOKEN: TEST_AUTH_TOKEN,
-    })
-    .text();
+    },
+    encoding: "utf-8",
+  });
 }
 
 function escapeRegex(value: string): string {
