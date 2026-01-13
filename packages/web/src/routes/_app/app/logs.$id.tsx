@@ -22,7 +22,7 @@ import {
   Zap,
 } from "lucide-react";
 import { ClaudeCodeIcon, CodexIcon, OpenCodeIcon } from "../../../components/icons/source-icons";
-import { BashCommand, DiffViewer, FileViewer } from "../../../components/diff-viewer";
+import { DiffViewer, FileViewer } from "../../../components/diff-viewer";
 import { useEffect, useState } from "react";
 import {
   extractImageReferences,
@@ -611,12 +611,65 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError }: T
     );
   }
 
-  // For Bash commands, show a simple command display
+  // For Bash commands, show expandable view with status
   if (isBashWithCommand) {
+    const outputObj = output as Record<string, unknown> | undefined;
+    const hasError = !!error || !!isError;
+    const hasStderr = outputObj?.stderr;
+    const isInterrupted = outputObj?.interrupted === true;
+    const isSuccess = !hasError && !hasStderr && !isInterrupted;
+
+    // Determine status text
+    let statusText = "Completed";
+    if (hasError) statusText = "Failed";
+    else if (isInterrupted) statusText = "Interrupted";
+    else if (hasStderr) statusText = "Completed with errors";
+
+    // Icon color: green for success, red for errors
+    const iconColorClass = isSuccess ? "text-green-500" : "text-red-500";
+
     return (
-      <div id={messageId}>
-        <BashCommand command={String(inputObj!.command)} />
-      </div>
+      <Collapsible id={messageId} defaultOpen={false}>
+        <CollapsibleTrigger className="flex w-full cursor-pointer items-center gap-2 rounded-lg bg-zinc-800 px-3 py-2 text-left transition-colors hover:bg-zinc-700">
+          <SquareTerminal className={`h-4 w-4 shrink-0 ${iconColorClass}`} />
+          <code className="min-w-0 flex-1 truncate font-mono text-sm text-muted-foreground">
+            {String(inputObj!.command)}
+          </code>
+          <span className={`shrink-0 text-xs ${isSuccess ? "text-green-500" : "text-red-500"}`}>{statusText}</span>
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform [[data-state=open]>&]:rotate-180" />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="mt-2 space-y-3 rounded-lg bg-zinc-900/50 p-4">
+            {outputObj?.stdout ? (
+              <div>
+                <div className="mb-1.5 text-xs font-medium text-muted-foreground">Output</div>
+                <pre className="overflow-x-auto rounded-md bg-black/30 p-3 font-mono text-xs whitespace-pre-wrap">
+                  {String(outputObj.stdout)}
+                </pre>
+              </div>
+            ) : null}
+            {outputObj?.stderr ? (
+              <div>
+                <div className="mb-1.5 text-xs font-medium text-red-400">Stderr</div>
+                <pre className="overflow-x-auto rounded-md bg-red-950/30 p-3 font-mono text-xs text-red-300 whitespace-pre-wrap">
+                  {String(outputObj.stderr)}
+                </pre>
+              </div>
+            ) : null}
+            {error && (
+              <div>
+                <div className="mb-1.5 text-xs font-medium text-destructive">Error</div>
+                <pre className="overflow-x-auto rounded-md bg-destructive/10 p-3 font-mono text-xs text-destructive whitespace-pre-wrap">
+                  {error}
+                </pre>
+              </div>
+            )}
+            {!outputObj?.stdout && !outputObj?.stderr && !error && (
+              <div className="text-xs text-muted-foreground">No output</div>
+            )}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
     );
   }
 
