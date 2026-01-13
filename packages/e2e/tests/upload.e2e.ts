@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, Page } from "@playwright/test";
 import { $ } from "bun";
 import path from "path";
 
@@ -28,7 +28,7 @@ function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-async function assertTranscriptInUi(page: Parameters<typeof test>[0]["page"], fixture: FixtureCase) {
+async function assertTranscriptInUi(page: Page, fixture: FixtureCase) {
   await page.goto("/app");
 
   const cwdRow = page.getByRole("row", { name: new RegExp(escapeRegex(fixture.cwd)) });
