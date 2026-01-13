@@ -54,7 +54,7 @@ function AppLayout() {
               </div>
             ) : session ? (
               <>
-                <span className="text-sm text-foreground">{session.user.email || session.user.name}</span>
+                <span className="text-sm text-foreground">{session.user.name || session.user.email}</span>
                 <Button onClick={handleSignOut} variant="outline" size="sm">
                   Sign Out
                 </Button>
