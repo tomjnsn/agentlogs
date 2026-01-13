@@ -66,16 +66,12 @@ describe("convertClaudeCodeFile", () => {
           "messageCount": 11,
           "messages": [
             {
+              "args": undefined,
               "id": "8bab5784-63f2-437f-8b71-b20a85327b44",
-              "text": "<command-name>/clear</command-name> <command-message>clear</command-message> <command-args></command-args>",
+              "name": "/clear",
+              "output": undefined,
               "timestamp": "2025-10-10T21:56:01.409Z",
-              "type": "user",
-            },
-            {
-              "id": "e3380389-541e-45df-9e7e-90d1f1d32617",
-              "text": "<local-command-stdout></local-command-stdout>",
-              "timestamp": "2025-10-10T21:56:01.418Z",
-              "type": "user",
+              "type": "command",
             },
             {
               "id": "3648cc91-eee4-4a25-bad3-31104269d5b8",
@@ -108,16 +104,12 @@ describe("convertClaudeCodeFile", () => {
               "type": "compaction-summary",
             },
             {
+              "args": undefined,
               "id": "224e95a0-d3da-4754-9410-eadf74f8b03e",
-              "text": "<command-name>/compact</command-name> <command-message>compact</command-message> <command-args></command-args>",
+              "name": "/compact",
+              "output": "Compacted (ctrl+o to see full summary)",
               "timestamp": "2025-10-10T21:57:40.406Z",
-              "type": "user",
-            },
-            {
-              "id": "6b911413-edc7-479e-83d0-acbaddbc8ba7",
-              "text": "<local-command-stdout>\x1B[2mCompacted (ctrl+o to see full summary)\x1B[22m</local-command-stdout>",
-              "timestamp": "2025-10-10T21:57:52.066Z",
-              "type": "user",
+              "type": "command",
             },
           ],
           "model": "claude-sonnet-4-5-20250929",
@@ -144,7 +136,7 @@ describe("convertClaudeCodeFile", () => {
             "totalTokens": 15808,
           },
           "toolCount": 0,
-          "userMessageCount": 5,
+          "userMessageCount": 1,
           "v": 1,
         },
       }

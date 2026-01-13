@@ -16,6 +16,15 @@ const compactionSummaryMessageSchema = z.object({
   timestamp: z.string().optional(),
 });
 
+const commandMessageSchema = z.object({
+  type: z.literal("command"),
+  name: z.string(),
+  args: z.string().optional(),
+  output: z.string().optional(),
+  id: z.string().optional(),
+  timestamp: z.string().optional(),
+});
+
 const agentMessageSchema = z.object({
   type: z.literal("agent"),
   text: z.string(),
@@ -47,6 +56,7 @@ const toolCallMessageSchema = z.object({
 export const unifiedTranscriptMessageSchema = z.discriminatedUnion("type", [
   userMessageSchema,
   compactionSummaryMessageSchema,
+  commandMessageSchema,
   agentMessageSchema,
   thinkingMessageSchema,
   toolCallMessageSchema,

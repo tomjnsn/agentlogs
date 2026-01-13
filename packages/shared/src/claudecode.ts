@@ -96,6 +96,12 @@ const IGNORE_STATUS_MESSAGES = new Set([
 const COMMAND_ENVELOPE_PATTERN = /^<\/?(?:command|local)-[a-z-]+>/i;
 const SHELL_PROMPT_PATTERN = /^[α-ωΑ-Ω]\s/i;
 
+// Patterns for command message parsing
+const COMMAND_NAME_PATTERN = /<command-name>(.*?)<\/command-name>/s;
+const COMMAND_ARGS_PATTERN = /<command-args>(.*?)<\/command-args>/s;
+const LOCAL_COMMAND_STDOUT_PATTERN = /^<local-command-stdout>(.*)<\/local-command-stdout>$/s;
+const SYSTEM_REMINDER_PATTERN = /<system-reminder>[\s\S]*?<\/system-reminder>/g;
+
 const NON_PROMPT_PREFIXES = [
   "npm ",
   "npm:",
@@ -1351,6 +1357,55 @@ function calculateCostFromPricing(
   return inputCost + outputCost + cacheCreationCost + cacheReadCost;
 }
 
+type ParsedCommand = {
+  name: string;
+  args: string | undefined;
+};
+
+/**
+ * Parse a command message from text containing <command-name> tags
+ * Returns null if not a command message
+ */
+function parseCommandMessage(text: string): ParsedCommand | null {
+  const nameMatch = text.match(COMMAND_NAME_PATTERN);
+  if (!nameMatch) {
+    return null;
+  }
+
+  const name = nameMatch[1].trim();
+  const argsMatch = text.match(COMMAND_ARGS_PATTERN);
+  const args = argsMatch?.[1]?.trim() || undefined;
+
+  return { name, args: args || undefined };
+}
+
+/**
+ * Extract stdout from a <local-command-stdout> message
+ * Returns null if not a local command stdout message
+ */
+function parseLocalCommandStdout(text: string): string | null {
+  const match = text.trim().match(LOCAL_COMMAND_STDOUT_PATTERN);
+  if (!match) {
+    return null;
+  }
+  return match[1];
+}
+
+/**
+ * Strip <system-reminder> tags from text
+ */
+function stripSystemReminders(text: string): string {
+  return text.replace(SYSTEM_REMINDER_PATTERN, "").trim();
+}
+
+/**
+ * Strip ANSI escape codes from text
+ */
+function stripAnsiCodes(text: string): string {
+  // eslint-disable-next-line no-control-regex
+  return text.replace(/\x1B\[[0-9;]*m/g, "");
+}
+
 type ConvertMessagesResult = {
   messages: UnifiedTranscriptMessage[];
   blobs: Map<string, TranscriptBlob>;
@@ -1366,6 +1421,14 @@ function convertTranscriptToMessages(transcript: ClaudeMessageRecord[]): Convert
       toolName: string | null;
     }
   >();
+
+  // Track pending command waiting for stdout
+  let pendingCommand: {
+    name: string;
+    args: string | undefined;
+    id: string;
+    timestamp: string | undefined;
+  } | null = null;
 
   // Get cwd for path relativization
   const cwd = deriveWorkingDirectory(transcript);
@@ -1385,10 +1448,64 @@ function convertTranscriptToMessages(transcript: ClaudeMessageRecord[]): Convert
         if (!text.trim()) {
           continue;
         }
+
+        // Check if this is a local-command-stdout message
+        const stdout = parseLocalCommandStdout(text);
+        if (stdout !== null) {
+          // If we have a pending command, merge stdout into it and emit
+          if (pendingCommand) {
+            const cleanedOutput = stripAnsiCodes(stdout).trim();
+            messages.push(
+              unifiedTranscriptMessageSchema.parse({
+                type: "command",
+                name: pendingCommand.name,
+                args: pendingCommand.args,
+                output: cleanedOutput || undefined,
+                id: pendingCommand.id,
+                timestamp: pendingCommand.timestamp,
+              }),
+            );
+            pendingCommand = null;
+          }
+          // Skip this text (don't create a user message for it)
+          continue;
+        }
+
+        // Check if this is a command-name message
+        const parsedCommand = parseCommandMessage(text);
+        if (parsedCommand) {
+          // If we had a pending command without stdout, emit it first
+          if (pendingCommand) {
+            messages.push(
+              unifiedTranscriptMessageSchema.parse({
+                type: "command",
+                name: pendingCommand.name,
+                args: pendingCommand.args,
+                id: pendingCommand.id,
+                timestamp: pendingCommand.timestamp,
+              }),
+            );
+          }
+          // Set as new pending command
+          pendingCommand = {
+            name: parsedCommand.name,
+            args: parsedCommand.args,
+            id: record.uuid,
+            timestamp: metadata.timestamp,
+          };
+          continue;
+        }
+
+        // Strip system reminders from text
+        const cleanedText = stripSystemReminders(text);
+        if (!cleanedText) {
+          continue;
+        }
+
         messages.push(
           unifiedTranscriptMessageSchema.parse({
             type: record.isCompactSummary ? "compaction-summary" : "user",
-            text: text.trim(),
+            text: cleanedText,
             id: record.uuid,
             timestamp: metadata.timestamp,
           }),
@@ -1482,6 +1599,19 @@ function convertTranscriptToMessages(transcript: ClaudeMessageRecord[]): Convert
         }
       }
     }
+  }
+
+  // Emit any remaining pending command
+  if (pendingCommand) {
+    messages.push(
+      unifiedTranscriptMessageSchema.parse({
+        type: "command",
+        name: pendingCommand.name,
+        args: pendingCommand.args,
+        id: pendingCommand.id,
+        timestamp: pendingCommand.timestamp,
+      }),
+    );
   }
 
   return { messages, blobs };
@@ -1828,6 +1958,17 @@ function sanitizeToolCall(
     }
 
     case "Bash": {
+      const inputObj = cloneObject(input);
+      if (inputObj && typeof inputObj.command === "string") {
+        // Strip shell wrappers like "bash -lc '...'" or "zsh -lc '...'"
+        const shellWrapperMatch = inputObj.command.match(/^(?:bash|zsh)\s+-lc\s+['"](.*)['"]$/s);
+        if (shellWrapperMatch) {
+          inputObj.command = shellWrapperMatch[1];
+        }
+        sanitizedInput = inputObj;
+        inputChanged = true;
+      }
+
       const outputObj = cloneObject(output);
       if (outputObj) {
         delete outputObj.stdoutLines;

@@ -110,13 +110,10 @@ function getUsedTools(messages: UnifiedTranscriptMessage[]): string[] {
 }
 
 // Check if text is an internal system message (for filtering)
+// Note: Most internal messages are now filtered at ingest time in claudecode.ts
+// This is kept as a fallback for any edge cases
 function isInternalMessage(text: string): boolean {
-  const internalPatterns = [
-    /^<command-name>.*<\/command-name>/s,
-    /^<local-command-stdout>.*<\/local-command-stdout>/s,
-    /^<local-command-caveat>.*<\/local-command-caveat>/s,
-    /^<system-reminder>.*<\/system-reminder>/s,
-  ];
+  const internalPatterns = [/^<local-command-caveat>.*<\/local-command-caveat>/s];
   const trimmed = text.trim();
   return internalPatterns.some((pattern) => pattern.test(trimmed));
 }
@@ -128,6 +125,8 @@ function getUserMessagesWithIndices(messages: UnifiedTranscriptMessage[]): Array
     const msg = messages[i];
     if (msg.type === "user" && !isInternalMessage(msg.text)) {
       result.push({ index: i, text: msg.text });
+    } else if (msg.type === "command") {
+      result.push({ index: i, text: msg.name });
     }
   }
   return result;
@@ -523,6 +522,26 @@ function MessageBlock({ message, index, userImage, userName }: MessageBlockProps
     return (
       <div id={messageId} className="text-sm text-muted-foreground italic">
         {message.text}
+      </div>
+    );
+  }
+
+  // Command (slash command)
+  if (message.type === "command") {
+    return (
+      <div id={messageId} className="flex items-start gap-3">
+        <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary/60">
+          <Terminal className="h-4 w-4 text-muted-foreground" />
+        </div>
+        <div className="rounded-2xl bg-secondary/60 px-4 py-2.5">
+          <code className="text-sm font-mono">
+            {message.name}
+            {message.args && <span className="text-muted-foreground"> {message.args}</span>}
+          </code>
+          {message.output && (
+            <pre className="mt-2 text-xs text-muted-foreground whitespace-pre-wrap">{message.output}</pre>
+          )}
+        </div>
       </div>
     );
   }
