@@ -9,7 +9,7 @@
     {
       "binding": "DB",
       "database_name": "agentlogs",
-      "database_id": "a6422c62-c246-4e37-886a-5b97edcfdc4a",
+      "database_id": "1579e21d-f889-4f10-b91d-6450147bcedb",
       "migrations_dir": "migrations",
     },
   ],
@@ -20,7 +20,7 @@
     },
   ],
   "observability": {
-    "enabled": false,
+    "enabled": true,
     "head_sampling_rate": 1,
     "logs": {
       "enabled": true,
