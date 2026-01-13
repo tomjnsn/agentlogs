@@ -2,7 +2,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ChevronDown, Folder, Search, Terminal } from "lucide-react";
+import { ChevronDown, FileCode, Folder, MessageSquare, Search, Terminal, Wrench } from "lucide-react";
 import { ClaudeCodeIcon, CodexIcon, OpenCodeIcon } from "../../components/icons/source-icons";
 import { useMemo, useState } from "react";
 import { getAllTranscripts } from "../../lib/server-functions";
@@ -196,7 +196,27 @@ function TranscriptItem({ transcript }: { transcript: TranscriptData }) {
             <span className="font-medium text-foreground/80">{transcript.userName || "Unknown"}</span>
             <span>{timeAgo}</span>
             <span>•</span>
-            <span>{transcript.messageCount} messages</span>
+            <span className="flex items-center gap-1">
+              <MessageSquare className="h-3 w-3" />
+              {transcript.userMessageCount}
+            </span>
+            <span className="flex items-center gap-1">
+              <Wrench className="h-3 w-3" />
+              {transcript.toolCount}
+            </span>
+            {transcript.filesChanged > 0 && (
+              <span className="flex items-center gap-1">
+                <FileCode className="h-3 w-3" />
+                {transcript.filesChanged}
+              </span>
+            )}
+            {(transcript.linesAdded > 0 || transcript.linesRemoved > 0) && (
+              <span>
+                <span className="text-green-500">+{transcript.linesAdded}</span>
+                <span className="mx-0.5">/</span>
+                <span className="text-red-500">-{transcript.linesRemoved}</span>
+              </span>
+            )}
             {transcript.repoName && (
               <span className="flex items-center gap-1">
                 <Folder className="h-3.5 w-3.5" />
