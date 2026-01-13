@@ -10,7 +10,7 @@ jobs:
     name: Publish to npm
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write # Required for GitHub release
       id-token: write # Required for npm provenance
 
     steps:
@@ -40,3 +40,8 @@ jobs:
         working-directory: ./packages/cli
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create GitHub Release
+        run: gh release create "${{ github.ref_name }}" --title "agentlogs ${GITHUB_REF_NAME#cli-}"
+        env:
+          GH_TOKEN: ${{ github.token }}
