@@ -6,6 +6,7 @@ import { unifiedTranscriptSchema } from "@agentlogs/shared/schemas";
 import {
   Calendar,
   ChevronDown,
+  ChevronRight,
   CircleDollarSign,
   FileText,
   Folder,
@@ -533,7 +534,7 @@ function ThinkingBlock({ messageId, text }: { messageId: string; text: string })
   return (
     <Collapsible id={messageId} defaultOpen={false}>
       <CollapsibleTrigger className="flex w-full cursor-pointer items-center gap-2 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground">
-        <ChevronDown className="h-4 w-4 transition-transform [[data-state=open]>&]:rotate-180" />
+        <ChevronRight className="h-4 w-4 transition-transform [[data-state=open]>&]:rotate-90" />
         <span>Thinking</span>
       </CollapsibleTrigger>
       <CollapsibleContent>
