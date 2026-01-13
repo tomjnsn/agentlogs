@@ -169,7 +169,7 @@ function TranscriptItem({ transcript }: { transcript: TranscriptData }) {
   const timeAgo = formatTimeAgo(new Date(transcript.createdAt));
 
   return (
-    <Link to="/transcripts/$id" params={{ id: transcript.id }} className="block group">
+    <Link to="/app/logs/$id" params={{ id: transcript.id }} className="block group">
       <div className="flex gap-4 py-3 px-2 rounded-lg hover:bg-accent/50 transition-colors">
         {/* Avatar */}
         <Avatar className="h-10 w-10 shrink-0 self-center">

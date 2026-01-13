@@ -22,8 +22,13 @@ import {
   Zap,
 } from "lucide-react";
 import { ClaudeCodeIcon, CodexIcon, OpenCodeIcon } from "../../../components/icons/source-icons";
+import { BashCommand, DiffViewer, FileViewer } from "../../../components/diff-viewer";
 import { useEffect, useState } from "react";
-import { extractImageReferences, replaceImageReferencesForDisplay, type ImageReference } from "../../../lib/message-utils";
+import {
+  extractImageReferences,
+  replaceImageReferencesForDisplay,
+  type ImageReference,
+} from "../../../lib/message-utils";
 import { getTranscript } from "../../../lib/server-functions";
 
 export const Route = createFileRoute("/_app/app/logs/$id")({
@@ -582,6 +587,40 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError }: T
   const inputImages = extractImageReferences(input);
   const outputImages = extractImageReferences(output);
 
+  // Check if this is an Edit tool with a diff
+  const inputObj = input as Record<string, unknown> | undefined;
+  const isEditWithDiff = toolName === "Edit" && !!inputObj?.file_path && !!inputObj?.diff;
+  const isWriteWithContent = toolName === "Write" && !!inputObj?.file_path && !!inputObj?.content;
+  const isBashWithCommand = toolName === "Bash" && !!inputObj?.command;
+
+  // For Edit/Write tools, show a file-based view
+  if (isEditWithDiff || isWriteWithContent) {
+    const filePath = String(inputObj!.file_path);
+
+    return (
+      <div id={messageId} className="space-y-2">
+        {isEditWithDiff && <DiffViewer filePath={filePath} diff={String(inputObj!.diff)} />}
+        {isWriteWithContent && <FileViewer filePath={filePath} content={String(inputObj!.content)} />}
+        {(error || isError) && (
+          <div className="rounded-lg bg-destructive/10 p-3">
+            <div className="mb-1.5 text-xs font-medium text-destructive">Error</div>
+            <pre className="text-xs text-destructive">{error || "Operation failed"}</pre>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // For Bash commands, show a simple command display
+  if (isBashWithCommand) {
+    return (
+      <div id={messageId}>
+        <BashCommand command={String(inputObj!.command)} />
+      </div>
+    );
+  }
+
+  // Default collapsible view for other tools
   return (
     <Collapsible id={messageId} defaultOpen={false}>
       <CollapsibleTrigger className="flex w-full cursor-pointer items-center gap-3 rounded-lg bg-zinc-900 px-4 py-3 text-left transition-colors hover:bg-zinc-800">
