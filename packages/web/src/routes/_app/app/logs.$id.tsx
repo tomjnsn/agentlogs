@@ -24,6 +24,7 @@ import {
 import { ClaudeCodeIcon, CodexIcon, OpenCodeIcon } from "../../../components/icons/source-icons";
 import { DiffViewer, FileViewer } from "../../../components/diff-viewer";
 import { useEffect, useState } from "react";
+import { Streamdown } from "streamdown";
 import {
   extractImageReferences,
   replaceImageReferencesForDisplay,
@@ -517,7 +518,7 @@ function MessageBlock({ message, index, userImage, userName }: MessageBlockProps
   if (message.type === "agent") {
     return (
       <div id={messageId} className="prose prose-invert prose-sm max-w-none">
-        <AgentText text={message.text} />
+        <Streamdown>{message.text}</Streamdown>
       </div>
     );
   }
@@ -716,190 +717,4 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError }: T
       </CollapsibleContent>
     </Collapsible>
   );
-}
-
-// Render agent text with basic markdown-like formatting
-function AgentText({ text }: { text: string }) {
-  // Split into lines for processing
-  const lines = text.split("\n");
-  const elements: React.ReactNode[] = [];
-  let currentParagraph: string[] = [];
-  let inCodeBlock = false;
-  let codeBlockContent: string[] = [];
-  let listItems: string[] = [];
-  let listType: "ul" | "ol" | null = null;
-
-  const flushParagraph = () => {
-    if (currentParagraph.length > 0) {
-      const content = currentParagraph.join(" ");
-      elements.push(
-        <p key={elements.length} className="mb-3 leading-relaxed">
-          {renderInlineFormatting(content)}
-        </p>,
-      );
-      currentParagraph = [];
-    }
-  };
-
-  const flushList = () => {
-    if (listItems.length > 0) {
-      const ListTag = listType === "ol" ? "ol" : "ul";
-      elements.push(
-        <ListTag
-          key={elements.length}
-          className={`mb-3 space-y-1 ${listType === "ol" ? "list-decimal" : "list-disc"} pl-5`}
-        >
-          {listItems.map((item, i) => (
-            <li key={i}>{renderInlineFormatting(item)}</li>
-          ))}
-        </ListTag>,
-      );
-      listItems = [];
-      listType = null;
-    }
-  };
-
-  for (const line of lines) {
-    // Code block start/end
-    if (line.startsWith("```")) {
-      if (!inCodeBlock) {
-        flushParagraph();
-        flushList();
-        inCodeBlock = true;
-        codeBlockContent = [];
-      } else {
-        elements.push(
-          <pre key={elements.length} className="mb-3 overflow-x-auto rounded-lg bg-zinc-900 p-4 text-sm">
-            <code>{codeBlockContent.join("\n")}</code>
-          </pre>,
-        );
-        inCodeBlock = false;
-        codeBlockContent = [];
-      }
-      continue;
-    }
-
-    if (inCodeBlock) {
-      codeBlockContent.push(line);
-      continue;
-    }
-
-    // Unordered list item
-    if (line.match(/^[-*]\s+/)) {
-      flushParagraph();
-      if (listType !== "ul") {
-        flushList();
-        listType = "ul";
-      }
-      listItems.push(line.replace(/^[-*]\s+/, ""));
-      continue;
-    }
-
-    // Ordered list item
-    if (line.match(/^\d+\.\s+/)) {
-      flushParagraph();
-      if (listType !== "ol") {
-        flushList();
-        listType = "ol";
-      }
-      listItems.push(line.replace(/^\d+\.\s+/, ""));
-      continue;
-    }
-
-    // Empty line - flush current paragraph
-    if (line.trim() === "") {
-      flushParagraph();
-      flushList();
-      continue;
-    }
-
-    // Regular line - add to current paragraph
-    flushList();
-    currentParagraph.push(line);
-  }
-
-  // Flush remaining content
-  if (inCodeBlock && codeBlockContent.length > 0) {
-    elements.push(
-      <pre key={elements.length} className="mb-3 overflow-x-auto rounded-lg bg-zinc-900 p-4 text-sm">
-        <code>{codeBlockContent.join("\n")}</code>
-      </pre>,
-    );
-  }
-  flushParagraph();
-  flushList();
-
-  return <>{elements}</>;
-}
-
-// Render inline formatting (bold, italic, code, links)
-function renderInlineFormatting(text: string): React.ReactNode {
-  // Simple regex-based inline formatting
-  const parts: React.ReactNode[] = [];
-  let remaining = text;
-  let key = 0;
-
-  while (remaining.length > 0) {
-    // Inline code
-    const codeMatch = remaining.match(/^`([^`]+)`/);
-    if (codeMatch) {
-      parts.push(
-        <code key={key++} className="rounded bg-zinc-800 px-1.5 py-0.5 text-sm">
-          {codeMatch[1]}
-        </code>,
-      );
-      remaining = remaining.slice(codeMatch[0].length);
-      continue;
-    }
-
-    // Bold
-    const boldMatch = remaining.match(/^\*\*([^*]+)\*\*/);
-    if (boldMatch) {
-      parts.push(<strong key={key++}>{boldMatch[1]}</strong>);
-      remaining = remaining.slice(boldMatch[0].length);
-      continue;
-    }
-
-    // Italic
-    const italicMatch = remaining.match(/^\*([^*]+)\*/);
-    if (italicMatch) {
-      parts.push(<em key={key++}>{italicMatch[1]}</em>);
-      remaining = remaining.slice(italicMatch[0].length);
-      continue;
-    }
-
-    // Link
-    const linkMatch = remaining.match(/^\[([^\]]+)\]\(([^)]+)\)/);
-    if (linkMatch) {
-      parts.push(
-        <a
-          key={key++}
-          href={linkMatch[2]}
-          className="text-primary hover:underline"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {linkMatch[1]}
-        </a>,
-      );
-      remaining = remaining.slice(linkMatch[0].length);
-      continue;
-    }
-
-    // Plain text until next special character
-    const nextSpecial = remaining.search(/[`*[]/);
-    if (nextSpecial === -1) {
-      parts.push(remaining);
-      break;
-    } else if (nextSpecial === 0) {
-      // Special char that didn't match a pattern, treat as plain text
-      parts.push(remaining[0]);
-      remaining = remaining.slice(1);
-    } else {
-      parts.push(remaining.slice(0, nextSpecial));
-      remaining = remaining.slice(nextSpecial);
-    }
-  }
-
-  return parts.length === 1 ? parts[0] : <>{parts}</>;
 }
