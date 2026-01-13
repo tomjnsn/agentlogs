@@ -870,6 +870,180 @@ describe("Tool Call Input/Output Processing", () => {
     `);
   });
 
+  test("Read tool - parallel tool calls should all have outputs", () => {
+    // This reproduces a real transcript where 3 Read tool calls are made in parallel
+    // Each tool call has parentUuid pointing to the previous tool call (chain)
+    // Each tool result has parentUuid pointing to ITS corresponding tool call (branches)
+    // The bug: only one branch is followed, so other results are lost
+    const transcript = [
+      // Tool call 1: Read upload.e2e.ts
+      {
+        type: "assistant",
+        uuid: "27b70804-2789-427d-9474-d18362c99437",
+        parentUuid: "efbe9db4-d94c-4586-872a-75a9fc52b2a0",
+        timestamp: "2026-01-13T21:41:06.998Z",
+        cwd: "/Users/philipp/dev/agentlogs",
+        message: {
+          model: "claude-opus-4-5-20251101",
+          id: "msg_01JyJaCZbJakFCouADNoo8ue",
+          role: "assistant",
+          content: [
+            {
+              type: "tool_use",
+              id: "toolu_01TL7Z741dYC6cw5UE8G1gcY",
+              name: "Read",
+              input: { file_path: "/Users/philipp/dev/agentlogs/packages/e2e/tests/upload.e2e.ts" },
+            },
+          ],
+        },
+      },
+      // Tool call 2: Read dashboard.e2e.ts (parentUuid points to tool call 1)
+      {
+        type: "assistant",
+        uuid: "660e51c4-444b-47bb-9dfe-1172b3faa875",
+        parentUuid: "27b70804-2789-427d-9474-d18362c99437",
+        timestamp: "2026-01-13T21:41:07.385Z",
+        cwd: "/Users/philipp/dev/agentlogs",
+        message: {
+          model: "claude-opus-4-5-20251101",
+          id: "msg_01JyJaCZbJakFCouADNoo8ue",
+          role: "assistant",
+          content: [
+            {
+              type: "tool_use",
+              id: "toolu_01S7imUfpo6H77JGShmXndGm",
+              name: "Read",
+              input: { file_path: "/Users/philipp/dev/agentlogs/packages/e2e/tests/ui/dashboard.e2e.ts" },
+            },
+          ],
+        },
+      },
+      // Tool call 3: Read playwright.config.ts (parentUuid points to tool call 2)
+      {
+        type: "assistant",
+        uuid: "b5077707-4b94-4e0e-90e8-f9481ed9f0eb",
+        parentUuid: "660e51c4-444b-47bb-9dfe-1172b3faa875",
+        timestamp: "2026-01-13T21:41:07.831Z",
+        cwd: "/Users/philipp/dev/agentlogs",
+        message: {
+          model: "claude-opus-4-5-20251101",
+          id: "msg_01JyJaCZbJakFCouADNoo8ue",
+          role: "assistant",
+          content: [
+            {
+              type: "tool_use",
+              id: "toolu_01F67qtCogiUdEt1E9RsrxPN",
+              name: "Read",
+              input: { file_path: "/Users/philipp/dev/agentlogs/packages/e2e/playwright.config.ts" },
+            },
+          ],
+        },
+      },
+      // Tool result 1: Result for upload.e2e.ts (parentUuid points to tool call 1 - BRANCHES OFF)
+      {
+        type: "user",
+        uuid: "22769e4d-85e1-4a8e-9c5d-8f1e67e208b2",
+        parentUuid: "27b70804-2789-427d-9474-d18362c99437",
+        timestamp: "2026-01-13T21:41:07.885Z",
+        cwd: "/Users/philipp/dev/agentlogs",
+        message: {
+          role: "user",
+          content: [
+            {
+              tool_use_id: "toolu_01TL7Z741dYC6cw5UE8G1gcY",
+              type: "tool_result",
+              content: "import { test } from '@playwright/test';",
+            },
+          ],
+        },
+        toolUseResult: {
+          type: "text",
+          file: {
+            filePath: "/Users/philipp/dev/agentlogs/packages/e2e/tests/upload.e2e.ts",
+            content: "import { test } from '@playwright/test';",
+            numLines: 1,
+            startLine: 1,
+            totalLines: 1,
+          },
+        },
+      },
+      // Tool result 2: Result for dashboard.e2e.ts (parentUuid points to tool call 2 - BRANCHES OFF)
+      {
+        type: "user",
+        uuid: "7b7a15eb-bd9d-4ecc-89a6-2ac8302a3e4c",
+        parentUuid: "660e51c4-444b-47bb-9dfe-1172b3faa875",
+        timestamp: "2026-01-13T21:41:07.885Z",
+        cwd: "/Users/philipp/dev/agentlogs",
+        message: {
+          role: "user",
+          content: [
+            {
+              tool_use_id: "toolu_01S7imUfpo6H77JGShmXndGm",
+              type: "tool_result",
+              content: "import { test } from '@playwright/test'; // dashboard",
+            },
+          ],
+        },
+        toolUseResult: {
+          type: "text",
+          file: {
+            filePath: "/Users/philipp/dev/agentlogs/packages/e2e/tests/ui/dashboard.e2e.ts",
+            content: "import { test } from '@playwright/test'; // dashboard",
+            numLines: 1,
+            startLine: 1,
+            totalLines: 1,
+          },
+        },
+      },
+      // Tool result 3: Result for playwright.config.ts (parentUuid points to tool call 3 - on main chain)
+      {
+        type: "user",
+        uuid: "2eeaaddd-2013-4248-9f03-626d4f6a238b",
+        parentUuid: "b5077707-4b94-4e0e-90e8-f9481ed9f0eb",
+        timestamp: "2026-01-13T21:41:07.885Z",
+        cwd: "/Users/philipp/dev/agentlogs",
+        message: {
+          role: "user",
+          content: [
+            {
+              tool_use_id: "toolu_01F67qtCogiUdEt1E9RsrxPN",
+              type: "tool_result",
+              content: "import { defineConfig } from '@playwright/test';",
+            },
+          ],
+        },
+        toolUseResult: {
+          type: "text",
+          file: {
+            filePath: "/Users/philipp/dev/agentlogs/packages/e2e/playwright.config.ts",
+            content: "import { defineConfig } from '@playwright/test';",
+            numLines: 1,
+            startLine: 1,
+            totalLines: 1,
+          },
+        },
+      },
+    ];
+
+    const converted = convertClaudeCodeTranscript(transcript);
+    const toolCalls = converted?.transcript.messages.filter((m) => m.type === "tool-call");
+
+    // We expect 3 tool calls, all with their outputs
+    expect(toolCalls).toHaveLength(3);
+
+    // Check each tool call has its output
+    const readCalls = toolCalls as Array<{ toolName: string; input: any; output: any }>;
+
+    const uploadCall = readCalls.find((c) => c.input?.file_path?.includes("upload.e2e.ts"));
+    const dashboardCall = readCalls.find((c) => c.input?.file_path?.includes("dashboard.e2e.ts"));
+    const configCall = readCalls.find((c) => c.input?.file_path?.includes("playwright.config.ts"));
+
+    // All three should have output with file content
+    expect(uploadCall?.output?.file?.content).toBe("import { test } from '@playwright/test';");
+    expect(dashboardCall?.output?.file?.content).toBe("import { test } from '@playwright/test'; // dashboard");
+    expect(configCall?.output?.file?.content).toBe("import { defineConfig } from '@playwright/test';");
+  });
+
   test("Edit tool - file not read first error", () => {
     const toolUse = {
       type: "tool_use",

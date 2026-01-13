@@ -224,17 +224,14 @@ export function convertClaudeCodeTranscript(
     return null;
   }
 
-  const leaf = selectLeafMessage(parseResult.records, parseResult.children);
-  if (!leaf) {
+  // Build flat transcript - all non-sidechain messages sorted by timestamp
+  const flatTranscript = buildFlatTranscript(parseResult.records);
+  if (flatTranscript.length === 0) {
     return null;
   }
 
-  const transcriptChain = buildTranscriptChain(leaf, parseResult.records);
-  if (transcriptChain.length === 0) {
-    return null;
-  }
-
-  const usageMessages = collectAssistantUsageMessages(transcriptChain);
+  const lastMessage = flatTranscript[flatTranscript.length - 1];
+  const usageMessages = collectAssistantUsageMessages(flatTranscript);
   const tokenUsage = aggregateUsage(usageMessages);
   const modelUsageMap = aggregateUsageByModel(usageMessages);
   const blendedTokens = blendedTokenTotal(tokenUsage);
@@ -252,30 +249,30 @@ export function convertClaudeCodeTranscript(
     .filter((detail): detail is ClaudeUsageDetail => detail !== null);
 
   const costUsd = calculateCostFromUsageDetails(usageDetails, options.pricing);
-  const promptMessages = findPromptUserMessages(transcriptChain);
+  const promptMessages = findPromptUserMessages(flatTranscript);
   const previewMessage = promptMessages.length > 0 ? summarizeMessage(promptMessages[0]) : null;
 
-  const timestamp = parseDate(leaf.timestamp) ?? options.now ?? new Date();
-  const sessionId = findSessionId(transcriptChain);
+  const timestamp = parseDate(lastMessage.timestamp) ?? options.now ?? new Date();
+  const sessionId = findSessionId(flatTranscript);
   const primaryModel = selectPrimaryModel(modelUsageMap);
-  const cwd = deriveWorkingDirectory(transcriptChain);
+  const cwd = deriveWorkingDirectory(flatTranscript);
   // Use provided git context or fall back to path-based extraction
   const gitContext =
-    options.gitContext !== undefined ? options.gitContext : extractGitContextFromRecords(transcriptChain);
+    options.gitContext !== undefined ? options.gitContext : extractGitContextFromRecords(flatTranscript);
   const formattedCwd = cwd ? formatCwdWithTilde(cwd) : "";
-  const { messages, blobs } = convertTranscriptToMessages(transcriptChain);
+  const { messages, blobs } = convertTranscriptToMessages(flatTranscript);
   const stats = calculateTranscriptStats(messages);
 
   const transcriptCandidate = {
     v: 1 as const,
-    id: sessionId ?? leaf.uuid,
+    id: sessionId ?? lastMessage.uuid,
     source: "claude-code" as const,
     timestamp,
     preview: previewMessage,
     model: primaryModel,
     blendedTokens,
     costUsd,
-    messageCount: transcriptChain.length,
+    messageCount: flatTranscript.length,
     ...stats,
     tokenUsage,
     modelUsage: Array.from(modelUsageMap.entries()).map(([model, usage]) => ({ model, usage })),
@@ -299,17 +296,14 @@ export async function convertClaudeCodeFile(
     return null;
   }
 
-  const leaf = selectLeafMessage(parseResult.records, parseResult.children);
-  if (!leaf) {
+  // Build flat transcript - all non-sidechain messages sorted by timestamp
+  const flatTranscript = buildFlatTranscript(parseResult.records);
+  if (flatTranscript.length === 0) {
     return null;
   }
 
-  const transcriptChain = buildTranscriptChain(leaf, parseResult.records);
-  if (transcriptChain.length === 0) {
-    return null;
-  }
-
-  const usageMessages = collectAssistantUsageMessages(transcriptChain);
+  const lastMessage = flatTranscript[flatTranscript.length - 1];
+  const usageMessages = collectAssistantUsageMessages(flatTranscript);
   const tokenUsage = aggregateUsage(usageMessages);
   const modelUsageMap = aggregateUsageByModel(usageMessages);
   const blendedTokens = blendedTokenTotal(tokenUsage);
@@ -327,29 +321,29 @@ export async function convertClaudeCodeFile(
     .filter((detail): detail is ClaudeUsageDetail => detail !== null);
 
   const costUsd = calculateCostFromUsageDetails(usageDetails, options.pricing);
-  const promptMessages = findPromptUserMessages(transcriptChain);
+  const promptMessages = findPromptUserMessages(flatTranscript);
   const previewMessage = promptMessages.length > 0 ? summarizeMessage(promptMessages[0]) : null;
 
-  const timestamp = parseDate(leaf.timestamp) ?? (await getFileMTime(filePath)) ?? new Date();
-  const sessionId = findSessionId(transcriptChain);
+  const timestamp = parseDate(lastMessage.timestamp) ?? (await getFileMTime(filePath)) ?? new Date();
+  const sessionId = findSessionId(flatTranscript);
   const primaryModel = selectPrimaryModel(modelUsageMap);
-  const cwd = deriveWorkingDirectory(transcriptChain);
+  const cwd = deriveWorkingDirectory(flatTranscript);
   const formattedCwd = cwd ? formatCwdWithTilde(cwd) : "";
   const gitContext =
-    options.gitContext !== undefined ? options.gitContext : await resolveGitContext(cwd, leaf.gitBranch);
-  const { messages, blobs } = convertTranscriptToMessages(transcriptChain);
+    options.gitContext !== undefined ? options.gitContext : await resolveGitContext(cwd, lastMessage.gitBranch);
+  const { messages, blobs } = convertTranscriptToMessages(flatTranscript);
   const stats = calculateTranscriptStats(messages);
 
   const transcriptCandidate = {
     v: 1 as const,
-    id: sessionId ?? leaf.uuid,
+    id: sessionId ?? lastMessage.uuid,
     source: "claude-code" as const,
     timestamp,
     preview: previewMessage,
     model: primaryModel,
     blendedTokens,
     costUsd,
-    messageCount: transcriptChain.length,
+    messageCount: flatTranscript.length,
     ...stats,
     tokenUsage,
     modelUsage: Array.from(modelUsageMap.entries()).map(([model, usage]) => ({ model, usage })),
@@ -535,56 +529,33 @@ function extractUsage(value: unknown): ClaudeUsage | null {
   return Object.keys(usage).length > 0 ? usage : null;
 }
 
-function selectLeafMessage(
-  records: Map<string, ClaudeMessageRecord>,
-  children: Map<string, Set<string>>,
-): ClaudeMessageRecord | null {
-  const leaves: ClaudeMessageRecord[] = [];
+/**
+ * Build a flat transcript from all records, filtering out sidechains and sorting by timestamp.
+ * This is simpler than chain-walking and correctly handles parallel tool calls.
+ */
+function buildFlatTranscript(records: Map<string, ClaudeMessageRecord>): ClaudeMessageRecord[] {
+  const messages: ClaudeMessageRecord[] = [];
+
   for (const record of records.values()) {
-    if (!children.has(record.uuid)) {
-      leaves.push(record);
+    // Skip sidechains - these are alternate conversation branches
+    if (record.isSidechain) {
+      continue;
     }
+    messages.push(record);
   }
 
-  if (leaves.length === 0) {
-    return null;
-  }
-
-  leaves.sort((a, b) => {
+  // Sort by timestamp ascending (chronological order)
+  messages.sort((a, b) => {
     const aTime = timestampToNumber(a.timestamp) ?? 0;
     const bTime = timestampToNumber(b.timestamp) ?? 0;
-    if (aTime === bTime) {
-      return a.uuid.localeCompare(b.uuid);
+    if (aTime !== bTime) {
+      return aTime - bTime;
     }
-    return bTime - aTime;
+    // Same timestamp: sort by uuid for stability
+    return a.uuid.localeCompare(b.uuid);
   });
 
-  return leaves[0];
-}
-
-function buildTranscriptChain(
-  leaf: ClaudeMessageRecord,
-  records: Map<string, ClaudeMessageRecord>,
-): ClaudeMessageRecord[] {
-  const chain: ClaudeMessageRecord[] = [];
-  const visited = new Set<string>();
-  let current: ClaudeMessageRecord | undefined = leaf;
-
-  while (current) {
-    if (visited.has(current.uuid)) {
-      break;
-    }
-    visited.add(current.uuid);
-    chain.unshift(current);
-    // Use logicalParentUuid as fallback when parentUuid is null (e.g., after compaction)
-    const parentUuid = current.parentUuid ?? current.logicalParentUuid ?? undefined;
-    if (!parentUuid) {
-      break;
-    }
-    current = records.get(parentUuid);
-  }
-
-  return chain;
+  return messages;
 }
 
 function collectAssistantUsageMessages(transcript: ClaudeMessageRecord[]): ClaudeMessageRecord[] {
