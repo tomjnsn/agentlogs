@@ -860,7 +860,7 @@ export async function resolveGitContext(
   }
 
   const relativeCwd = path.relative(repoRoot, cwd) || ".";
-  const branch = await readGitHead(repoRoot, gitBranch);
+  const branch = gitBranch ?? (await readGitHead(repoRoot));
   const repo = await readGitRemoteRepo(repoRoot);
 
   return unifiedGitContextSchema.parse({
