@@ -310,22 +310,29 @@ This trigger fires for: explicit DELETE, CASCADE from team deletion, and CASCADE
 
 ---
 
-## API Endpoints
+## Server Functions (Web UI Only)
 
+All team features are implemented as TanStack Start server functions (not API routes).
+The CLI doesn't need team management - only `/api/blobs/:sha256` is modified for access control.
+
+| Function | Auth | Description |
+|----------|------|-------------|
+| `getTeam()` | user | Get user's team with members |
+| `createTeam()` | user | Create team (auto-generate name, add owner to members) |
+| `deleteTeam(teamId)` | owner | Delete team |
+| `leaveTeam(teamId)` | member | Leave team (not owner), resets transcript visibility |
+| `addMemberByEmail(teamId, email)` | owner | Add member by email (case-insensitive) |
+| `removeMember(teamId, userId)` | owner | Remove member (blocked if userId = ownerId) |
+| `generateInvite(teamId)` | owner | Generate invite link |
+| `revokeInvite(teamId)` | owner | Revoke invite link |
+| `getInviteInfo(code)` | any | Get team info for invite (used in join page loader) |
+| `acceptInvite(code)` | user | Accept invite |
+| `updateVisibility(transcriptId, visibility)` | owner | Change transcript visibility |
+
+**API Route (CLI access):**
 | Endpoint | Method | Auth | Description |
 |----------|--------|------|-------------|
-| `/api/teams` | POST | user | Create team (also adds owner to team_members) |
-| `/api/teams` | GET | user | Get user's team |
-| `/api/teams/:id` | DELETE | owner | Delete team |
-| `/api/teams/:id/members` | GET | member | List members |
-| `/api/teams/:id/members` | POST | owner | Add member by email (case-insensitive) |
-| `/api/teams/:id/members/:userId` | DELETE | owner | Remove member (blocked if userId = ownerId) |
-| `/api/teams/:id/leave` | POST | member | Leave team (not owner), resets transcript visibility |
-| `/api/teams/:id/invite` | POST | owner | Generate invite link |
-| `/api/teams/:id/invite` | DELETE | owner | Revoke invite link |
-| `/api/join/:code` | GET | any | Get team info for invite |
-| `/api/join/:code` | POST | user | Accept invite |
-| `/api/transcripts/:id/visibility` | PATCH | owner | Toggle visibility |
+| `/api/blobs/:sha256` | GET | user | Download blob (add team + public access check) |
 
 ---
 
@@ -419,209 +426,204 @@ sqlite3 .wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite \
 # Verify: 1 (true)
 ```
 
-### Phase 2: Core API
-10. POST /api/teams - Create team (auto-generate name, insert owner into team_members)
-11. GET /api/teams - Get user's team
-12. DELETE /api/teams/:id - Delete team
-13. GET /api/teams/:id/members - List members (derive owner from teams.ownerId)
-14. POST /api/teams/:id/members - Add by email (case-insensitive)
-15. DELETE /api/teams/:id/members/:userId - Remove member (block owner self-removal, reset visibility to private)
-16. POST /api/teams/:id/leave - Leave team (reset visibility to private)
+### Phase 2: Core Server Functions
+10. `createTeam()` - Create team (auto-generate name, insert owner into team_members)
+11. `getTeam()` - Get user's team with members
+12. `deleteTeam(teamId)` - Delete team (owner only)
+13. `addMemberByEmail(teamId, email)` - Add by email (case-insensitive, owner only)
+14. `removeMember(teamId, userId)` - Remove member (block owner self-removal, reset visibility)
+15. `leaveTeam(teamId)` - Leave team (reset visibility to private)
 
 **Phase 2 Verification:**
 ```bash
-# 1. Create team and verify owner is in team_members
-TEAM_ID=$(curl -s -X POST http://localhost:3000/api/teams -H "Cookie: $AUTH" | jq -r '.id')
-[ -n "$TEAM_ID" ] && echo "PASS: team created with ID $TEAM_ID" || echo "FAIL: no team ID"
+DB=".wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite"
 
-# 2. Verify owner appears in team_members table
-sqlite3 .wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite \
-  "SELECT COUNT(*) FROM team_members WHERE team_id='$TEAM_ID'" | grep -q "1" && \
+# Chrome DevTools MCP E2E (primary verification):
+# 1. Navigate to /app/team as logged-in user with no team
+# mcp__chrome-devtools__navigate_page url="http://localhost:3000/app/team"
+# mcp__chrome-devtools__take_snapshot - verify "No Team Yet" and "Create Team" button
+
+# 2. Click create team button
+# mcp__chrome-devtools__click uid="[create-team-button]"
+# mcp__chrome-devtools__wait_for text="'s Team"
+# mcp__chrome-devtools__take_snapshot - verify team dashboard with owner badge
+
+# 3. Verify owner is in team_members table
+sqlite3 $DB "SELECT COUNT(*) FROM team_members tm JOIN teams t ON tm.team_id = t.id WHERE tm.user_id = t.owner_id" | grep -q "1" && \
   echo "PASS: owner in team_members"
 
-# 3. Test 409 conflict (already in team)
-STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:3000/api/teams -H "Cookie: $AUTH")
-[ "$STATUS" = "409" ] && echo "PASS: 409 on duplicate team" || echo "FAIL: expected 409, got $STATUS"
+# 4. Test add member by email via UI
+# mcp__chrome-devtools__fill uid="[email-input]" value="member@test.com"
+# mcp__chrome-devtools__click uid="[add-member-button]"
+# mcp__chrome-devtools__wait_for text="member@test.com"
 
-# 4. Test GET /api/teams returns team
-curl -s http://localhost:3000/api/teams -H "Cookie: $AUTH" | jq -r '.team.id' | grep -q "$TEAM_ID" && \
-  echo "PASS: GET returns team"
-
-# 5. Test add member by email
-curl -s -X POST http://localhost:3000/api/teams/$TEAM_ID/members -H "Cookie: $AUTH" \
-  -H "Content-Type: application/json" -d '{"email":"member@test.com"}' | jq -r '.success' | grep -q "true" && \
-  echo "PASS: member added by email"
-
-# 6. Test member cannot be added to another team (409)
-STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:3000/api/teams/$OTHER_TEAM/members \
-  -H "Cookie: $OTHER_AUTH" -H "Content-Type: application/json" -d '{"email":"member@test.com"}')
-[ "$STATUS" = "409" ] && echo "PASS: user already in team" || echo "FAIL: expected 409"
-
-# Chrome DevTools MCP:
-# mcp__chrome-devtools__navigate_page url="http://localhost:3000/app/team"
-# mcp__chrome-devtools__take_snapshot - verify team name header, member list, owner badge
+# 5. Verify member appears in DB
+sqlite3 $DB "SELECT COUNT(*) FROM team_members" | grep -q "2" && echo "PASS: 2 members in team"
 ```
 
 ### Phase 3: Invite System
-17. POST /api/teams/:id/invite - Generate invite link
-18. DELETE /api/teams/:id/invite - Revoke invite
-19. GET /api/join/:code - Get invite info
-20. POST /api/join/:code - Accept invite
-21. Create /join/:code page UI
+16. `generateInvite(teamId)` - Generate invite link (owner only)
+17. `revokeInvite(teamId)` - Revoke invite (owner only)
+18. `getInviteInfo(code)` - Get invite info (used in join page loader)
+19. `acceptInvite(code)` - Accept invite
+20. Create /join/$code page with loader and UI
 
 **Note:** Expired invites don't need cleanup - they're filtered at query time. Stale rows have negligible storage impact.
 
 **Phase 3 Verification:**
 ```bash
-# 1. Generate invite and verify code length
-INVITE=$(curl -s -X POST http://localhost:3000/api/teams/$TEAM_ID/invite -H "Cookie: $AUTH")
-CODE=$(echo $INVITE | jq -r '.code')
-[ ${#CODE} -ge 16 ] && echo "PASS: code length ${#CODE} >= 16" || echo "FAIL: code too short"
+DB=".wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite"
 
-# 2. Verify invite URL format
-echo $INVITE | jq -r '.url' | grep -q "/join/$CODE" && echo "PASS: URL format correct"
+# Chrome DevTools MCP E2E (primary verification):
+# 1. Generate invite via team page
+# mcp__chrome-devtools__navigate_page url="http://localhost:3000/app/team"
+# mcp__chrome-devtools__click uid="[generate-invite-button]"
+# mcp__chrome-devtools__take_snapshot - verify invite link appears with copy button
 
-# 3. GET invite info returns team details
-curl -s http://localhost:3000/api/join/$CODE | jq -r '.teamName' | grep -q "Team" && \
-  echo "PASS: invite info returns team name"
+# 2. Verify invite in DB with correct expiry (7 days)
+sqlite3 $DB "SELECT code, (expires_at - created_at) / 1000 / 86400 as days FROM team_invites ORDER BY created_at DESC LIMIT 1"
+# Verify: days = 7
 
-# 4. Test expired invite (set expiresAt in past)
-sqlite3 .wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite \
-  "UPDATE team_invites SET expires_at = 0 WHERE code = '$CODE'"
-STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/join/$CODE)
-[ "$STATUS" = "410" ] && echo "PASS: 410 for expired invite" || echo "FAIL: expected 410, got $STATUS"
+# 3. Get invite code from DB for testing
+CODE=$(sqlite3 $DB "SELECT code FROM team_invites ORDER BY created_at DESC LIMIT 1")
 
-# 5. Test POST join with valid invite (need fresh invite)
-NEW_INVITE=$(curl -s -X POST http://localhost:3000/api/teams/$TEAM_ID/invite -H "Cookie: $AUTH")
-NEW_CODE=$(echo $NEW_INVITE | jq -r '.code')
-curl -s -X POST http://localhost:3000/api/join/$NEW_CODE -H "Cookie: $NEW_USER_AUTH" | \
-  jq -r '.success' | grep -q "true" && echo "PASS: user joined via invite"
-
-# 6. Test 409 when already in a team
-STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:3000/api/join/$NEW_CODE \
-  -H "Cookie: $EXISTING_TEAM_USER_AUTH")
-[ "$STATUS" = "409" ] && echo "PASS: 409 for user already in team"
-
-# Chrome DevTools MCP:
+# 4. Test join page renders correctly
 # mcp__chrome-devtools__navigate_page url="http://localhost:3000/join/$CODE"
-# mcp__chrome-devtools__take_snapshot - verify "Join [Team Name]" button visible
-# mcp__chrome-devtools__click uid="[join-button]"
-# mcp__chrome-devtools__wait_for text="Team"
+# mcp__chrome-devtools__take_snapshot - verify team name, member count, "Join Team" button
+
+# 5. Test expired invite shows error
+sqlite3 $DB "UPDATE team_invites SET expires_at = 0 WHERE code = '$CODE'"
+# mcp__chrome-devtools__navigate_page url="http://localhost:3000/join/$CODE"
+# mcp__chrome-devtools__take_snapshot - verify "expired" error message
+
+# 6. Test accept invite flow (as different user)
+# Generate fresh invite, open in incognito, sign in as new user, click join
+# Verify redirect to /app/team showing the team
 ```
 
 ### Phase 4: Transcript Sharing
-23. PATCH /api/transcripts/:id/visibility - Update visibility (private | team | public)
-24. Update transcript queries for team + public access (JOIN pattern)
-25. Update blob access for team + public access
-26. Add visibility dropdown to transcript detail page (hide "team" option if user has no team)
-27. Add visibility indicator to transcript list (lock/users/globe icons)
+21. `updateVisibility(transcriptId, visibility)` - Update visibility (private | team | public)
+22. Update transcript queries for team + public access (JOIN pattern)
+23. Update `/api/blobs/:sha256` for team + public access (CLI needs this)
+24. Add visibility dropdown to transcript detail page (hide "team" option if user has no team)
+25. Add visibility indicator to transcript list (lock/users/globe icons)
 
 **Phase 4 Verification:**
 ```bash
-# Setup: User A owns transcript, User B is in same team, User C is not
-# 1. Set transcript to team visibility
-curl -s -X PATCH http://localhost:3000/api/transcripts/$TRANSCRIPT_ID/visibility \
-  -H "Cookie: $USER_A_AUTH" -H "Content-Type: application/json" \
-  -d '{"visibility":"team"}' | jq -r '.visibility' | grep -q "team" && echo "PASS: visibility set to team"
+DB=".wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite"
 
-# 2. Validate: cannot set 'team' if user has no team
-curl -s -X PATCH http://localhost:3000/api/transcripts/$LONE_USER_TRANSCRIPT/visibility \
-  -H "Cookie: $LONE_USER_AUTH" -H "Content-Type: application/json" \
-  -d '{"visibility":"team"}' | jq -r '.error' | grep -q "must be in a team" && \
-  echo "PASS: team visibility blocked for non-team user"
+# Setup: Create two users - User A (team owner), User B (team member)
+# User A has a transcript
 
-# 3. Team member (User B) CAN see team-shared transcript
-curl -s http://localhost:3000/api/transcripts -H "Cookie: $USER_B_AUTH" | \
-  jq -r '.[].id' | grep -q "$TRANSCRIPT_ID" && echo "PASS: team member sees transcript"
+# Chrome DevTools MCP E2E (primary verification):
+# 1. As User A, change transcript visibility to "team"
+# mcp__chrome-devtools__navigate_page url="http://localhost:3000/app/logs/$TRANSCRIPT_ID"
+# mcp__chrome-devtools__click uid="[visibility-dropdown]"
+# mcp__chrome-devtools__click uid="[visibility-option-team]"
+# mcp__chrome-devtools__take_snapshot - verify "Team" indicator shown
 
-# 4. Non-team member (User C) CANNOT see team-shared transcript
-curl -s http://localhost:3000/api/transcripts -H "Cookie: $USER_C_AUTH" | \
-  jq -r '.[].id' | grep -qv "$TRANSCRIPT_ID" && echo "PASS: non-team member cannot see transcript"
+# 2. Verify in DB
+sqlite3 $DB "SELECT visibility FROM transcripts WHERE id = '$TRANSCRIPT_ID'" | grep -q "team" && \
+  echo "PASS: visibility updated to team"
 
-# 5. Blob access - team member CAN access
+# 3. As User B (team member), verify transcript appears in list
+# mcp__chrome-devtools__navigate_page url="http://localhost:3000/app"
+# mcp__chrome-devtools__take_snapshot - verify transcript visible with "Shared by [User A]"
+
+# 4. Blob access test via CLI (only API route that remains)
+# As team member:
 STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/blobs/$SHA256 -H "Cookie: $USER_B_AUTH")
-[ "$STATUS" = "200" ] && echo "PASS: team member can access blob"
+[ "$STATUS" = "200" ] && echo "PASS: team member can access blob via API"
 
-# 6. Blob access - non-team member CANNOT access
+# As non-team member:
 STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/blobs/$SHA256 -H "Cookie: $USER_C_AUTH")
 [ "$STATUS" = "403" ] && echo "PASS: non-team member blocked from blob"
 
-# 7. Public transcript - unauthenticated CAN access
-curl -s -X PATCH http://localhost:3000/api/transcripts/$TRANSCRIPT_ID/visibility \
-  -H "Cookie: $USER_A_AUTH" -H "Content-Type: application/json" -d '{"visibility":"public"}'
-STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/transcripts/$TRANSCRIPT_ID)
-[ "$STATUS" = "200" ] && echo "PASS: public transcript accessible without auth"
+# 5. Public visibility test
+# Set to public via UI, then test unauthenticated blob access
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/blobs/$SHA256)
+[ "$STATUS" = "200" ] && echo "PASS: public blob accessible without auth"
 
-# Chrome DevTools MCP:
-# mcp__chrome-devtools__navigate_page url="http://localhost:3000/app/logs/$TRANSCRIPT_ID"
-# mcp__chrome-devtools__take_snapshot - verify visibility dropdown visible
+# 6. Test "team" option hidden for user without team
+# Sign in as user with no team, open transcript detail
 # mcp__chrome-devtools__click uid="[visibility-dropdown]"
-# mcp__chrome-devtools__click uid="[visibility-option-team]"
-# mcp__chrome-devtools__take_snapshot - verify "Team" badge shown
+# mcp__chrome-devtools__take_snapshot - verify only "Private" and "Public" options (no "Team")
 ```
 
 ### Phase 5: Team Management UI
-28. Install @tanstack/react-query and set up QueryClientProvider in __root.tsx
-29. Create /app/team page with TanStack Query mutations
-30. Create team button (no form - just POST to create with auto-generated name)
-31. Member list component (show owner badge)
-32. Invite controls component (link + email input) using useMutation
+26. Install @tanstack/react-query and set up QueryClientProvider in __root.tsx
+27. Create /app/team page with TanStack Query mutations
+28. Create team button (no form - just calls createTeam() with auto-generated name)
+29. Member list component (show owner badge)
+30. Invite controls component (link + email input) using useMutation
 
 **Phase 5 Verification:**
 ```bash
-# 1. Test team page renders without team
-curl -s http://localhost:3000/app/team -H "Cookie: $AUTH" | grep -q "No Team Yet\|Create.*Team" && echo "PASS: team page renders" || echo "FAIL: team page missing"
-
-# 2. Test team creation via UI flow works
-TEAM_RESP=$(curl -s -X POST http://localhost:3000/api/teams -H "Cookie: $AUTH" -H "Content-Type: application/json")
-echo "$TEAM_RESP" | grep -q '"id":' && echo "PASS: team created via API" || echo "FAIL: team creation failed"
-
-# 3. Test team page shows dashboard after creation
-curl -s http://localhost:3000/app/team -H "Cookie: $AUTH" | grep -q "'s Team\|Invite Members\|Members" && echo "PASS: team dashboard renders" || echo "FAIL: dashboard missing"
-
-# 4. Chrome DevTools MCP E2E:
+# Chrome DevTools MCP E2E (primary verification):
+# 1. Navigate to team page as user without team
 # mcp__chrome-devtools__navigate_page url="http://localhost:3000/app/team"
-# mcp__chrome-devtools__take_snapshot - verify shows team dashboard
+# mcp__chrome-devtools__take_snapshot - verify "No Team Yet" message and "Create Team" button
+
+# 2. Create team via button click
+# mcp__chrome-devtools__click uid="[create-team-button]"
+# mcp__chrome-devtools__wait_for text="'s Team"
+
+# 3. Verify team dashboard UI elements
 # mcp__chrome-devtools__take_screenshot - visual check for:
-#   - Team name visible at top
-#   - Owner badge displayed
-#   - Invite link section present
+#   - Team name "[User]'s Team" at top
+#   - Owner badge on first member
+#   - "Generate Invite Link" button
 #   - Email input for adding members
-#   - Member list with remove buttons
-# If any element missing or broken → FAIL
+#   - "Leave Team" or "Delete Team" button
+
+# 4. Test invite link generation
+# mcp__chrome-devtools__click uid="[generate-invite-button]"
+# mcp__chrome-devtools__take_snapshot - verify invite URL appears with copy button
+
+# 5. Test add member by email
+# mcp__chrome-devtools__fill uid="[email-input]" value="existing-user@test.com"
+# mcp__chrome-devtools__click uid="[add-member-button]"
+# mcp__chrome-devtools__wait_for text="existing-user@test.com"
+# mcp__chrome-devtools__take_snapshot - verify member appears in list
 ```
 
 ### Phase 6: Polish & Edge Cases
-33. Handle "already in team" error gracefully
-34. Auto-reset visibility to private on team leave AND removal
+31. Handle "already in team" error gracefully in UI
+32. Auto-reset visibility to private on team leave AND removal (SQLite trigger)
 
 **Phase 6 Verification:**
 ```bash
-# Setup variables
 DB=".wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite"
 
-# 1. Test "already in team" error is handled gracefully
-SECOND_CREATE=$(curl -s -X POST http://localhost:3000/api/teams -H "Cookie: $AUTH" -H "Content-Type: application/json")
-echo "$SECOND_CREATE" | grep -q "Already in a team" && echo "PASS: already-in-team error" || echo "FAIL: missing error message"
+# Chrome DevTools MCP E2E:
+# 1. Test "already in team" error shown gracefully
+# - As user already in a team, try to join another team via invite link
+# mcp__chrome-devtools__navigate_page url="http://localhost:3000/join/$OTHER_TEAM_CODE"
+# mcp__chrome-devtools__click uid="[join-button]"
+# mcp__chrome-devtools__take_snapshot - verify "Already in a team" error message
 
 # 2. Test visibility auto-reset on leave
-# Setup: set a transcript to team visibility
-TRANSCRIPT_ID=$(sqlite3 $DB "SELECT id FROM transcripts WHERE userId = '$USER_ID' LIMIT 1")
-sqlite3 $DB "UPDATE transcripts SET visibility = 'team' WHERE id = '$TRANSCRIPT_ID'"
-# Leave team
-TEAM_ID=$(sqlite3 $DB "SELECT teamId FROM team_members WHERE userId = '$USER_ID'")
-curl -s -X POST "http://localhost:3000/api/teams/$TEAM_ID/leave" -H "Cookie: $AUTH"
-# Verify reset
-SHARING=$(sqlite3 $DB "SELECT visibility FROM transcripts WHERE id = '$TRANSCRIPT_ID'")
-[ "$SHARING" = "private" ] && echo "PASS: visibility reset to private on leave" || echo "FAIL: visibility not reset ($SHARING)"
+# Setup: User has transcript with visibility="team"
+TRANSCRIPT_ID=$(sqlite3 $DB "SELECT id FROM transcripts WHERE visibility = 'team' LIMIT 1")
+USER_ID=$(sqlite3 $DB "SELECT user_id FROM transcripts WHERE id = '$TRANSCRIPT_ID'")
 
-# 3. Test visibility auto-reset on member removal (owner kicks member)
-# Similar flow but via DELETE /api/teams/:id/members/:userId
+# Leave team via UI
+# mcp__chrome-devtools__navigate_page url="http://localhost:3000/app/team"
+# mcp__chrome-devtools__click uid="[leave-team-button]"
+# mcp__chrome-devtools__handle_dialog action="accept"
 
-# 4. Chrome DevTools MCP Full E2E:
+# Verify visibility reset in DB
+sqlite3 $DB "SELECT visibility FROM transcripts WHERE id = '$TRANSCRIPT_ID'" | grep -q "private" && \
+  echo "PASS: visibility reset to private on leave"
+
+# 3. Test visibility auto-reset on member removal
+# As owner, remove a member who has team-shared transcripts
+# mcp__chrome-devtools__click uid="[remove-member-button]"
+# Verify their transcripts reset to private
+
+# 4. Final E2E check - transcript list with visibility indicators
 # mcp__chrome-devtools__navigate_page url="http://localhost:3000/app"
-# mcp__chrome-devtools__take_snapshot - verify visibility indicators on transcripts
-# mcp__chrome-devtools__take_screenshot - visual confirmation of team/public badges
+# mcp__chrome-devtools__take_screenshot - verify lock/users/globe icons on transcripts
 ```
 
 ---
@@ -646,15 +648,7 @@ packages/web/src/
 ├── routes/
 │   └── __root.tsx                         # MODIFY: wrap with QueryClientProvider
 │   ├── api/
-│   │   ├── teams.ts                       # NEW: POST/GET /api/teams
-│   │   ├── teams.$id.ts                   # NEW: DELETE /api/teams/:id
-│   │   ├── teams.$id.members.ts           # NEW: GET/POST /api/teams/:id/members
-│   │   ├── teams.$id.members.$userId.ts   # NEW: DELETE /api/teams/:id/members/:userId
-│   │   ├── teams.$id.leave.ts             # NEW: POST /api/teams/:id/leave
-│   │   ├── teams.$id.invite.ts            # NEW: POST/DELETE /api/teams/:id/invite
-│   │   ├── join.$code.ts                  # NEW: GET/POST /api/join/:code
-│   │   ├── transcripts.$id.visibility.ts     # NEW: PATCH /api/transcripts/:id/visibility
-│   │   └── blobs.$sha256.ts               # MODIFY: add team access check
+│   │   └── blobs.$sha256.ts               # MODIFY: add team + public access check
 │   ├── _app/app/
 │   │   ├── index.tsx                      # MODIFY: add visibility indicators
 │   │   ├── logs.$id.tsx                   # MODIFY: add visibility dropdown
@@ -729,8 +723,6 @@ export const teamInvites = sqliteTable("team_invites", {
 
 // ADD to transcripts table definition:
 visibility: text("visibility").$type<SharingOption>().default("private").notNull(),
-
-// NOTE: No index on visibility - add later if queries are slow
 
 // ADD to repos table definition:
 // Cache of GitHub public status - updated on each upload, used as fallback if API fails
@@ -881,654 +873,458 @@ export async function getInviteByCode(db: DrizzleDB, code: string) {
 }
 ```
 
-### API Route: POST/GET /api/teams (teams.ts)
+### Server Functions (server-functions.ts)
+
+Add these server functions to `packages/web/src/lib/server-functions.ts`:
 
 ```typescript
-import { createFileRoute } from "@tanstack/react-router";
-import { json } from "@tanstack/react-start";
-import { env } from "cloudflare:workers";
-import { eq } from "drizzle-orm";
-import { createDrizzle } from "../../db";
-import { createAuth } from "../../lib/auth";
-import { teams, teamMembers } from "../../db/schema";
-import * as queries from "../../db/queries";
-import { logger } from "../../lib/logger";
+// =============================================================================
+// Team Server Functions
+// =============================================================================
 
-export const Route = createFileRoute("/api/teams")({
-  server: {
-    handlers: {
-      // Create team
-      POST: async ({ request }) => {
-        const db = createDrizzle(env.DB);
-        const auth = createAuth();
-
-        const session = await auth.api.getSession({ headers: request.headers });
-        if (!session?.user) {
-          return json({ error: "Unauthorized" }, { status: 401 });
-        }
-
-        const userId = session.user.id;
-        const teamName = `${session.user.name}'s Team`;
-
-        // Check if user is already in a team (app-level enforcement)
-        const existingMembership = await db.query.teamMembers.findFirst({
-          where: eq(teamMembers.userId, userId),
-        });
-        if (existingMembership) {
-          return json({ error: "Already in a team. Leave current team first." }, { status: 409 });
-        }
-
-        // Transaction: create team + add owner as member atomically
-        const result = await db.transaction(async (tx) => {
-          const [newTeam] = await tx.insert(teams).values({
-            name: teamName,
-            ownerId: userId,
-          }).returning();
-
-          await tx.insert(teamMembers).values({
-            teamId: newTeam.id,
-            userId: userId,
-          });
-
-          return newTeam;
-        });
-
-        logger.info("Team created", { teamId: result.id, ownerId: userId });
-        return json({ id: result.id, name: result.name, ownerId: userId });
-      },
-
-      // Get user's team
-      GET: async ({ request }) => {
-        const db = createDrizzle(env.DB);
-        const auth = createAuth();
-
-        const session = await auth.api.getSession({ headers: request.headers });
-        if (!session?.user) {
-          return json({ error: "Unauthorized" }, { status: 401 });
-        }
-
-        const team = await queries.getUserTeam(db, session.user.id);
-        return json({ team });
-      },
-    },
-  },
+/**
+ * Get user's team with members
+ */
+export const getTeam = createServerFn({ method: "GET" }).handler(async () => {
+  const db = createDrizzle(env.DB);
+  const userId = await getAuthenticatedUserId();
+  return queries.getUserTeam(db, userId);
 });
+
+/**
+ * Create a new team (auto-generated name)
+ */
+export const createTeam = createServerFn({ method: "POST" }).handler(async () => {
+  const db = createDrizzle(env.DB);
+  const auth = createAuth();
+  const headers = getRequestHeaders();
+
+  const session = await auth.api.getSession({ headers });
+  if (!session?.user) {
+    throw new Error("Unauthorized");
+  }
+
+  const userId = session.user.id;
+  const teamName = `${session.user.name}'s Team`;
+
+  // Check if user is already in a team (app-level enforcement)
+  const existingMembership = await db.query.teamMembers.findFirst({
+    where: eq(teamMembers.userId, userId),
+  });
+  if (existingMembership) {
+    throw new Error("Already in a team. Leave current team first.");
+  }
+
+  // Transaction: create team + add owner as member atomically
+  const result = await db.transaction(async (tx) => {
+    const [newTeam] = await tx.insert(teams).values({
+      name: teamName,
+      ownerId: userId,
+    }).returning();
+
+    await tx.insert(teamMembers).values({
+      teamId: newTeam.id,
+      userId: userId,
+    });
+
+    return newTeam;
+  });
+
+  logger.info("Team created", { teamId: result.id, ownerId: userId });
+  return { id: result.id, name: result.name };
+});
+
+/**
+ * Delete team (owner only)
+ */
+export const deleteTeam = createServerFn({ method: "POST" })
+  .validator((teamId: string) => teamId)
+  .handler(async ({ data: teamId }) => {
+    const db = createDrizzle(env.DB);
+    const userId = await getAuthenticatedUserId();
+
+    // Verify team exists and user is owner
+    const team = await db.query.teams.findFirst({
+      where: eq(teams.id, teamId),
+    });
+    if (!team) {
+      throw new Error("Team not found");
+    }
+    if (team.ownerId !== userId) {
+      throw new Error("Only the owner can delete the team");
+    }
+
+    // Get all member IDs to reset their transcript visibility
+    const members = await db.query.teamMembers.findMany({
+      where: eq(teamMembers.teamId, teamId),
+    });
+    const memberIds = members.map((m) => m.userId);
+
+    // Transaction: reset visibility + delete team (cascades to members/invites)
+    await db.transaction(async (tx) => {
+      if (memberIds.length > 0) {
+        await tx
+          .update(transcripts)
+          .set({ visibility: "private" })
+          .where(
+            and(
+              inArray(transcripts.userId, memberIds),
+              eq(transcripts.visibility, "team")
+            )
+          );
+      }
+      await tx.delete(teams).where(eq(teams.id, teamId));
+    });
+
+    logger.info("Team deleted", { teamId, deletedBy: userId });
+    return { success: true };
+  });
+
+/**
+ * Leave team (non-owner only)
+ */
+export const leaveTeam = createServerFn({ method: "POST" })
+  .validator((teamId: string) => teamId)
+  .handler(async ({ data: teamId }) => {
+    const db = createDrizzle(env.DB);
+    const userId = await getAuthenticatedUserId();
+
+    // Verify team exists
+    const team = await db.query.teams.findFirst({
+      where: eq(teams.id, teamId),
+    });
+    if (!team) {
+      throw new Error("Team not found");
+    }
+
+    // Owner cannot leave (must delete team instead)
+    if (team.ownerId === userId) {
+      throw new Error("Owner cannot leave. Delete the team instead.");
+    }
+
+    // Check if user is member
+    const isMember = await queries.isTeamMember(db, teamId, userId);
+    if (!isMember) {
+      throw new Error("Not a member of this team");
+    }
+
+    // Transaction: reset transcripts + remove membership
+    await db.transaction(async (tx) => {
+      await tx
+        .update(transcripts)
+        .set({ visibility: "private" })
+        .where(and(eq(transcripts.userId, userId), eq(transcripts.visibility, "team")));
+
+      await tx.delete(teamMembers).where(
+        and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userId))
+      );
+    });
+
+    logger.info("User left team", { teamId, userId });
+    return { success: true };
+  });
+
+/**
+ * Add member by email (owner only)
+ */
+export const addMemberByEmail = createServerFn({ method: "POST" })
+  .validator((input: { teamId: string; email: string }) => input)
+  .handler(async ({ data: { teamId, email } }) => {
+    const db = createDrizzle(env.DB);
+    const userId = await getAuthenticatedUserId();
+
+    // Verify team exists and user is owner
+    const team = await db.query.teams.findFirst({
+      where: eq(teams.id, teamId),
+    });
+    if (!team) {
+      throw new Error("Team not found");
+    }
+    if (team.ownerId !== userId) {
+      throw new Error("Only the owner can add members");
+    }
+
+    // Find user by email (case-insensitive)
+    const targetUser = await queries.findUserByEmail(db, email);
+    if (!targetUser) {
+      throw new Error("User not found. They must sign up first.");
+    }
+
+    // Check if target user is already in a team
+    const existingMembership = await db.query.teamMembers.findFirst({
+      where: eq(teamMembers.userId, targetUser.id),
+    });
+    if (existingMembership) {
+      throw new Error("User is already in a team");
+    }
+
+    // Add member
+    await db.insert(teamMembers).values({
+      teamId,
+      userId: targetUser.id,
+    });
+
+    logger.info("Member added to team", { teamId, memberId: targetUser.id, addedBy: userId });
+    return { success: true, userId: targetUser.id };
+  });
+
+/**
+ * Remove member (owner only, cannot remove self)
+ */
+export const removeMember = createServerFn({ method: "POST" })
+  .validator((input: { teamId: string; targetUserId: string }) => input)
+  .handler(async ({ data: { teamId, targetUserId } }) => {
+    const db = createDrizzle(env.DB);
+    const userId = await getAuthenticatedUserId();
+
+    // Verify team exists and user is owner
+    const team = await db.query.teams.findFirst({
+      where: eq(teams.id, teamId),
+    });
+    if (!team) {
+      throw new Error("Team not found");
+    }
+    if (team.ownerId !== userId) {
+      throw new Error("Only the owner can remove members");
+    }
+
+    // Cannot remove owner
+    if (targetUserId === team.ownerId) {
+      throw new Error("Cannot remove the owner. Delete the team instead.");
+    }
+
+    // Check if target is actually a member
+    const isMember = await queries.isTeamMember(db, teamId, targetUserId);
+    if (!isMember) {
+      throw new Error("User is not a member of this team");
+    }
+
+    // Transaction: reset transcripts + remove membership
+    await db.transaction(async (tx) => {
+      await tx
+        .update(transcripts)
+        .set({ visibility: "private" })
+        .where(and(eq(transcripts.userId, targetUserId), eq(transcripts.visibility, "team")));
+
+      await tx.delete(teamMembers).where(
+        and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, targetUserId))
+      );
+    });
+
+    logger.info("Member removed from team", { teamId, memberId: targetUserId, removedBy: userId });
+    return { success: true };
+  });
+
+/**
+ * Generate invite link (owner only)
+ */
+export const generateInvite = createServerFn({ method: "POST" })
+  .validator((teamId: string) => teamId)
+  .handler(async ({ data: teamId }) => {
+    const db = createDrizzle(env.DB);
+    const userId = await getAuthenticatedUserId();
+
+    // Verify team exists and user is owner
+    const team = await db.query.teams.findFirst({
+      where: eq(teams.id, teamId),
+    });
+    if (!team) {
+      throw new Error("Team not found");
+    }
+    if (team.ownerId !== userId) {
+      throw new Error("Only the owner can generate invites");
+    }
+
+    // Delete existing invite if any
+    await db.delete(teamInvites).where(eq(teamInvites.teamId, teamId));
+
+    // Generate new invite (16 chars = ~95 bits entropy)
+    const code = crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+    await db.insert(teamInvites).values({
+      teamId,
+      code,
+      expiresAt,
+    });
+
+    logger.info("Invite generated", { teamId, code });
+    return { code, url: `/join/${code}`, expiresAt };
+  });
+
+/**
+ * Revoke invite (owner only)
+ */
+export const revokeInvite = createServerFn({ method: "POST" })
+  .validator((teamId: string) => teamId)
+  .handler(async ({ data: teamId }) => {
+    const db = createDrizzle(env.DB);
+    const userId = await getAuthenticatedUserId();
+
+    // Verify team exists and user is owner
+    const team = await db.query.teams.findFirst({
+      where: eq(teams.id, teamId),
+    });
+    if (!team) {
+      throw new Error("Team not found");
+    }
+    if (team.ownerId !== userId) {
+      throw new Error("Only the owner can revoke invites");
+    }
+
+    await db.delete(teamInvites).where(eq(teamInvites.teamId, teamId));
+
+    logger.info("Invite revoked", { teamId });
+    return { success: true };
+  });
+
+/**
+ * Get invite info (public - used in join page loader)
+ */
+export const getInviteInfo = createServerFn({ method: "GET" })
+  .validator((code: string) => code)
+  .handler(async ({ data: code }) => {
+    const db = createDrizzle(env.DB);
+
+    const invite = await queries.getInviteByCode(db, code);
+    if (!invite) {
+      return null;
+    }
+
+    const isExpired = new Date(invite.expiresAt) < new Date();
+
+    return {
+      code: invite.code,
+      teamName: invite.team.name,
+      memberCount: invite.team.members.length,
+      ownerName: invite.team.owner.name,
+      expired: isExpired,
+    };
+  });
+
+/**
+ * Accept invite (authenticated users only)
+ */
+export const acceptInvite = createServerFn({ method: "POST" })
+  .validator((code: string) => code)
+  .handler(async ({ data: code }) => {
+    const db = createDrizzle(env.DB);
+    const userId = await getAuthenticatedUserId();
+
+    const invite = await queries.getInviteByCode(db, code);
+    if (!invite) {
+      throw new Error("Invite not found or has been revoked");
+    }
+
+    if (new Date(invite.expiresAt) < new Date()) {
+      throw new Error("This invite has expired. Please ask for a new one.");
+    }
+
+    // Check if user is already in a team
+    const existingMembership = await db.query.teamMembers.findFirst({
+      where: eq(teamMembers.userId, userId),
+    });
+    if (existingMembership) {
+      throw new Error("Already in a team. Leave current team first.");
+    }
+
+    // Add user to team
+    await db.insert(teamMembers).values({
+      teamId: invite.teamId,
+      userId,
+    });
+
+    logger.info("User joined team via invite", { teamId: invite.teamId, userId, code });
+    return { success: true, teamId: invite.teamId };
+  });
+
+/**
+ * Update transcript visibility
+ */
+export const updateVisibility = createServerFn({ method: "POST" })
+  .validator((input: { transcriptId: string; visibility: string }) => input)
+  .handler(async ({ data: { transcriptId, visibility } }) => {
+    const db = createDrizzle(env.DB);
+    const userId = await getAuthenticatedUserId();
+
+    // Verify transcript exists and user owns it
+    const transcript = await db.query.transcripts.findFirst({
+      where: eq(transcripts.id, transcriptId),
+    });
+    if (!transcript) {
+      throw new Error("Transcript not found");
+    }
+    if (transcript.userId !== userId) {
+      throw new Error("You can only change visibility of your own transcripts");
+    }
+
+    // Validate visibility value
+    if (!visibility || !visibilityOptions.includes(visibility as SharingOption)) {
+      throw new Error(`Invalid visibility. Must be one of: ${visibilityOptions.join(", ")}`);
+    }
+
+    // If setting to "team", verify user is in a team
+    if (visibility === "team") {
+      const userTeam = await queries.getUserTeam(db, userId);
+      if (!userTeam) {
+        throw new Error("You must be in a team to share with team. Create or join a team first.");
+      }
+    }
+
+    // Update visibility
+    await db.update(transcripts)
+      .set({ visibility: visibility as SharingOption })
+      .where(eq(transcripts.id, transcriptId));
+
+    logger.info("Transcript visibility updated", { transcriptId, visibility, userId });
+    return { success: true, visibility };
+  });
 ```
 
-### API Route: DELETE /api/teams/:id (teams.$id.ts)
+### Blob Access API Route (blobs.$sha256.ts - MODIFY)
+
+Modify the existing `checkBlobAccess` function to support team + public visibility:
 
 ```typescript
-import { createFileRoute } from "@tanstack/react-router";
-import { json } from "@tanstack/react-start";
-import { env } from "cloudflare:workers";
-import { eq, and, inArray } from "drizzle-orm";
-import { createDrizzle } from "../../../db";
-import { createAuth } from "../../../lib/auth";
-import { teams, teamMembers, transcripts } from "../../../db/schema";
-import * as queries from "../../../db/queries";
-import { logger } from "../../../lib/logger";
+// In packages/web/src/routes/api/blobs.$sha256.ts
+// MODIFY checkBlobAccess function to use the shared query function
 
-export const Route = createFileRoute("/api/teams/$id")({
-  server: {
-    handlers: {
-      DELETE: async ({ request, params }) => {
-        const db = createDrizzle(env.DB);
-        const auth = createAuth();
-        const { id: teamId } = params;
+import { checkBlobAccess as checkBlobAccessQuery } from "../../db/queries";
 
-        const session = await auth.api.getSession({ headers: request.headers });
-        if (!session?.user) {
-          return json({ error: "Unauthorized" }, { status: 401 });
-        }
+async function checkBlobAccess(request: Request, sha256: string): Promise<BlobAccessResult> {
+  const db = createDrizzle(env.DB);
+  const auth = createAuth();
 
-        // Check if team exists first
-        const team = await db.query.teams.findFirst({
-          where: eq(teams.id, teamId),
-        });
-        if (!team) {
-          return json({ error: "Team not found" }, { status: 404 });
-        }
+  const session = await auth.api.getSession({
+    headers: request.headers,
+  });
 
-        // Verify ownership
-        if (team.ownerId !== session.user.id) {
-          return json({ error: "Forbidden" }, { status: 403 });
-        }
+  // Get userId (null if not authenticated - allows public access check)
+  const userId = session?.user?.id ?? null;
 
-        // Transaction: reset member transcripts, then delete team
-        await db.transaction(async (tx) => {
-          // Reset all members' transcript visibility
-          const memberIds = await tx
-            .select({ userId: teamMembers.userId })
-            .from(teamMembers)
-            .where(eq(teamMembers.teamId, teamId));
+  // Use shared access control query
+  const hasAccess = await checkBlobAccessQuery(db, sha256, userId);
 
-          if (memberIds.length > 0) {
-            await tx
-              .update(transcripts)
-              .set({ visibility: "private" })
-              .where(
-                and(
-                  eq(transcripts.visibility, "team"),
-                  inArray(transcripts.userId, memberIds.map(m => m.userId))
-                )
-              );
-          }
+  if (!hasAccess) {
+    logger.warn("Blob access denied", {
+      sha256: sha256.slice(0, 8),
+      userId,
+    });
+    return { authorized: false, response: new Response(null, { status: userId ? 404 : 401 }) };
+  }
 
-          // Delete team (CASCADE handles members and invites)
-          await tx.delete(teams).where(eq(teams.id, teamId));
-        });
+  // Get media type for response
+  const blob = await db.query.blobs.findFirst({
+    where: eq(blobs.sha256, sha256),
+  });
 
-        logger.info("Team deleted", { teamId, deletedBy: session.user.id });
-        return json({ success: true });
-      },
-    },
-  },
-});
-```
-
-### API Route: POST /api/teams/:id/leave (teams.$id.leave.ts)
-
-```typescript
-import { createFileRoute } from "@tanstack/react-router";
-import { json } from "@tanstack/react-start";
-import { env } from "cloudflare:workers";
-import { eq, and } from "drizzle-orm";
-import { createDrizzle } from "../../../../db";
-import { createAuth } from "../../../../lib/auth";
-import { teams, teamMembers, transcripts } from "../../../../db/schema";
-import * as queries from "../../../../db/queries";
-import { logger } from "../../../../lib/logger";
-
-export const Route = createFileRoute("/api/teams/$id/leave")({
-  server: {
-    handlers: {
-      POST: async ({ request, params }) => {
-        const db = createDrizzle(env.DB);
-        const auth = createAuth();
-        const { id: teamId } = params;
-
-        const session = await auth.api.getSession({ headers: request.headers });
-        if (!session?.user) {
-          return json({ error: "Unauthorized" }, { status: 401 });
-        }
-
-        const userId = session.user.id;
-
-        // Check if team exists first
-        const team = await db.query.teams.findFirst({
-          where: eq(teams.id, teamId),
-        });
-        if (!team) {
-          return json({ error: "Team not found" }, { status: 404 });
-        }
-
-        // Check if user is owner (owners cannot leave)
-        if (team.ownerId === userId) {
-          return json({ error: "Team owners cannot leave. Delete the team instead." }, { status: 403 });
-        }
-
-        // Check if user is member
-        const isMember = await queries.isTeamMember(db, teamId, userId);
-        if (!isMember) {
-          return json({ error: "Not a member of this team" }, { status: 404 });
-        }
-
-        // Transaction: reset transcripts + remove membership
-        await db.transaction(async (tx) => {
-          await tx
-            .update(transcripts)
-            .set({ visibility: "private" })
-            .where(and(eq(transcripts.userId, userId), eq(transcripts.visibility, "team")));
-
-          await tx
-            .delete(teamMembers)
-            .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userId)));
-        });
-
-        logger.info("User left team", { teamId, userId });
-        return json({ success: true });
-      },
-    },
-  },
-});
-```
-
-### API Route: GET/POST /api/teams/:id/members (teams.$id.members.ts)
-
-```typescript
-import { createFileRoute } from "@tanstack/react-router";
-import { json } from "@tanstack/react-start";
-import { env } from "cloudflare:workers";
-import { eq } from "drizzle-orm";
-import { createDrizzle } from "../../../../db";
-import { createAuth } from "../../../../lib/auth";
-import { teams, teamMembers } from "../../../../db/schema";
-import * as queries from "../../../../db/queries";
-import { logger } from "../../../../lib/logger";
-
-export const Route = createFileRoute("/api/teams/$id/members")({
-  server: {
-    handlers: {
-      // List team members
-      GET: async ({ request, params }) => {
-        const db = createDrizzle(env.DB);
-        const auth = createAuth();
-        const { id: teamId } = params;
-
-        const session = await auth.api.getSession({ headers: request.headers });
-        if (!session?.user) {
-          return json({ error: "Unauthorized" }, { status: 401 });
-        }
-
-        // Check if team exists first
-        const team = await db.query.teams.findFirst({
-          where: eq(teams.id, teamId),
-        });
-        if (!team) {
-          return json({ error: "Team not found" }, { status: 404 });
-        }
-
-        // Check if user is a member
-        const isMember = await queries.isTeamMember(db, teamId, session.user.id);
-        if (!isMember) {
-          return json({ error: "Forbidden" }, { status: 403 });
-        }
-
-        const teamWithMembers = await queries.getTeamWithMembers(db, teamId);
-        return json({ members: teamWithMembers?.members ?? [] });
-      },
-
-      // Add member by email
-      POST: async ({ request, params }) => {
-        const db = createDrizzle(env.DB);
-        const auth = createAuth();
-        const { id: teamId } = params;
-
-        const session = await auth.api.getSession({ headers: request.headers });
-        if (!session?.user) {
-          return json({ error: "Unauthorized" }, { status: 401 });
-        }
-
-        // Check if team exists first
-        const team = await db.query.teams.findFirst({
-          where: eq(teams.id, teamId),
-        });
-        if (!team) {
-          return json({ error: "Team not found" }, { status: 404 });
-        }
-
-        // Verify ownership
-        if (team.ownerId !== session.user.id) {
-          return json({ error: "Forbidden" }, { status: 403 });
-        }
-
-        const body = await request.json();
-        const { email } = body as { email: string };
-
-        // Validate email format
-        if (!email?.trim() || !email.includes("@")) {
-          return json({ error: "Invalid email format" }, { status: 400 });
-        }
-
-        const normalizedEmail = email.trim().toLowerCase();
-
-        // Find user by email
-        const targetUser = await queries.findUserByEmail(db, normalizedEmail);
-        if (!targetUser) {
-          return json({ error: "User not found. They may need to sign up first." }, { status: 404 });
-        }
-
-        // Cannot add self
-        if (targetUser.id === session.user.id) {
-          return json({ error: "Cannot add yourself to the team" }, { status: 400 });
-        }
-
-        // Check if target user is already in a team (app-level enforcement)
-        const existingMembership = await db.query.teamMembers.findFirst({
-          where: eq(teamMembers.userId, targetUser.id),
-        });
-        if (existingMembership) {
-          return json({ error: "User is already in a team" }, { status: 409 });
-        }
-
-        await db.insert(teamMembers).values({
-          teamId,
-          userId: targetUser.id,
-        });
-
-        logger.info("Member added to team", { teamId, userId: targetUser.id, addedBy: session.user.id });
-        return json({ success: true, userId: targetUser.id });
-      },
-    },
-  },
-});
-```
-
-### API Route: DELETE /api/teams/:id/members/:userId (teams.$id.members.$userId.ts)
-
-```typescript
-import { createFileRoute } from "@tanstack/react-router";
-import { json } from "@tanstack/react-start";
-import { env } from "cloudflare:workers";
-import { eq, and } from "drizzle-orm";
-import { createDrizzle } from "../../../../../db";
-import { createAuth } from "../../../../../lib/auth";
-import { teams, teamMembers, transcripts } from "../../../../../db/schema";
-import * as queries from "../../../../../db/queries";
-import { logger } from "../../../../../lib/logger";
-
-export const Route = createFileRoute("/api/teams/$id/members/$userId")({
-  server: {
-    handlers: {
-      DELETE: async ({ request, params }) => {
-        const db = createDrizzle(env.DB);
-        const auth = createAuth();
-        const { id: teamId, userId: targetUserId } = params;
-
-        const session = await auth.api.getSession({ headers: request.headers });
-        if (!session?.user) {
-          return json({ error: "Unauthorized" }, { status: 401 });
-        }
-
-        // Check if team exists first
-        const team = await db.query.teams.findFirst({
-          where: eq(teams.id, teamId),
-        });
-        if (!team) {
-          return json({ error: "Team not found" }, { status: 404 });
-        }
-
-        // Verify ownership
-        if (team.ownerId !== session.user.id) {
-          return json({ error: "Forbidden" }, { status: 403 });
-        }
-
-        // Cannot remove self (owner) - must delete team instead
-        if (targetUserId === session.user.id) {
-          return json({ error: "Cannot remove team owner. Delete the team instead." }, { status: 400 });
-        }
-
-        // Check if target is actually a member
-        const isMember = await queries.isTeamMember(db, teamId, targetUserId);
-        if (!isMember) {
-          return json({ error: "User is not a member of this team" }, { status: 404 });
-        }
-
-        // Transaction: reset transcripts + remove membership
-        await db.transaction(async (tx) => {
-          await tx
-            .update(transcripts)
-            .set({ visibility: "private" })
-            .where(and(eq(transcripts.userId, targetUserId), eq(transcripts.visibility, "team")));
-
-          await tx
-            .delete(teamMembers)
-            .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, targetUserId)));
-        });
-
-        logger.info("Member removed from team", { teamId, userId: targetUserId, removedBy: session.user.id });
-        return json({ success: true });
-      },
-    },
-  },
-});
-```
-
-### API Route: POST/DELETE /api/teams/:id/invite (teams.$id.invite.ts)
-
-```typescript
-import { createFileRoute } from "@tanstack/react-router";
-import { json } from "@tanstack/react-start";
-import { env } from "cloudflare:workers";
-import { eq, and } from "drizzle-orm";
-import { createDrizzle } from "../../../../db";
-import { createAuth } from "../../../../lib/auth";
-import { teams, teamInvites } from "../../../../db/schema";
-import * as queries from "../../../../db/queries";
-import { logger } from "../../../../lib/logger";
-
-// Inline: Generate crypto-random code (Web Crypto API)
-function generateSecureCode(length: number = 16): string {
-  const charset = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-  const randomBytes = new Uint8Array(length);
-  crypto.getRandomValues(randomBytes);
-  return Array.from(randomBytes, (b) => charset[b % charset.length]).join("");
+  return { authorized: true, mediaType: blob?.mediaType ?? "application/octet-stream" };
 }
 
-export const Route = createFileRoute("/api/teams/$id/invite")({
-  server: {
-    handlers: {
-      // Generate invite link
-      POST: async ({ request, params }) => {
-        const db = createDrizzle(env.DB);
-        const auth = createAuth();
-        const { id: teamId } = params;
-
-        const session = await auth.api.getSession({ headers: request.headers });
-        if (!session?.user) {
-          return json({ error: "Unauthorized" }, { status: 401 });
-        }
-
-        // Check if team exists first
-        const team = await db.query.teams.findFirst({
-          where: eq(teams.id, teamId),
-        });
-        if (!team) {
-          return json({ error: "Team not found" }, { status: 404 });
-        }
-
-        // Verify ownership
-        if (team.ownerId !== session.user.id) {
-          return json({ error: "Forbidden" }, { status: 403 });
-        }
-
-        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
-
-        // Generate crypto-random invite code (16 chars = ~95 bits entropy, collision impossible)
-        const code = generateSecureCode(16);
-        await db.insert(teamInvites).values({
-          teamId,
-          code,
-          expiresAt,
-        });
-
-        const url = `${env.WEB_URL}/join/${code}`;
-        logger.info("Invite created", { teamId, code: code.slice(0, 4) + "..." });
-        return json({ url, code, expiresAt: expiresAt.toISOString() });
-      },
-
-      // Revoke invite link
-      DELETE: async ({ request, params }) => {
-        const db = createDrizzle(env.DB);
-        const auth = createAuth();
-        const { id: teamId } = params;
-
-        const session = await auth.api.getSession({ headers: request.headers });
-        if (!session?.user) {
-          return json({ error: "Unauthorized" }, { status: 401 });
-        }
-
-        // Check if team exists first
-        const team = await db.query.teams.findFirst({
-          where: eq(teams.id, teamId),
-        });
-        if (!team) {
-          return json({ error: "Team not found" }, { status: 404 });
-        }
-
-        // Verify ownership
-        if (team.ownerId !== session.user.id) {
-          return json({ error: "Forbidden" }, { status: 403 });
-        }
-
-        // Delete all invites for this team
-        await db.delete(teamInvites).where(eq(teamInvites.teamId, teamId));
-
-        logger.info("Invites revoked", { teamId, revokedBy: session.user.id });
-        return json({ success: true });
-      },
-    },
-  },
-});
+// Rest of the file (HEAD/GET handlers) remains unchanged
 ```
 
-### API Route: GET/POST /api/join/:code (join.$code.ts)
-
-```typescript
-import { createFileRoute } from "@tanstack/react-router";
-import { json } from "@tanstack/react-start";
-import { env } from "cloudflare:workers";
-import { eq } from "drizzle-orm";
-import { createDrizzle } from "../../db";
-import { createAuth } from "../../lib/auth";
-import { teamInvites, teamMembers } from "../../db/schema";
-import * as queries from "../../db/queries";
-import { logger } from "../../lib/logger";
-
-export const Route = createFileRoute("/api/join/$code")({
-  server: {
-    handlers: {
-      // Get invite info
-      GET: async ({ params }) => {
-        const db = createDrizzle(env.DB);
-        const { code } = params;
-
-        const invite = await queries.getInviteByCode(db, code);
-        if (!invite) {
-          return json({ error: "Invite not found or has been revoked" }, { status: 404 });
-        }
-
-        if (invite.expiresAt < new Date()) {
-          return json({ error: "This invite link has expired" }, { status: 410 });
-        }
-
-        return json({
-          teamName: invite.team.name,
-          memberCount: invite.team.members.length,
-          ownerName: invite.team.owner.name,
-          code: invite.code,
-        });
-      },
-
-      // Accept invite
-      POST: async ({ request, params }) => {
-        const db = createDrizzle(env.DB);
-        const auth = createAuth();
-        const { code } = params;
-
-        const session = await auth.api.getSession({ headers: request.headers });
-        if (!session?.user) {
-          return json({ error: "Unauthorized" }, { status: 401 });
-        }
-
-        const userId = session.user.id;
-
-        // Re-validate invite at acceptance time (TOCTOU protection)
-        const invite = await queries.getInviteByCode(db, code);
-        if (!invite) {
-          return json({ error: "Invite not found or has been revoked" }, { status: 404 });
-        }
-
-        // Check expiry at POST time (not just GET)
-        if (invite.expiresAt < new Date()) {
-          return json({ error: "This invite link has expired. Please ask for a new one." }, { status: 410 });
-        }
-
-        const teamId = invite.teamId;
-
-        // Check if user is already in a team (app-level enforcement)
-        const existingMembership = await db.query.teamMembers.findFirst({
-          where: eq(teamMembers.userId, userId),
-        });
-        if (existingMembership) {
-          // Already member of THIS team = success
-          if (existingMembership.teamId === teamId) {
-            return json({ success: true, teamId, alreadyMember: true });
-          }
-          // Member of different team = error
-          return json({ error: "You are already in a team. Leave your current team first." }, { status: 409 });
-        }
-
-        await db.insert(teamMembers).values({
-          teamId,
-          userId,
-        });
-
-        logger.info("User joined team via invite", { teamId, userId, code: code.slice(0, 4) + "..." });
-        return json({ success: true, teamId });
-      },
-    },
-  },
-});
-```
-
-### API Route: PATCH /api/transcripts/:id/visibility (transcripts.$id.visibility.ts)
-
-```typescript
-import { createFileRoute } from "@tanstack/react-router";
-import { json } from "@tanstack/react-start";
-import { env } from "cloudflare:workers";
-import { eq } from "drizzle-orm";
-import { createDrizzle } from "../../../db";
-import { createAuth } from "../../../lib/auth";
-import { transcripts, visibilityOptions, type SharingOption } from "../../../db/schema";
-import * as queries from "../../../db/queries";
-import { logger } from "../../../lib/logger";
-
-export const Route = createFileRoute("/api/transcripts/$id/visibility")({
-  server: {
-    handlers: {
-      PATCH: async ({ request, params }) => {
-        const db = createDrizzle(env.DB);
-        const auth = createAuth();
-        const { id: transcriptId } = params;
-
-        const session = await auth.api.getSession({ headers: request.headers });
-        if (!session?.user) {
-          return json({ error: "Unauthorized" }, { status: 401 });
-        }
-
-        const userId = session.user.id;
-
-        // Check if transcript exists and user owns it
-        const transcript = await db.query.transcripts.findFirst({
-          where: eq(transcripts.id, transcriptId),
-        });
-        if (!transcript) {
-          return json({ error: "Transcript not found" }, { status: 404 });
-        }
-        if (transcript.userId !== userId) {
-          return json({ error: "Forbidden" }, { status: 403 });
-        }
-
-        const body = await request.json();
-        const { visibility } = body as { visibility: string };
-
-        // Validate visibility value
-        if (!visibility || !visibilityOptions.includes(visibility as SharingOption)) {
-          return json({ error: `Invalid visibility value. Must be one of: ${visibilityOptions.join(", ")}` }, { status: 400 });
-        }
-
-        // If setting to "team", verify user is in a team
-        if (visibility === "team") {
-          const userTeam = await queries.getUserTeam(db, userId);
-          if (!userTeam) {
-            return json({ error: "You must be in a team to share with team. Create or join a team first." }, { status: 400 });
-          }
-        }
-
-        // Update visibility
-        await db.update(transcripts)
-          .set({ visibility: visibility as SharingOption })
-          .where(eq(transcripts.id, transcriptId));
-
-        logger.info("Transcript visibility updated", { transcriptId, visibility, userId });
-        return json({ success: true, visibility });
-      },
-    },
-  },
-});
-```
+The `checkBlobAccessQuery` function is defined in queries.ts and uses the same JOIN pattern as transcript access control.
 
 ### GitHub Helper (github.ts)
 
