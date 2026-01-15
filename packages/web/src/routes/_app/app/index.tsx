@@ -1,11 +1,74 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { MessageSquare, Search, Terminal } from "lucide-react";
 import { ClaudeCodeIcon, CodexIcon, GitHubIcon, OpenCodeIcon } from "../../../components/icons/source-icons";
 import { useMemo, useState } from "react";
 import { getAllTranscripts } from "../../../lib/server-functions";
+
+type DailyCount = { date: string; count: number };
+
+function getDailyCounts(transcripts: { createdAt: Date }[], days = 30): DailyCount[] {
+  const counts = new Map<string, number>();
+
+  // Initialize all days with 0
+  const today = new Date();
+  for (let i = days - 1; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    const key = date.toISOString().split("T")[0];
+    counts.set(key, 0);
+  }
+
+  // Count transcripts per day
+  for (const t of transcripts) {
+    const key = new Date(t.createdAt).toISOString().split("T")[0];
+    if (counts.has(key)) {
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+  }
+
+  return Array.from(counts.entries()).map(([date, count]) => ({ date, count }));
+}
+
+function formatDateShort(dateStr: string): string {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function ActivityChart({ data }: { data: DailyCount[] }) {
+  const maxCount = Math.max(...data.map((d) => d.count), 1);
+
+  return (
+    <TooltipProvider delayDuration={0}>
+      <div className="flex h-6 items-end gap-0.5">
+        {data.map((d) => {
+          const height = d.count > 0 ? Math.max((d.count / maxCount) * 100, 15) : 0;
+          return (
+            <Tooltip key={d.date}>
+              <TooltipTrigger asChild>
+                <div
+                  className="w-1.5 bg-primary/50 transition-all hover:bg-primary"
+                  style={{
+                    height: d.count > 0 ? `${height}%` : "2px",
+                    opacity: d.count > 0 ? 1 : 0.15,
+                  }}
+                />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>
+                  {formatDateShort(d.date)}: {d.count} {d.count === 1 ? "log" : "logs"}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          );
+        })}
+      </div>
+    </TooltipProvider>
+  );
+}
 
 export const Route = createFileRoute("/_app/app/")({
   loader: async () => {
@@ -79,6 +142,9 @@ function HomeComponent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRepo, setSelectedRepo] = useState<string>("all");
 
+  // Calculate daily activity data
+  const dailyCounts = useMemo(() => getDailyCounts(transcripts, 30), [transcripts]);
+
   // Get unique repos from transcripts for the filter
   const repoOptions = useMemo(() => {
     const uniqueRepos = new Map<string, string>();
@@ -116,12 +182,12 @@ function HomeComponent() {
 
   return (
     <div className="space-y-6">
-      {/* Filters */}
-      <div className="flex flex-wrap items-center justify-center gap-3">
-        <div className="relative min-w-[200px] max-w-[300px]">
+      {/* Filters + Activity Chart */}
+      <div className="flex items-center gap-4 pl-15">
+        <div className="relative min-w-[300px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search logs"
+            placeholder="Search logs..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
@@ -142,6 +208,10 @@ function HomeComponent() {
             ))}
           </SelectContent>
         </Select>
+
+        <div className="grow" />
+
+        <ActivityChart data={dailyCounts} />
       </div>
 
       {/* Transcript List */}
