@@ -8,7 +8,7 @@ export const Route = createFileRoute("/_app/s/$sessionId")({
     throw redirect({
       to: "/app/logs/$id",
       params: {
-        id: transcript.id,
+        id: transcript.transcriptId,
       },
     });
   },

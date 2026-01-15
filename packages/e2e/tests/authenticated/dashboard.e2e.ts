@@ -11,7 +11,7 @@ import { createRepo, createTranscript, testId } from "../../utils/factories";
 test.describe.serial("Dashboard", () => {
   test("shows authenticated header with user name", async ({ page }) => {
     await page.goto("/app");
-    await expect(page.getByRole("heading", { name: "AgentLogs" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "AgentLogs" })).toBeVisible();
     // Look for Test User text in header - use first() since it may appear multiple times
     await expect(page.getByText("Test User").first()).toBeVisible();
     await expect(page.getByRole("button", { name: "Sign Out" })).toBeVisible();
@@ -19,7 +19,7 @@ test.describe.serial("Dashboard", () => {
 
   test("displays empty state when no repos or transcripts", async ({ page }) => {
     await page.goto("/app");
-    await expect(page.getByRole("heading", { name: "AgentLogs" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "AgentLogs" })).toBeVisible();
   });
 
   test("displays repositories with transcripts", async ({ page }) => {
@@ -33,7 +33,7 @@ test.describe.serial("Dashboard", () => {
     sqlite.close();
 
     await page.goto("/app");
-    await expect(page.getByText(`github.com/test/repo-${id}`)).toBeVisible();
+    await expect(page.getByText(`test/repo-${id}`)).toBeVisible();
   });
 
   test("displays private transcripts without repo", async ({ page }) => {
@@ -66,14 +66,14 @@ test.describe.serial("Navigation", () => {
     await page.goto("/app");
 
     // Wait for the transcript to be visible
-    await expect(page.getByText(`github.com/test/repo-${id}`)).toBeVisible();
+    await expect(page.getByText(`test/repo-${id}`)).toBeVisible();
 
     // Click on the transcript link - the accessible name contains "Test transcript ${id}"
     const transcriptLink = page.getByRole("link", { name: new RegExp(`Test transcript ${id}`) });
     await transcriptLink.click();
 
-    // Should navigate to transcript detail
-    await expect(page).toHaveURL(new RegExp(`/app/logs/transcript-${id}`));
+    // Should navigate to transcript detail (uses transcriptId: tid-${id})
+    await expect(page).toHaveURL(new RegExp(`/app/logs/tid-${id}`));
   });
 
   test("sign out button is visible and clickable", async ({ page }) => {
