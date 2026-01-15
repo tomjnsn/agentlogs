@@ -210,6 +210,7 @@ export const getAllTranscripts = createServerFn().handler(async () => {
     transcriptId: t.transcriptId,
     source: t.source,
     preview: t.preview,
+    summary: t.summary,
     createdAt: t.createdAt,
     updatedAt: t.updatedAt,
     messageCount: t.messageCount,

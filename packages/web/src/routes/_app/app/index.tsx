@@ -179,6 +179,9 @@ function TranscriptItem({ transcript }: { transcript: TranscriptData }) {
 
         {/* Content */}
         <div className="flex-1 min-w-0 space-y-1.5">
+          {/* Summary */}
+          {transcript.summary && <p className="text-sm">{transcript.summary}</p>}
+
           {/* Preview */}
           {transcript.preview && (
             <div

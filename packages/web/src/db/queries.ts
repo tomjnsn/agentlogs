@@ -149,6 +149,7 @@ export async function getAllTranscripts(db: DrizzleDB, userId: string) {
       source: transcripts.source,
       createdAt: transcripts.createdAt,
       preview: transcripts.preview,
+      summary: transcripts.summary,
       model: transcripts.model,
       costUsd: transcripts.costUsd,
       blendedTokens: transcripts.blendedTokens,
