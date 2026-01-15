@@ -187,6 +187,7 @@ export const getTranscript = createServerFn({ method: "GET" })
       transcriptId: transcript.transcriptId,
       source: transcript.source,
       preview: transcript.preview,
+      summary: transcript.summary,
       createdAt: transcript.createdAt,
       updatedAt: transcript.updatedAt,
       unifiedTranscript,

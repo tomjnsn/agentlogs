@@ -173,7 +173,7 @@ function TranscriptDetailComponent() {
         {/* Header */}
         <header className="mb-8">
           <h1 className="mb-3 text-2xl font-semibold tracking-tight truncate">
-            {unifiedTranscript.summary || unifiedTranscript.preview || "Untitled Thread"}
+            {data.summary || unifiedTranscript.preview || "Untitled Thread"}
           </h1>
           <div className="flex items-center gap-2">
             <Avatar className="h-6 w-6">
