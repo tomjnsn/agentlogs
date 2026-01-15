@@ -23,8 +23,27 @@ import {
 } from "lucide-react";
 import { ClaudeCodeIcon, CodexIcon, OpenCodeIcon } from "../../../components/icons/source-icons";
 import { DiffViewer, FileViewer } from "../../../components/diff-viewer";
-import { useEffect, useState } from "react";
-import { Streamdown } from "streamdown";
+import { lazy, Suspense, useEffect, useState } from "react";
+
+// Lazy load Streamdown to prevent SSR issues
+// (Streamdown uses new Function() which is blocked in Cloudflare Workers SSR)
+const Streamdown = lazy(() => import("streamdown").then((mod) => ({ default: mod.Streamdown })));
+
+// Client-only markdown renderer that only loads Streamdown on the client
+function ClientMarkdown({ children }: { children: string }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted) {
+    return <div className="whitespace-pre-wrap">{children}</div>;
+  }
+
+  return (
+    <Suspense fallback={<div className="whitespace-pre-wrap">{children}</div>}>
+      <Streamdown>{children}</Streamdown>
+    </Suspense>
+  );
+}
 import {
   extractImageReferences,
   replaceImageReferencesForDisplay,
@@ -518,7 +537,7 @@ function MessageBlock({ message, index, userImage, userName }: MessageBlockProps
   if (message.type === "agent") {
     return (
       <div id={messageId} className="prose prose-invert prose-sm max-w-none">
-        <Streamdown>{message.text}</Streamdown>
+        <ClientMarkdown>{message.text}</ClientMarkdown>
       </div>
     );
   }
