@@ -4,7 +4,6 @@ import { Check, Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
 import { getAdminStats, getAdminUsers, getSession, updateUserRole } from "../../../lib/server-functions";
 import { userRoles, type UserRole } from "../../../db/schema";
 
@@ -32,12 +31,6 @@ function StatCard({ title, value, description }: { title: string; value: string 
   );
 }
 
-const roleStyles: Record<UserRole, string> = {
-  admin: "bg-primary text-primary-foreground",
-  user: "bg-secondary text-secondary-foreground",
-  waitlist: "bg-muted text-muted-foreground",
-};
-
 function UserRoleSelect({ userId, initialRole }: { userId: string; initialRole: UserRole }) {
   const [role, setRole] = useState(initialRole);
   const [isLoading, setIsLoading] = useState(false);
@@ -62,7 +55,7 @@ function UserRoleSelect({ userId, initialRole }: { userId: string; initialRole: 
   return (
     <div className="flex items-center gap-2">
       <Select value={role} onValueChange={handleRoleChange} disabled={isLoading}>
-        <SelectTrigger className={cn("h-7 w-[100px] text-xs font-medium", roleStyles[role])}>
+        <SelectTrigger className="w-[100px]">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
