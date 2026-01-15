@@ -203,7 +203,10 @@ function HomeComponent() {
             <SelectItem value="private">Private only</SelectItem>
             {repoOptions.map((repo) => (
               <SelectItem key={repo.id} value={repo.id}>
-                {repo.name}
+                <span className="flex items-center gap-1.5">
+                  <GitHubIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                  {repo.name.replace(/^github\.com\//, "")}
+                </span>
               </SelectItem>
             ))}
           </SelectContent>
