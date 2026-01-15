@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WaitlistRouteImport } from './routes/waitlist'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthSplatRouteImport } from './routes/auth.$'
@@ -21,10 +22,16 @@ import { Route as ApiBlobsSha256RouteImport } from './routes/api/blobs.$sha256'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth.$'
 import { Route as AppSSessionIdRouteImport } from './routes/_app/s.$sessionId'
 import { Route as AppAppDeviceRouteImport } from './routes/_app/app/device'
+import { Route as AppAppAdminRouteImport } from './routes/_app/app/admin'
 import { Route as AppAppReposIdRouteImport } from './routes/_app/app/repos.$id'
 import { Route as AppAppPrivateCwdRouteImport } from './routes/_app/app/private.$cwd'
 import { Route as AppAppLogsIdRouteImport } from './routes/_app/app/logs.$id'
 
+const WaitlistRoute = WaitlistRouteImport.update({
+  id: '/waitlist',
+  path: '/waitlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
@@ -84,6 +91,11 @@ const AppAppDeviceRoute = AppAppDeviceRouteImport.update({
   path: '/app/device',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAppAdminRoute = AppAppAdminRouteImport.update({
+  id: '/app/admin',
+  path: '/app/admin',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAppReposIdRoute = AppAppReposIdRouteImport.update({
   id: '/app/repos/$id',
   path: '/app/repos/$id',
@@ -102,10 +114,12 @@ const AppAppLogsIdRoute = AppAppLogsIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/waitlist': typeof WaitlistRoute
   '/api/commit-track': typeof ApiCommitTrackRoute
   '/api/ingest': typeof ApiIngestRoute
   '/api/transcripts': typeof ApiTranscriptsRouteWithChildren
   '/auth/$': typeof AuthSplatRoute
+  '/app/admin': typeof AppAppAdminRoute
   '/app/device': typeof AppAppDeviceRoute
   '/s/$sessionId': typeof AppSSessionIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -118,10 +132,12 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/waitlist': typeof WaitlistRoute
   '/api/commit-track': typeof ApiCommitTrackRoute
   '/api/ingest': typeof ApiIngestRoute
   '/api/transcripts': typeof ApiTranscriptsRouteWithChildren
   '/auth/$': typeof AuthSplatRoute
+  '/app/admin': typeof AppAppAdminRoute
   '/app/device': typeof AppAppDeviceRoute
   '/s/$sessionId': typeof AppSSessionIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -136,10 +152,12 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
+  '/waitlist': typeof WaitlistRoute
   '/api/commit-track': typeof ApiCommitTrackRoute
   '/api/ingest': typeof ApiIngestRoute
   '/api/transcripts': typeof ApiTranscriptsRouteWithChildren
   '/auth/$': typeof AuthSplatRoute
+  '/_app/app/admin': typeof AppAppAdminRoute
   '/_app/app/device': typeof AppAppDeviceRoute
   '/_app/s/$sessionId': typeof AppSSessionIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -154,10 +172,12 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/waitlist'
     | '/api/commit-track'
     | '/api/ingest'
     | '/api/transcripts'
     | '/auth/$'
+    | '/app/admin'
     | '/app/device'
     | '/s/$sessionId'
     | '/api/auth/$'
@@ -170,10 +190,12 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/waitlist'
     | '/api/commit-track'
     | '/api/ingest'
     | '/api/transcripts'
     | '/auth/$'
+    | '/app/admin'
     | '/app/device'
     | '/s/$sessionId'
     | '/api/auth/$'
@@ -187,10 +209,12 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_app'
+    | '/waitlist'
     | '/api/commit-track'
     | '/api/ingest'
     | '/api/transcripts'
     | '/auth/$'
+    | '/_app/app/admin'
     | '/_app/app/device'
     | '/_app/s/$sessionId'
     | '/api/auth/$'
@@ -205,6 +229,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
+  WaitlistRoute: typeof WaitlistRoute
   ApiCommitTrackRoute: typeof ApiCommitTrackRoute
   ApiIngestRoute: typeof ApiIngestRoute
   ApiTranscriptsRoute: typeof ApiTranscriptsRouteWithChildren
@@ -215,6 +240,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/waitlist': {
+      id: '/waitlist'
+      path: '/waitlist'
+      fullPath: '/waitlist'
+      preLoaderRoute: typeof WaitlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app': {
       id: '/_app'
       path: ''
@@ -299,6 +331,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAppDeviceRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/app/admin': {
+      id: '/_app/app/admin'
+      path: '/app/admin'
+      fullPath: '/app/admin'
+      preLoaderRoute: typeof AppAppAdminRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/app/repos/$id': {
       id: '/_app/app/repos/$id'
       path: '/app/repos/$id'
@@ -324,6 +363,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
+  AppAppAdminRoute: typeof AppAppAdminRoute
   AppAppDeviceRoute: typeof AppAppDeviceRoute
   AppSSessionIdRoute: typeof AppSSessionIdRoute
   AppAppIndexRoute: typeof AppAppIndexRoute
@@ -333,6 +373,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAppAdminRoute: AppAppAdminRoute,
   AppAppDeviceRoute: AppAppDeviceRoute,
   AppSSessionIdRoute: AppSSessionIdRoute,
   AppAppIndexRoute: AppAppIndexRoute,
@@ -358,6 +399,7 @@ const ApiTranscriptsRouteWithChildren = ApiTranscriptsRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
+  WaitlistRoute: WaitlistRoute,
   ApiCommitTrackRoute: ApiCommitTrackRoute,
   ApiIngestRoute: ApiIngestRoute,
   ApiTranscriptsRoute: ApiTranscriptsRouteWithChildren,

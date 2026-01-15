@@ -1,6 +1,6 @@
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
 import type { DrizzleDB } from ".";
-import { repos, transcripts, user } from "./schema";
+import { repos, transcripts, user, type UserRole } from "./schema";
 
 /**
  * Get all repos for a user with computed transcript count
@@ -177,4 +177,77 @@ export async function getAllTranscripts(db: DrizzleDB, userId: string) {
     .leftJoin(repos, eq(transcripts.repoId, repos.id))
     .where(eq(transcripts.userId, userId))
     .orderBy(desc(transcripts.createdAt));
+}
+
+/**
+ * Get user by ID with role
+ */
+export async function getUserById(db: DrizzleDB, userId: string) {
+  return await db.query.user.findFirst({
+    where: eq(user.id, userId),
+  });
+}
+
+/**
+ * Get user role by ID
+ */
+export async function getUserRole(db: DrizzleDB, userId: string): Promise<UserRole | null> {
+  const result = await db.select({ role: user.role }).from(user).where(eq(user.id, userId)).limit(1);
+  return (result[0]?.role as UserRole) ?? null;
+}
+
+// =============================================================================
+// Admin Queries
+// =============================================================================
+
+/**
+ * Get all users with their transcript counts (admin only)
+ */
+export async function getAdminUserStats(db: DrizzleDB) {
+  return await db
+    .select({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      image: user.image,
+      role: user.role,
+      createdAt: user.createdAt,
+      transcriptCount: sql<number>`CAST(COUNT(${transcripts.id}) AS INTEGER)`.as("transcript_count"),
+      totalCost: sql<number>`COALESCE(SUM(${transcripts.costUsd}), 0)`.as("total_cost"),
+    })
+    .from(user)
+    .leftJoin(transcripts, eq(transcripts.userId, user.id))
+    .groupBy(user.id)
+    .orderBy(desc(user.createdAt));
+}
+
+/**
+ * Get aggregate stats for the admin dashboard
+ */
+export async function getAdminAggregateStats(db: DrizzleDB) {
+  const [userStats] = await db
+    .select({
+      totalUsers: count(user.id),
+      waitlistUsers: sql<number>`CAST(SUM(CASE WHEN ${user.role} = 'waitlist' THEN 1 ELSE 0 END) AS INTEGER)`,
+      activeUsers: sql<number>`CAST(SUM(CASE WHEN ${user.role} = 'user' THEN 1 ELSE 0 END) AS INTEGER)`,
+      adminUsers: sql<number>`CAST(SUM(CASE WHEN ${user.role} = 'admin' THEN 1 ELSE 0 END) AS INTEGER)`,
+    })
+    .from(user);
+
+  const [transcriptStats] = await db
+    .select({
+      totalTranscripts: count(transcripts.id),
+      totalCost: sql<number>`COALESCE(SUM(${transcripts.costUsd}), 0)`,
+      totalTokens: sql<number>`COALESCE(SUM(${transcripts.totalTokens}), 0)`,
+      totalMessages: sql<number>`COALESCE(SUM(${transcripts.messageCount}), 0)`,
+    })
+    .from(transcripts);
+
+  const [repoStats] = await db.select({ totalRepos: count(repos.id) }).from(repos);
+
+  return {
+    ...userStats,
+    ...transcriptStats,
+    ...repoStats,
+  };
 }

@@ -41,11 +41,26 @@ export const getSession = createServerFn({ method: "GET" }).handler(async () => 
       return null;
     }
 
+    // Fetch user role from database
+    const db = createDrizzle(env.DB);
+    let role: string | null = null;
+    try {
+      role = await queries.getUserRole(db, session.user.id);
+    } catch (roleError) {
+      logger.error("Failed to fetch user role, defaulting to waitlist", {
+        userId: session.user.id,
+        error: roleError instanceof Error ? roleError.message : String(roleError),
+      });
+      // Default to waitlist if role fetch fails - don't break the session
+    }
+
     return {
       user: {
         id: session.user.id,
         email: session.user.email,
         name: session.user.name,
+        image: session.user.image,
+        role: role ?? "waitlist",
       },
       session: {
         id: session.session.id,
@@ -226,4 +241,48 @@ export const getAllTranscripts = createServerFn().handler(async () => {
     branch: t.branch,
     cwd: t.cwd,
   }));
+});
+
+// =============================================================================
+// Admin Server Functions
+// =============================================================================
+
+/**
+ * Check if current user is an admin
+ */
+async function requireAdmin() {
+  const auth = createAuth();
+  const headers = getRequestHeaders();
+
+  const session = await auth.api.getSession({ headers });
+  if (!session?.user) {
+    throw new Error("Unauthorized");
+  }
+
+  const db = createDrizzle(env.DB);
+  const role = await queries.getUserRole(db, session.user.id);
+
+  if (role !== "admin") {
+    throw new Error("Forbidden: Admin access required");
+  }
+
+  return session.user.id;
+}
+
+/**
+ * Get admin dashboard stats
+ */
+export const getAdminStats = createServerFn({ method: "GET" }).handler(async () => {
+  await requireAdmin();
+  const db = createDrizzle(env.DB);
+  return queries.getAdminAggregateStats(db);
+});
+
+/**
+ * Get all users with their stats (admin only)
+ */
+export const getAdminUsers = createServerFn({ method: "GET" }).handler(async () => {
+  await requireAdmin();
+  const db = createDrizzle(env.DB);
+  return queries.getAdminUserStats(db);
 });

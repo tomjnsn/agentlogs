@@ -1,22 +1,15 @@
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { getSession } from "../lib/server-functions";
+import { ClaudeCodeIcon, OpenCodeIcon } from "../components/icons/source-icons";
 
 export const Route = createFileRoute("/")({
-  beforeLoad: async () => {
-    const session = await getSession();
-    if (session) {
-      throw redirect({ to: "/app" });
-    }
-  },
   component: LandingPage,
 });
 
-type Integration = "claude-code" | "codex" | "opencode";
+type Integration = "claude-code" | "opencode";
 
 const integrations: { id: Integration; name: string }[] = [
   { id: "claude-code", name: "Claude Code" },
-  { id: "codex", name: "Codex" },
   { id: "opencode", name: "OpenCode" },
 ];
 
@@ -27,16 +20,6 @@ const installCommands: Record<Integration, string> = {
 
 # authenticate
 agentlogs login`,
-  codex: `# install cli
-npm install -g @agentlogs/cli
-
-# authenticate
-agentlogs login
-
-# add to ~/.codex/config.yaml
-hooks:
-  session_end:
-    - agentlogs codex upload`,
   opencode: `# install cli
 npm install -g @agentlogs/cli
 
@@ -53,210 +36,302 @@ function LandingPage() {
   const [activeTab, setActiveTab] = useState<Integration>("claude-code");
 
   return (
-    <>
-      {/* Geist font */}
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      <link
-        href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400&display=swap"
-        rel="stylesheet"
-      />
-
-      <div
-        className="min-h-screen bg-background text-foreground dark scheme-dark"
-        style={{ fontFamily: "'Geist', system-ui, sans-serif" }}
-      >
-        {/* Dot grid background */}
-        <div
-          className="fixed inset-0 pointer-events-none"
-          style={{
-            backgroundImage: `radial-gradient(circle, oklch(0.4 0 0 / 0.4) 1px, transparent 1px)`,
-            backgroundSize: "24px 24px",
-          }}
-        />
-
-        <div className="relative">
-          {/* Header */}
-          <header className="border-b border-border">
-            <div className="mx-auto max-w-5xl px-6 py-4 flex items-center justify-between">
-              <span className="text-lg font-medium tracking-tight">🔮 AgentLogs</span>
-              <a href="/auth/github" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                Sign in
-              </a>
-            </div>
-          </header>
-
-          {/* Hero */}
-          <section className="border-b border-border">
-            <div className="mx-auto max-w-5xl px-6 py-24 md:py-32">
-              <div className="max-w-2xl">
-                <h1 className="text-4xl md:text-5xl font-semibold tracking-tight leading-[1.1] mb-6">
-                  See how your best
-                  <br />
-                  engineers prompt
-                </h1>
-                <p className="text-lg md:text-xl text-muted-foreground mb-10 leading-relaxed">
-                  Prompt history for teams. Learn what works. Ship faster together.
-                </p>
-                <div className="flex flex-wrap items-center gap-4">
-                  <Link
-                    to="/app"
-                    className="inline-flex items-center px-5 py-2.5 bg-foreground text-background text-sm font-medium hover:bg-foreground/90 transition-colors rounded-lg"
-                  >
-                    View Demo
-                  </Link>
-                  <span className="text-xs text-muted-foreground border border-border px-3 py-1.5 rounded-md">
-                    Free for open source
-                  </span>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Features */}
-          <section className="border-b border-border">
-            <div className="mx-auto max-w-5xl px-6 py-20">
-              <p className="text-muted-foreground text-sm mb-12 tracking-wide uppercase">How it works</p>
-              <div className="grid md:grid-cols-3 gap-12 md:gap-8">
-                <div className="space-y-4">
-                  <div className="w-8 h-8 border border-border flex items-center justify-center text-muted-foreground text-sm rounded-md">
-                    1
-                  </div>
-                  <h3 className="text-lg font-medium">Every session, captured</h3>
-                  <p className="text-muted-foreground leading-relaxed">
-                    AI sessions automatically uploaded when they end. No manual exports.
-                  </p>
-                </div>
-                <div className="space-y-4">
-                  <div className="w-8 h-8 border border-border flex items-center justify-center text-muted-foreground text-sm rounded-md">
-                    2
-                  </div>
-                  <h3 className="text-lg font-medium">See what actually works</h3>
-                  <p className="text-muted-foreground leading-relaxed">
-                    Browse your team's prompts. Learn the patterns that ship features.
-                  </p>
-                </div>
-                <div className="space-y-4">
-                  <div className="w-8 h-8 border border-border flex items-center justify-center text-muted-foreground text-sm rounded-md">
-                    3
-                  </div>
-                  <h3 className="text-lg font-medium">Link to the code</h3>
-                  <p className="text-muted-foreground leading-relaxed">
-                    Sessions linked to git commits. See exactly what AI produced.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Key message */}
-          <section className="border-b border-border">
-            <div className="mx-auto max-w-5xl px-6 py-20">
-              <blockquote className="text-2xl md:text-3xl font-medium leading-snug max-w-3xl">
-                "Some devs 10x with AI.
-                <br />
-                <span className="text-muted-foreground">Now everyone can see how."</span>
-              </blockquote>
-            </div>
-          </section>
-
-          {/* Demo placeholder */}
-          <section className="border-b border-border">
-            <div className="mx-auto max-w-5xl px-6 py-20">
-              <p className="text-muted-foreground text-sm mb-8 tracking-wide uppercase">Preview</p>
-              <div className="border border-border bg-card/30 aspect-video flex items-center justify-center rounded-lg">
-                <div className="text-center">
-                  <p className="text-muted-foreground text-sm mb-4">Dashboard preview</p>
-                  <Link to="/app" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                    View live demo →
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Install */}
-          <section className="border-b border-border">
-            <div className="mx-auto max-w-5xl px-6 py-20">
-              <p className="text-muted-foreground text-sm mb-8 tracking-wide uppercase">Install</p>
-
-              {/* Tabs */}
-              <div className="flex gap-1 mb-6 border-b border-border">
-                {integrations.map((integration) => (
-                  <button
-                    key={integration.id}
-                    onClick={() => setActiveTab(integration.id)}
-                    className={`px-4 py-2.5 text-sm transition-colors ${
-                      activeTab === integration.id
-                        ? "text-foreground border-b border-foreground -mb-px"
-                        : "text-muted-foreground hover:text-foreground/80"
-                    }`}
-                  >
-                    {integration.name}
-                  </button>
-                ))}
-              </div>
-
-              {/* Code block */}
-              <div className="bg-card/50 border border-border p-6 rounded-lg">
-                <pre
-                  className="text-sm leading-relaxed overflow-x-auto"
-                  style={{ fontFamily: "'Geist Mono', monospace" }}
-                >
-                  <code>{installCommands[activeTab]}</code>
-                </pre>
-              </div>
-
-              <p className="mt-6 text-sm text-muted-foreground">Transcripts auto-captured on session end.</p>
-            </div>
-          </section>
-
-          {/* Self-host */}
-          <section className="border-b border-border">
-            <div className="mx-auto max-w-5xl px-6 py-16">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                <div>
-                  <h3 className="text-lg font-medium mb-2">Self-host</h3>
-                  <p className="text-muted-foreground text-sm">Runs on Cloudflare Workers. Your data stays yours.</p>
-                </div>
-                <div
-                  className="bg-card/50 border border-border px-4 py-3 text-sm text-muted-foreground rounded-lg"
-                  style={{ fontFamily: "'Geist Mono', monospace" }}
-                >
-                  AGENTLOGS_BASE_URL=https://your-instance.com
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* CTA */}
-          <section className="border-b border-border">
-            <div className="mx-auto max-w-5xl px-6 py-20 text-center">
-              <p className="text-muted-foreground mb-8">Your best prompts shouldn't disappear into chat history.</p>
-              <Link
-                to="/auth/$"
-                params={{ _splat: "github" }}
-                className="inline-flex items-center px-6 py-3 border border-border text-sm font-medium hover:border-foreground/50 hover:text-foreground transition-colors rounded-lg"
-              >
-                Get started →
-              </Link>
-            </div>
-          </section>
-
-          {/* Footer */}
-          <footer className="mx-auto max-w-5xl px-6 py-8 flex items-center justify-between text-sm text-muted-foreground">
-            <span>🔮 AgentLogs</span>
+    <main className="mx-auto max-w-4xl dark scheme-dark">
+      <div className="min-h-screen border-x border-white/10">
+        {/* Header */}
+        <header className="flex h-16 items-center justify-between line-b">
+          <div className="flex items-center gap-2 p-4">
+            <span className="text-lg font-mono text-white/90">AgentLogs</span>
+          </div>
+          <div className="flex h-full items-center font-mono text-white/90">
             <a
               href="https://github.com/agentlogs"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-foreground transition-colors"
+              className="flex h-full items-center border-l border-white/10 px-6 py-2 hover:bg-white/5 hover:underline"
             >
               GitHub
             </a>
-          </footer>
-        </div>
+            <a
+              href="/auth/github"
+              className="flex h-full items-center border-l border-white/10 px-6 py-2 hover:bg-white/5 hover:underline"
+            >
+              Sign in
+            </a>
+          </div>
+        </header>
+
+        {/* Hero */}
+        <section className="relative flex flex-col items-center justify-center bg-dot-pattern py-24">
+          <h1 className="ml-4 text-center font-serif text-[60px] leading-[1.1] tracking-tight text-white/95 md:text-[80px]">
+            See how your best
+            <br />
+            engineers prompt
+          </h1>
+
+          <p className="ml-4 mt-8 max-w-xl text-center font-mono text-lg text-white/80 text-pretty">
+            Prompt history for teams. Learn what works. Ship faster together.
+          </p>
+
+          <a
+            href="/auth/github"
+            className="mt-16 ml-4 inline-block border border-white/20 bg-white/80 px-6 py-3 text-center font-mono text-lg text-neutral-950 shadow-[4px_4px_0_var(--color-neutral-600)] hover:bg-white/90 active:translate-x-[4px] active:translate-y-[4px] active:shadow-none"
+          >
+            Join the waitlist
+          </a>
+
+          <p className="mt-6 font-mono text-sm text-white/50">Free for open source</p>
+
+          {/* Supported tools */}
+          <div className="mt-12 flex items-center gap-6 text-white/60">
+            <span className="font-mono text-sm">Works with:</span>
+            <div className="flex items-center gap-2">
+              <ClaudeCodeIcon className="size-4" />
+              <span className="font-mono text-sm">Claude Code</span>
+            </div>
+            <span className="font-mono text-sm text-white/30">|</span>
+            <div className="flex items-center gap-2">
+              <OpenCodeIcon className="size-4" />
+              <span className="font-mono text-sm">OpenCode</span>
+            </div>
+          </div>
+        </section>
+
+        {/* Features Grid */}
+        <section className="line-y">
+          <div className="grid grid-cols-1 md:grid-cols-3">
+            {/* Feature 1: Every session captured */}
+            <div className="flex min-h-[280px] flex-col border-b border-white/10 bg-transparent p-6 md:border-r">
+              <h3 className="mb-2 font-mono text-lg text-white/90">Every session, captured</h3>
+              <p className="font-mono text-sm leading-relaxed text-white/50">
+                AI sessions automatically uploaded when they end. No manual exports.
+              </p>
+              <div className="mt-auto flex flex-1 items-center justify-center pt-4">
+                {/* Upload animation - floating documents */}
+                <svg viewBox="0 0 120 80" className="h-24 w-full">
+                  {/* Cloud shape */}
+                  <path
+                    d="M85 35c0-11-9-20-20-20-8 0-15 5-18 12-2-1-4-2-7-2-8 0-15 7-15 15s7 15 15 15h45c8 0 15-7 15-15 0-3-1-6-3-8"
+                    fill="none"
+                    stroke="rgba(255,255,255,0.3)"
+                    strokeWidth="1"
+                    className="animate-node-pulse"
+                  />
+                  {/* Floating documents */}
+                  <g className="animate-float-up" style={{ animationDelay: "0s" }}>
+                    <rect
+                      x="40"
+                      y="55"
+                      width="12"
+                      height="16"
+                      fill="none"
+                      stroke="rgba(255,255,255,0.4)"
+                      strokeWidth="1"
+                    />
+                    <line x1="43" y1="60" x2="49" y2="60" stroke="rgba(255,255,255,0.3)" strokeWidth="1" />
+                    <line x1="43" y1="64" x2="49" y2="64" stroke="rgba(255,255,255,0.3)" strokeWidth="1" />
+                  </g>
+                  <g className="animate-float-up" style={{ animationDelay: "0.5s" }}>
+                    <rect
+                      x="55"
+                      y="58"
+                      width="12"
+                      height="16"
+                      fill="none"
+                      stroke="rgba(255,255,255,0.4)"
+                      strokeWidth="1"
+                    />
+                    <line x1="58" y1="63" x2="64" y2="63" stroke="rgba(255,255,255,0.3)" strokeWidth="1" />
+                    <line x1="58" y1="67" x2="64" y2="67" stroke="rgba(255,255,255,0.3)" strokeWidth="1" />
+                  </g>
+                  <g className="animate-float-up" style={{ animationDelay: "1s" }}>
+                    <rect
+                      x="70"
+                      y="52"
+                      width="12"
+                      height="16"
+                      fill="none"
+                      stroke="rgba(255,255,255,0.4)"
+                      strokeWidth="1"
+                    />
+                    <line x1="73" y1="57" x2="79" y2="57" stroke="rgba(255,255,255,0.3)" strokeWidth="1" />
+                    <line x1="73" y1="61" x2="79" y2="61" stroke="rgba(255,255,255,0.3)" strokeWidth="1" />
+                  </g>
+                </svg>
+              </div>
+            </div>
+
+            {/* Feature 2: See what works */}
+            <div className="flex min-h-[280px] flex-col border-b border-white/10 bg-transparent p-6 md:border-r">
+              <h3 className="mb-2 font-mono text-lg text-white/90">See what actually works</h3>
+              <p className="font-mono text-sm leading-relaxed text-white/50">
+                Browse your team's prompts. Learn the patterns that ship features.
+              </p>
+              <div className="mt-auto flex items-center justify-center pt-4">
+                {/* Radar/search animation */}
+                <div className="relative size-28">
+                  {/* Radar circles */}
+                  <div className="absolute inset-0 rounded-full border border-white/10" />
+                  <div className="absolute inset-4 rounded-full border border-white/10" />
+                  <div className="absolute inset-8 rounded-full border border-white/10" />
+                  {/* Crosshairs */}
+                  <div className="absolute top-1/2 left-0 right-0 h-px bg-white/10" />
+                  <div className="absolute left-1/2 top-0 bottom-0 w-px bg-white/10" />
+                  {/* Sweep line */}
+                  <div className="absolute inset-0 animate-radar-sweep origin-center">
+                    <div className="absolute top-1/2 left-1/2 w-1/2 h-px bg-linear-to-r from-white/60 to-transparent origin-left" />
+                  </div>
+                  {/* Blips */}
+                  <div
+                    className="absolute top-[28%] right-[22%] size-2 bg-white rounded-full"
+                    style={{ animation: "radar-blip 4s ease-out infinite", animationDelay: "3.5s" }}
+                  />
+                  <div
+                    className="absolute bottom-[30%] left-[28%] size-1.5 bg-white rounded-full"
+                    style={{ animation: "radar-blip 4s ease-out infinite", animationDelay: "1.5s" }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Feature 3: Link to code */}
+            <div className="flex min-h-[280px] flex-col border-b border-white/10 bg-transparent p-6">
+              <h3 className="mb-2 font-mono text-lg text-white/90">Link to the code</h3>
+              <p className="font-mono text-sm leading-relaxed text-white/50">
+                Sessions linked to git commits. See exactly what AI produced.
+              </p>
+              <div className="mt-auto flex flex-1 items-center justify-center pt-4">
+                {/* Git connection animation */}
+                <svg viewBox="0 0 140 100" className="h-28 w-full">
+                  {/* Nodes */}
+                  <rect
+                    x="10"
+                    y="38"
+                    width="24"
+                    height="24"
+                    fill="none"
+                    stroke="rgba(255,255,255,0.3)"
+                    strokeWidth="1"
+                    className="animate-node-pulse"
+                    style={{ animationDelay: "0s" }}
+                  />
+                  <rect
+                    x="58"
+                    y="38"
+                    width="24"
+                    height="24"
+                    fill="none"
+                    stroke="rgba(255,255,255,0.4)"
+                    strokeWidth="1"
+                    className="animate-node-pulse"
+                    style={{ animationDelay: "0.3s" }}
+                  />
+                  <rect
+                    x="106"
+                    y="38"
+                    width="24"
+                    height="24"
+                    fill="none"
+                    stroke="rgba(255,255,255,0.3)"
+                    strokeWidth="1"
+                    className="animate-node-pulse"
+                    style={{ animationDelay: "0.6s" }}
+                  />
+                  {/* Connection lines */}
+                  <line
+                    x1="34"
+                    y1="50"
+                    x2="58"
+                    y2="50"
+                    stroke="rgba(255,255,255,0.2)"
+                    strokeWidth="1"
+                    className="animate-draw-line"
+                    style={{ animationDelay: "0.2s" }}
+                  />
+                  <line
+                    x1="82"
+                    y1="50"
+                    x2="106"
+                    y2="50"
+                    stroke="rgba(255,255,255,0.2)"
+                    strokeWidth="1"
+                    className="animate-draw-line"
+                    style={{ animationDelay: "0.4s" }}
+                  />
+                  {/* Labels */}
+                  <text x="22" y="75" className="fill-white/30 text-[8px] font-mono" textAnchor="middle">
+                    session
+                  </text>
+                  <text x="70" y="75" className="fill-white/30 text-[8px] font-mono" textAnchor="middle">
+                    commit
+                  </text>
+                  <text x="118" y="75" className="fill-white/30 text-[8px] font-mono" textAnchor="middle">
+                    code
+                  </text>
+                  {/* Active dot */}
+                  <circle cx="70" cy="50" r="3" fill="rgba(255,255,255,0.7)" className="animate-node-pulse" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Quote */}
+        <section className="line-b bg-dot-pattern py-16">
+          <blockquote className="mx-auto max-w-2xl px-6 text-center font-serif text-2xl leading-snug text-white/90 md:text-3xl">
+            "Some devs 10x with AI.
+            <br />
+            <span className="text-white/50">Now everyone can see how."</span>
+          </blockquote>
+        </section>
+
+        {/* Install */}
+        <section className="line-b px-6 py-16">
+          <p className="mb-8 font-mono text-sm uppercase tracking-wide text-white/50">Install</p>
+
+          {/* Tabs */}
+          <div className="mb-6 flex gap-1 border-b border-white/10">
+            {integrations.map((integration) => (
+              <button
+                key={integration.id}
+                onClick={() => setActiveTab(integration.id)}
+                className={`-mb-px px-4 py-2.5 font-mono text-sm transition-colors ${
+                  activeTab === integration.id
+                    ? "border-b border-white/90 text-white/90"
+                    : "text-white/50 hover:text-white/70"
+                }`}
+              >
+                {integration.name}
+              </button>
+            ))}
+          </div>
+
+          {/* Code block */}
+          <div className="border border-white/10 bg-white/5 p-6">
+            <pre className="overflow-x-auto font-mono text-sm leading-relaxed text-white/80">
+              <code>{installCommands[activeTab]}</code>
+            </pre>
+          </div>
+
+          <p className="mt-6 font-mono text-sm text-white/50">Transcripts auto-captured on session end.</p>
+        </section>
+
+        {/* CTA */}
+        <section className="line-b bg-dot-pattern py-20 text-center">
+          <p className="mb-8 font-mono text-white/60">Your best prompts shouldn't disappear into chat history.</p>
+          <a
+            href="/auth/github"
+            className="inline-block border border-white/20 px-6 py-3 font-mono text-sm text-white/90 hover:border-white/50 hover:text-white"
+          >
+            Get started →
+          </a>
+        </section>
+
+        {/* Footer */}
+        <footer className="flex min-h-20 items-center justify-center bg-dot-pattern line-t">
+          <p className="font-mono text-sm text-white/50">© 2025 AgentLogs. All rights reserved.</p>
+        </footer>
       </div>
-    </>
+    </main>
   );
 }

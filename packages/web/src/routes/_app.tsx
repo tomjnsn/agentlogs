@@ -10,6 +10,10 @@ export const Route = createFileRoute("/_app")({
     if (!session) {
       throw redirect({ to: "/" });
     }
+    // Waitlist users can't access the app
+    if (session.user.role === "waitlist") {
+      throw redirect({ to: "/waitlist" });
+    }
     return { session };
   },
   component: AppLayout,
@@ -41,7 +45,7 @@ function AppLayout() {
       <header className="border-b border-border px-6 py-4">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold">
-            <Link to="/app" className="transition-colors hover:text-primary">
+            <Link to="/" className="transition-colors hover:text-primary">
               AgentLogs
             </Link>
           </h1>
@@ -54,6 +58,14 @@ function AppLayout() {
               </div>
             ) : session ? (
               <>
+                {session.user.role === "admin" && (
+                  <Link
+                    to="/app/admin"
+                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    Admin
+                  </Link>
+                )}
                 <span className="text-sm text-foreground">{session.user.name || session.user.email}</span>
                 <Button onClick={handleSignOut} variant="outline" size="sm">
                   Sign Out

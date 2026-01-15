@@ -21,6 +21,8 @@
   },
   "dependencies": {
     "@agentlogs/shared": "workspace:*",
+    "@fontsource/instrument-serif": "^5.2.8",
+    "@fontsource/jetbrains-mono": "^5.2.8",
     "@openrouter/ai-sdk-provider": "^1.5.4",
     "@paralleldrive/cuid2": "^2.3.0",
     "@pierre/diffs": "^1.0.4",
