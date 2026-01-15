@@ -745,23 +745,12 @@ function isCommandEnvelope(value: string): boolean {
   return COMMAND_ENVELOPE_PATTERN.test(value);
 }
 
-function summarizeMessage(message: ClaudeMessageRecord, maxLength = 80): string | null {
+function summarizeMessage(message: ClaudeMessageRecord): string | null {
   const normalized = getNormalizedMessageText(message);
   if (!normalized) {
     return null;
   }
-  return truncate(normalized, maxLength);
-}
-
-function truncate(value: string, maxLength: number): string {
-  const normalized = collapseWhitespace(value);
-  if (normalized.length <= maxLength) {
-    return normalized;
-  }
-  if (maxLength <= 1) {
-    return normalized.slice(0, maxLength);
-  }
-  return `${normalized.slice(0, maxLength - 1)}…`;
+  return collapseWhitespace(normalized);
 }
 
 function deriveWorkingDirectory(transcript: ClaudeMessageRecord[]): string | undefined {

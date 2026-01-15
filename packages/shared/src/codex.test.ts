@@ -179,7 +179,7 @@ describe("convertCodexFile", () => {
               },
             },
           ],
-          "preview": "create a file \`JOKE.md\` with a random joke with a title and a footer with some …",
+          "preview": "create a file \`JOKE.md\` with a random joke with a title and a footer with some random text, then read this file, then make change to the file, then delete the file.",
           "source": "codex",
           "summary": null,
           "timestamp": "2025-10-17T22:04:23.055Z",

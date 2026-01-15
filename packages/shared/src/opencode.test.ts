@@ -194,7 +194,7 @@ describe("convertOpenCodeTranscript", () => {
             },
           },
         ],
-        "preview": "create a file JOKE.md with a random joke with a title and a footer with some ra…",
+        "preview": "create a file JOKE.md with a random joke with a title and a footer with some random text, then read this file, then make change to the file, then delete the file.",
         "source": "opencode",
         "summary": null,
         "timestamp": "2026-01-11T22:59:11.896Z",

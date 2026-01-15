@@ -421,21 +421,15 @@ function extractRelativeCwd(messages: OpenCodeMessage[]): string | null {
 
 function derivePreview(userTexts: string[]): string | null {
   for (const text of userTexts) {
-    const trimmed = text.trim();
+    const trimmed = text.trim().replace(/\s+/g, " ");
     if (!trimmed) continue;
     // Skip system-like messages
     if (trimmed.startsWith("<") && trimmed.includes(">")) continue;
     // Remove surrounding quotes if present
     const unquoted = trimmed.replace(/^["']|["']$/g, "");
-    return truncate(unquoted, 80);
+    return unquoted;
   }
-  return userTexts.length > 0 ? truncate(userTexts[0], 80) : null;
-}
-
-function truncate(value: string, maxLength: number): string {
-  if (value.length <= maxLength) return value;
-  if (maxLength <= 1) return value.slice(0, maxLength);
-  return `${value.slice(0, maxLength - 1)}…`;
+  return userTexts.length > 0 ? userTexts[0].trim().replace(/\s+/g, " ") : null;
 }
 
 // ============================================================================

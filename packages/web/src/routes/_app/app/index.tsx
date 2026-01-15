@@ -2,7 +2,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ChevronDown, FileCode, Folder, MessageSquare, Search, Terminal, Wrench } from "lucide-react";
+import { FileCode, Folder, MessageSquare, Search, Terminal, Wrench } from "lucide-react";
 import { ClaudeCodeIcon, CodexIcon, OpenCodeIcon } from "../../../components/icons/source-icons";
 import { useMemo, useState } from "react";
 import { getAllTranscripts } from "../../../lib/server-functions";
@@ -165,7 +165,6 @@ function HomeComponent() {
 type TranscriptData = Awaited<ReturnType<typeof getAllTranscripts>>[number];
 
 function TranscriptItem({ transcript }: { transcript: TranscriptData }) {
-  const [expanded, setExpanded] = useState(false);
   const timeAgo = formatTimeAgo(new Date(transcript.createdAt));
 
   return (
@@ -184,11 +183,7 @@ function TranscriptItem({ transcript }: { transcript: TranscriptData }) {
 
           {/* Preview */}
           {transcript.preview && (
-            <div
-              className={`bg-secondary/50 rounded-md px-3 py-2 text-sm text-muted-foreground ${
-                !expanded ? "line-clamp-2" : ""
-              }`}
-            >
+            <div className="bg-secondary/50 rounded-md px-3 py-2 text-sm text-muted-foreground truncate">
               {transcript.preview}
             </div>
           )}
@@ -237,20 +232,6 @@ function TranscriptItem({ transcript }: { transcript: TranscriptData }) {
             )}
           </div>
         </div>
-
-        {/* Expand button */}
-        {transcript.preview && transcript.preview.length > 150 && (
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setExpanded(!expanded);
-            }}
-            className="self-start p-1 hover:bg-accent rounded shrink-0"
-          >
-            <ChevronDown className={`h-4 w-4 transition-transform ${expanded ? "rotate-180" : ""}`} />
-          </button>
-        )}
       </div>
     </Link>
   );

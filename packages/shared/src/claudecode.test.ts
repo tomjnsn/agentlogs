@@ -642,7 +642,7 @@ describe("convertClaudeCodeFile", () => {
               },
             },
           ],
-          "preview": "create a file \`JOKE.md\` with a ranom joke with a title and a footer wiht some r…",
+          "preview": "create a file \`JOKE.md\` with a ranom joke with a title and a footer wiht some random text, then read this file, then make change to the file, then delete this file.",
           "source": "claude-code",
           "summary": null,
           "timestamp": "2025-10-12T21:36:39.886Z",

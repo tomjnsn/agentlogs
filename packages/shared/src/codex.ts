@@ -857,16 +857,16 @@ function isIgnorableUserText(text: string): boolean {
 
 function derivePreview(userMessages: string[]): string | null {
   for (const text of userMessages) {
-    const trimmed = text.trim();
+    const trimmed = collapseWhitespace(text);
     if (!trimmed) {
       continue;
     }
     if (trimmed.startsWith("<user_instructions>") || trimmed.startsWith("<environment_context>")) {
       continue;
     }
-    return truncate(trimmed, 80);
+    return trimmed;
   }
-  return userMessages.length > 0 ? truncate(userMessages[0], 80) : null;
+  return userMessages.length > 0 ? collapseWhitespace(userMessages[0]) : null;
 }
 
 function buildGitContext(sessionMeta: CodexSessionMeta | null, cwd: string | null): UnifiedGitContext {
@@ -996,16 +996,6 @@ function asString(value: unknown): string | null {
 
 function collapseWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();
-}
-
-function truncate(value: string, maxLength: number): string {
-  if (value.length <= maxLength) {
-    return value;
-  }
-  if (maxLength <= 1) {
-    return value.slice(0, maxLength);
-  }
-  return `${value.slice(0, maxLength - 1)}…`;
 }
 
 function createFallbackId(timestamp: Date): string {
