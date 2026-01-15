@@ -36,7 +36,7 @@ function LandingPage() {
   const [activeTab, setActiveTab] = useState<Integration>("claude-code");
 
   return (
-    <main className="mx-auto max-w-4xl dark scheme-dark">
+    <main className="mx-auto max-w-4xl overflow-hidden dark scheme-dark">
       <div className="min-h-screen border-x border-white/10">
         {/* Header */}
         <header className="flex h-16 items-center justify-between line-b">

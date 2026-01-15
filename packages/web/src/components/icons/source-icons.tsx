@@ -40,14 +40,22 @@ export function OpenCodeIcon({ className, ...props }: IconProps) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      width="16"
-      height="16"
-      fill="currentColor"
-      viewBox="0 0 512 512"
+      width="32"
+      height="40"
+      viewBox="0 0 32 40"
+      fill="none"
       className={className}
       {...props}
     >
-      <path fillRule="evenodd" clipRule="evenodd" d="M384 416H128V96H384V416ZM320 160H192V352H320V160Z" />
+      <g clipPath="url(#clip0_opencode)">
+        <path d="M24 32H8V16H24V32Z" fill="color-mix(in srgb, currentColor 50%, transparent)" />
+        <path d="M24 8H8V32H24V8ZM32 40H0V0H32V40Z" fill="currentColor" />
+      </g>
+      <defs>
+        <clipPath id="clip0_opencode">
+          <rect width="32" height="40" fill="white" />
+        </clipPath>
+      </defs>
     </svg>
   );
 }
