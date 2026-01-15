@@ -1,10 +1,10 @@
-# AgentLogs
+# 🔮 AgentLogs
 
 Capture and analyze coding agent session transcripts to understand AI assistant usage patterns.
 
 ## What It Does
 
-- **CLI**: Captures agent transcripts (Claude Code, Amp, OpenCode) via hooks and uploads them
+- **CLI**: Captures agent transcripts (Claude Code, Codex, OpenCode) via hooks and uploads them
 - **Web App**: Stores transcripts, analyzes patterns, displays insights
 
 ## Tech Stack
@@ -46,7 +46,6 @@ packages/
 ├── cli/       # Agent transcript capture tool
 ├── web/       # TanStack Start app on Cloudflare Workers
 ├── shared/    # TypeScript types and Zod schemas
-├── plugin/    # Claude Code plugin
 ├── opencode/  # OpenCode integration
 └── e2e/       # End-to-end tests
 ```
@@ -120,14 +119,12 @@ bun agentlogs login
 ## CLI Usage
 
 ```bash
-# From repo root
 bun agentlogs login                              # Authenticate
+bun agentlogs status                             # Check login status
 bun agentlogs claudecode upload transcript.jsonl # Upload transcript
+bun agentlogs claudecode sync                    # Sync all local transcripts
 bun agentlogs claudecode hook                    # Hook (receives via stdin)
-
-# Or from packages/cli
-cd packages/cli
-bun run start login
+bun agentlogs codex upload transcript.jsonl      # Upload Codex transcript
 ```
 
 ## Environment Variables
