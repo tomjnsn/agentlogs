@@ -634,7 +634,6 @@ SHARING=$(sqlite3 $DB "SELECT visibility FROM transcripts WHERE id = '$TRANSCRIP
 packages/web/
 ├── package.json                           # ADD: @tanstack/react-query dependency
 packages/web/src/
-├── types.ts                               # NEW: TypeScript types (Team, TeamMember, InviteInfo)
 ├── lib/
 │   └── query-client.ts                    # NEW: TanStack Query client setup
 ├── db/
@@ -661,45 +660,6 @@ packages/web/src/
 │   │   ├── logs.$id.tsx                   # MODIFY: add visibility dropdown
 │   │   └── team.tsx                       # NEW: team management page
 │   └── join.$code.tsx                     # NEW: invite acceptance page
-```
-
-### TypeScript Types (types.ts)
-
-```typescript
-// packages/web/src/types.ts (ADD these types)
-
-export interface Team {
-  id: string;
-  name: string;
-  ownerId: string;
-  createdAt: Date;
-  updatedAt: Date;
-  owner: TeamUser;
-  members: TeamMember[];
-}
-
-export interface TeamMember {
-  id: string;
-  teamId: string;
-  userId: string;
-  joinedAt: Date;
-  user: TeamUser;
-}
-
-export interface TeamUser {
-  id: string;
-  name: string;
-  email: string;
-  image: string | null;
-}
-
-export interface InviteInfo {
-  teamName: string;
-  memberCount: number;
-  ownerName: string;
-  code: string;
-  expired?: boolean;
-}
 ```
 
 ### Schema Changes (schema.ts)
@@ -1699,6 +1659,10 @@ import { Avatar, AvatarImage, AvatarFallback } from "../../../components/ui/avat
 import { Badge } from "../../../components/ui/badge";
 import { Card, CardHeader, CardTitle, CardContent } from "../../../components/ui/card";
 import { getTeam, createTeam, generateInvite, addMemberByEmail, removeMember, leaveTeam, deleteTeam } from "../../../lib/server-functions";
+
+// Infer types from server function returns (Drizzle pattern)
+type Team = NonNullable<Awaited<ReturnType<typeof getTeam>>>;
+type TeamMember = Team["members"][number];
 
 // Inline error display component
 function ErrorMessage({ message }: { message: string | null }) {
