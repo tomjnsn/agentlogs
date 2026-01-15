@@ -56,9 +56,7 @@ function LandingPage() {
         {/* Hero */}
         <section className="relative flex flex-col items-center justify-center bg-dot-pattern py-24">
           <h1 className="ml-4 text-center font-serif text-[60px] leading-[1.1] tracking-tight text-white/95 md:text-[80px]">
-            See how your best
-            <br />
-            engineers prompt
+            Prompts deserve git
           </h1>
 
           <p className="ml-4 mt-8 max-w-xl text-center font-mono text-lg text-white/80 text-pretty">
