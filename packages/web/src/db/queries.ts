@@ -58,11 +58,10 @@ export async function getTranscriptsByRepo(db: DrizzleDB, userId: string, repoId
 
 /**
  * Get a single transcript with its repo (using relations)
- * Looks up by transcriptId (the unified transcript ID used in URLs)
  */
-export async function getTranscript(db: DrizzleDB, userId: string, transcriptId: string) {
+export async function getTranscript(db: DrizzleDB, userId: string, id: string) {
   return await db.query.transcripts.findFirst({
-    where: and(eq(transcripts.transcriptId, transcriptId), eq(transcripts.userId, userId)),
+    where: and(eq(transcripts.id, id), eq(transcripts.userId, userId)),
     with: {
       repo: true,
       user: true,

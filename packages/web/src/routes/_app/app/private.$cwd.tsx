@@ -92,7 +92,7 @@ function PrivateDetailComponent() {
                   </TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="sm" asChild>
-                      <Link to="/app/logs/$id" params={{ id: transcript.transcriptId }}>
+                      <Link to="/app/logs/$id" params={{ id: transcript.id }}>
                         View
                       </Link>
                     </Button>

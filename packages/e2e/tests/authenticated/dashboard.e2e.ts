@@ -72,7 +72,7 @@ test.describe.serial("Navigation", () => {
     // Note: We don't click/navigate because the test factory doesn't seed R2 data,
     // which would cause SSR errors on the transcript detail page
     const transcriptLink = page.getByRole("link", { name: new RegExp(`Test transcript ${id}`) });
-    await expect(transcriptLink).toHaveAttribute("href", new RegExp(`/app/logs/tid-${id}`));
+    await expect(transcriptLink).toHaveAttribute("href", new RegExp(`/app/logs/transcript-${id}`));
   });
 
   test("sign out button is visible and clickable", async ({ page }) => {

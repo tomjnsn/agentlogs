@@ -56,8 +56,9 @@ function uploadFixtureTranscript(fixture: FixtureCase): UploadResult {
 }
 
 async function assertTranscriptInUi(page: Page, transcriptId: string) {
-  // Navigate directly to the transcript detail page
-  await page.goto(`/app/logs/${transcriptId}`);
+  // Navigate via the /s/ redirect route which looks up by transcriptId
+  // and redirects to the correct /app/logs/{id} URL
+  await page.goto(`/s/${transcriptId}`);
 
   // Wait for the page to load - verify we're on a valid transcript page
   // by checking for the presence of transcript content
