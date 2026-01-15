@@ -3,6 +3,7 @@ import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { createDrizzle } from "../db";
 import * as queries from "../db/queries";
+import { userRoles, type UserRole } from "../db/schema";
 import { createAuth } from "./auth";
 import { logger } from "./logger";
 
@@ -286,3 +287,23 @@ export const getAdminUsers = createServerFn({ method: "GET" }).handler(async () 
   const db = createDrizzle(env.DB);
   return queries.getAdminUserStats(db);
 });
+
+/**
+ * Update a user's role (admin only)
+ */
+export const updateUserRole = createServerFn({ method: "POST" })
+  .inputValidator((data: { userId: string; role: string }) => {
+    if (!data.userId || typeof data.userId !== "string") {
+      throw new Error("Invalid userId");
+    }
+    if (!userRoles.includes(data.role as UserRole)) {
+      throw new Error(`Invalid role: ${data.role}`);
+    }
+    return data as { userId: string; role: UserRole };
+  })
+  .handler(async ({ data }) => {
+    await requireAdmin();
+    const db = createDrizzle(env.DB);
+    await queries.updateUserRole(db, data.userId, data.role);
+    return { success: true };
+  });

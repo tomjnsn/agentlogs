@@ -196,6 +196,13 @@ export async function getUserRole(db: DrizzleDB, userId: string): Promise<UserRo
   return (result[0]?.role as UserRole) ?? null;
 }
 
+/**
+ * Update user role by ID (admin only)
+ */
+export async function updateUserRole(db: DrizzleDB, userId: string, newRole: UserRole): Promise<void> {
+  await db.update(user).set({ role: newRole }).where(eq(user.id, userId));
+}
+
 // =============================================================================
 // Admin Queries
 // =============================================================================

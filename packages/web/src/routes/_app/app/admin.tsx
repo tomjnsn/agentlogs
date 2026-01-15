@@ -1,8 +1,12 @@
+import { useState } from "react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { Check, Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getAdminStats, getAdminUsers, getSession } from "../../../lib/server-functions";
+import { cn } from "@/lib/utils";
+import { getAdminStats, getAdminUsers, getSession, updateUserRole } from "../../../lib/server-functions";
+import { userRoles, type UserRole } from "../../../db/schema";
 
 export const Route = createFileRoute("/_app/app/admin")({
   beforeLoad: async () => {
@@ -24,6 +28,53 @@ function StatCard({ title, value, description }: { title: string; value: string 
       <p className="text-sm font-medium text-muted-foreground">{title}</p>
       <p className="mt-2 text-3xl font-semibold tracking-tight">{value}</p>
       {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+    </div>
+  );
+}
+
+const roleStyles: Record<UserRole, string> = {
+  admin: "bg-primary text-primary-foreground",
+  user: "bg-secondary text-secondary-foreground",
+  waitlist: "bg-muted text-muted-foreground",
+};
+
+function UserRoleSelect({ userId, initialRole }: { userId: string; initialRole: UserRole }) {
+  const [role, setRole] = useState(initialRole);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showCheck, setShowCheck] = useState(false);
+
+  async function handleRoleChange(newRole: string) {
+    if (newRole === role) return;
+
+    setIsLoading(true);
+    try {
+      await updateUserRole({ data: { userId, role: newRole } });
+      setRole(newRole as UserRole);
+      setShowCheck(true);
+      setTimeout(() => setShowCheck(false), 2000);
+    } catch (error) {
+      console.error("Failed to update role:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <Select value={role} onValueChange={handleRoleChange} disabled={isLoading}>
+        <SelectTrigger className={cn("h-7 w-[100px] text-xs font-medium", roleStyles[role])}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {userRoles.map((r) => (
+            <SelectItem key={r} value={r} className="text-xs">
+              {r}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {isLoading && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
+      {showCheck && !isLoading && <Check className="size-4 text-green-500" />}
     </div>
   );
 }
@@ -86,9 +137,7 @@ function AdminPage() {
                   </TableCell>
                   <TableCell className="text-muted-foreground">{user.email}</TableCell>
                   <TableCell>
-                    <Badge variant={user.role === "admin" ? "default" : user.role === "user" ? "secondary" : "outline"}>
-                      {user.role}
-                    </Badge>
+                    <UserRoleSelect userId={user.id} initialRole={user.role as UserRole} />
                   </TableCell>
                   <TableCell className="text-right font-mono">{user.transcriptCount}</TableCell>
                   <TableCell className="text-right font-mono">{formatCost(user.totalCost ?? 0)}</TableCell>
