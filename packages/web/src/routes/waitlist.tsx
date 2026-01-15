@@ -63,21 +63,6 @@ function WaitlistPage() {
             Thanks for signing up, {session.user.name || "there"}! We'll notify you at{" "}
             <span className="text-white/80">{session.user.email}</span> when your account is ready.
           </p>
-
-          <div className="mt-12 border border-white/10 bg-white/5 px-6 py-4">
-            <p className="text-center font-mono text-sm text-white/50">
-              In the meantime, check out the{" "}
-              <a
-                href="https://github.com/agentlogs"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-white/80 underline hover:text-white"
-              >
-                documentation
-              </a>{" "}
-              to learn how AgentLogs works.
-            </p>
-          </div>
         </section>
 
         {/* Footer */}

@@ -45,14 +45,6 @@ function LandingPage() {
           </div>
           <div className="flex h-full items-center font-mono text-white/90">
             <a
-              href="https://github.com/agentlogs"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex h-full items-center border-l border-white/10 px-6 py-2 hover:bg-white/5 hover:underline"
-            >
-              GitHub
-            </a>
-            <a
               href="/auth/github"
               className="flex h-full items-center border-l border-white/10 px-6 py-2 hover:bg-white/5 hover:underline"
             >
