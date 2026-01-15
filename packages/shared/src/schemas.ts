@@ -295,6 +295,7 @@ export const unifiedTranscriptSchema = z.object({
   source: z.enum(["claude-code", "codex", "opencode", "unknown"]),
   timestamp: z.coerce.date(), // Accept both Date and string (for JSON serialization)
   preview: z.string().nullable(),
+  summary: z.string().nullable().default(null),
   model: z.string().nullable(),
   blendedTokens: z.number(),
   costUsd: z.number(),

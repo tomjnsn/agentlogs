@@ -138,6 +138,7 @@ export const transcripts = sqliteTable(
       .notNull()
       .$defaultFn(() => new Date()),
     preview: text("preview"),
+    summary: text("summary"),
     model: text("model"),
     costUsd: real("cost_usd").notNull(),
     blendedTokens: integer("blended_tokens").notNull(),

@@ -348,6 +348,7 @@ export function convertOpenCodeTranscript(
     source: "opencode" as const,
     timestamp,
     preview,
+    summary: null,
     model: primaryModel,
     blendedTokens,
     costUsd,

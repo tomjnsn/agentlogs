@@ -181,6 +181,7 @@ describe("convertCodexFile", () => {
           ],
           "preview": "create a file \`JOKE.md\` with a random joke with a title and a footer with some …",
           "source": "codex",
+          "summary": null,
           "timestamp": "2025-10-17T22:04:23.055Z",
           "tokenUsage": {
             "cachedInputTokens": 72448,

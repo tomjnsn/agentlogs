@@ -346,6 +346,7 @@ export function convertCodexTranscript(
     source: "codex" as const,
     timestamp,
     preview,
+    summary: null,
     model: primaryModel,
     blendedTokens,
     costUsd,

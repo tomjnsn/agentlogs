@@ -196,6 +196,7 @@ describe("convertOpenCodeTranscript", () => {
         ],
         "preview": "create a file JOKE.md with a random joke with a title and a footer with some ra…",
         "source": "opencode",
+        "summary": null,
         "timestamp": "2026-01-11T22:59:11.896Z",
         "tokenUsage": {
           "cachedInputTokens": 71936,

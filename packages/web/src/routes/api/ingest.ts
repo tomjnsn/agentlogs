@@ -7,6 +7,7 @@ import { env } from "cloudflare:workers";
 import { and, eq } from "drizzle-orm";
 import { blobs, repos, transcriptBlobs, transcripts } from "../../db/schema";
 import { createAuth } from "../../lib/auth";
+import { generateSummary } from "../../lib/ai/summarizer";
 import { logger } from "../../lib/logger";
 
 export const Route = createFileRoute("/api/ingest")({
@@ -193,8 +194,98 @@ export const Route = createFileRoute("/api/ingest")({
         // Compute metadata from unified transcript
         // Use cwd from form data (already formatted by CLI) not from re-converted transcript
         // because backend might be in different environment (e.g., Cloudflare Workers)
+        const existingSummary = existingTranscript?.transcripts?.[0]?.summary ?? null;
+
+        // Upload to R2
+        const r2Bucket = env.BUCKET;
+        // For private transcripts (no repo), use "private/<userId>" as prefix
+        const r2KeyPrefix = repoId ? `${repoId}/${transcriptId}` : `private/${userId}/${transcriptId}`;
+
+        // Start summary generation in parallel (if needed)
+        const needsSummaryGeneration = !existingSummary && unifiedTranscript.preview;
+        const summaryPromise = needsSummaryGeneration
+          ? generateSummary(unifiedTranscript.preview!)
+              .then((result) => {
+                logger.info("Generated summary", { transcriptId, summary: result.summary });
+                return result.summary;
+              })
+              .catch((error) => {
+                logger.error("Failed to generate summary", {
+                  transcriptId,
+                  error: error instanceof Error ? error.message : String(error),
+                });
+                return null;
+              })
+          : Promise.resolve(existingSummary);
+
+        // Start R2 uploads in parallel
+        const unifiedJson = JSON.stringify(unifiedTranscript);
+        const r2UploadsPromise = (async () => {
+          const gzippedRaw = await gzipString(transcriptContent);
+          await Promise.all([
+            r2Bucket.put(`${r2KeyPrefix}.json`, unifiedJson, {
+              httpMetadata: { contentType: "application/json" },
+            }),
+            r2Bucket.put(`${r2KeyPrefix}.raw.jsonl.gz`, gzippedRaw, {
+              httpMetadata: { contentType: "application/x-gzip" },
+            }),
+          ]);
+          logger.debug("Uploaded transcripts to R2", {
+            key: r2KeyPrefix,
+            unifiedSize: unifiedJson.length,
+            rawCompressedSize: gzippedRaw.byteLength,
+          });
+        })();
+
+        // Process blobs (validate SHA256 before parallel uploads)
+        const blobEntries = [...formData.entries()]
+          .filter(([key, value]) => key.startsWith("blob:") && typeof value !== "string")
+          .map(([key, value]) => ({
+            sha256: key.slice(5), // Remove "blob:" prefix
+            blob: value as unknown as File,
+          }));
+
+        // Validate all blob SHA256s first (can't do this in parallel since we need to fail fast)
+        const validatedBlobs: Array<{ sha256: string; data: ArrayBuffer; mediaType: string; size: number }> = [];
+        for (const { sha256: claimedSha256, blob } of blobEntries) {
+          const blobData = await blob.arrayBuffer();
+          const actualSha256 = await sha256HexBuffer(blobData);
+          if (actualSha256 !== claimedSha256) {
+            logger.warn("Blob SHA256 mismatch", { userId, transcriptId, claimed: claimedSha256, actual: actualSha256 });
+            return json(
+              { error: `Blob SHA256 mismatch: claimed ${claimedSha256}, actual ${actualSha256}` },
+              { status: 400 },
+            );
+          }
+          validatedBlobs.push({
+            sha256: actualSha256,
+            data: blobData,
+            mediaType: blob.type || "application/octet-stream",
+            size: blob.size,
+          });
+        }
+
+        // Upload validated blobs to R2 in parallel
+        const blobUploadsPromise =
+          validatedBlobs.length > 0
+            ? Promise.all(
+                validatedBlobs.map(async ({ sha256: blobSha256, data, mediaType }) => {
+                  const r2Key = `blobs/${blobSha256}`;
+                  const existing = await r2Bucket.head(r2Key);
+                  if (!existing) {
+                    await r2Bucket.put(r2Key, data, { httpMetadata: { contentType: mediaType } });
+                    logger.debug("Uploaded blob to R2", { key: r2Key, size: data.byteLength });
+                  }
+                }),
+              )
+            : Promise.resolve();
+
+        // Wait for summary and R2 uploads to complete
+        const [summary] = await Promise.all([summaryPromise, r2UploadsPromise, blobUploadsPromise]);
+
         const metadata = {
           preview: unifiedTranscript.preview,
+          summary,
           model: unifiedTranscript.model,
           costUsd: unifiedTranscript.costUsd,
           blendedTokens: unifiedTranscript.blendedTokens,
@@ -215,7 +306,7 @@ export const Route = createFileRoute("/api/ingest")({
           createdAt: unifiedTranscript.timestamp,
         };
 
-        // Insert or update transcript
+        // Insert transcript with summary included
         const insertedTranscript = await db
           .insert(transcripts)
           .values({
@@ -238,117 +329,17 @@ export const Route = createFileRoute("/api/ingest")({
 
         const transcriptDbId = insertedTranscript[0].id;
 
-        // Upload to R2
-        const r2Bucket = env.BUCKET;
-        // For private transcripts (no repo), use "private/<userId>" as prefix
-        const r2KeyPrefix = repoId ? `${repoId}/${transcriptId}` : `private/${userId}/${transcriptId}`;
-
-        // Extract and process blobs from form data
-        const blobEntries = [...formData.entries()]
-          .filter(([key, value]) => key.startsWith("blob:") && typeof value !== "string")
-          .map(([key, value]) => ({
-            sha256: key.slice(5), // Remove "blob:" prefix
-            blob: value as unknown as File,
-          }));
-
-        if (blobEntries.length > 0) {
-          logger.debug("Processing blobs", {
-            userId,
-            transcriptId,
-            blobCount: blobEntries.length,
-          });
-
-          for (const { sha256: claimedSha256, blob } of blobEntries) {
-            // Read blob data and compute actual SHA256
-            const blobData = await blob.arrayBuffer();
-            const actualSha256 = await sha256HexBuffer(blobData);
-
-            // Validate that the claimed SHA matches the actual content
-            if (actualSha256 !== claimedSha256) {
-              logger.warn("Blob SHA256 mismatch", {
-                userId,
-                transcriptId,
-                claimed: claimedSha256,
-                actual: actualSha256,
-              });
-              return json(
-                { error: `Blob SHA256 mismatch: claimed ${claimedSha256}, actual ${actualSha256}` },
-                { status: 400 },
-              );
-            }
-
-            // Upload blob to R2 if it doesn't exist (content-addressed deduplication)
-            const r2Key = `blobs/${actualSha256}`;
-            const existingBlob = await r2Bucket.head(r2Key);
-
-            if (!existingBlob) {
-              await r2Bucket.put(r2Key, blobData, {
-                httpMetadata: {
-                  contentType: blob.type || "application/octet-stream",
-                },
-              });
-              logger.debug("Uploaded blob to R2", {
-                key: r2Key,
-                size: blobData.byteLength,
-                mediaType: blob.type,
-              });
-            } else {
-              logger.debug("Blob already exists in R2, skipping upload", {
-                key: r2Key,
-              });
-            }
-
-            // Record blob metadata in database (upsert)
-            await db
-              .insert(blobs)
-              .values({
-                sha256: actualSha256,
-                mediaType: blob.type || "application/octet-stream",
-                size: blob.size,
-              })
-              .onConflictDoNothing();
-
-            // Link blob to transcript
+        // Link blobs to transcript (after transcript insert)
+        if (validatedBlobs.length > 0) {
+          for (const { sha256: blobSha256, mediaType, size } of validatedBlobs) {
+            await db.insert(blobs).values({ sha256: blobSha256, mediaType, size }).onConflictDoNothing();
             await db
               .insert(transcriptBlobs)
-              .values({
-                transcriptId: transcriptDbId,
-                sha256: actualSha256,
-              })
+              .values({ transcriptId: transcriptDbId, sha256: blobSha256 })
               .onConflictDoNothing();
           }
-
-          logger.info("Processed blobs for transcript", {
-            userId,
-            transcriptId,
-            blobCount: blobEntries.length,
-          });
+          logger.info("Linked blobs to transcript", { transcriptId, blobCount: validatedBlobs.length });
         }
-
-        // Upload unified transcript as JSON
-        const unifiedJson = JSON.stringify(unifiedTranscript);
-        await r2Bucket.put(`${r2KeyPrefix}.json`, unifiedJson, {
-          httpMetadata: {
-            contentType: "application/json",
-          },
-        });
-        logger.debug("Uploaded unified transcript to R2", {
-          key: `${r2KeyPrefix}.json`,
-          size: unifiedJson.length,
-        });
-
-        // Upload gzipped raw transcript
-        const gzippedRaw = await gzipString(transcriptContent);
-        await r2Bucket.put(`${r2KeyPrefix}.raw.jsonl.gz`, gzippedRaw, {
-          httpMetadata: {
-            contentType: "application/x-gzip",
-          },
-        });
-        logger.debug("Uploaded raw transcript to R2", {
-          key: `${r2KeyPrefix}.raw.jsonl.gz`,
-          originalSize: transcriptContent.length,
-          compressedSize: gzippedRaw.byteLength,
-        });
 
         return json({
           success: true,

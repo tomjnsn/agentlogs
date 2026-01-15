@@ -127,6 +127,7 @@ describe("convertClaudeCodeFile", () => {
           ],
           "preview": "how are you doing",
           "source": "claude-code",
+          "summary": null,
           "timestamp": "2025-10-10T21:57:52.066Z",
           "tokenUsage": {
             "cachedInputTokens": 13522,
@@ -643,6 +644,7 @@ describe("convertClaudeCodeFile", () => {
           ],
           "preview": "create a file \`JOKE.md\` with a ranom joke with a title and a footer wiht some r…",
           "source": "claude-code",
+          "summary": null,
           "timestamp": "2025-10-12T21:36:39.886Z",
           "tokenUsage": {
             "cachedInputTokens": 148958,
@@ -792,6 +794,7 @@ describe("convertClaudeCodeFile", () => {
           ],
           "preview": "ask a subagent how he's doing",
           "source": "claude-code",
+          "summary": null,
           "timestamp": "2025-10-10T21:55:20.440Z",
           "tokenUsage": {
             "cachedInputTokens": 20952,
@@ -1148,6 +1151,7 @@ describe("convertClaudeCodeFile", () => {
           ],
           "preview": "create a todo list with 3 items, then check off each step by step then clear it",
           "source": "claude-code",
+          "summary": null,
           "timestamp": "2025-10-12T21:40:49.323Z",
           "tokenUsage": {
             "cachedInputTokens": 87863,
@@ -1310,6 +1314,7 @@ describe("convertClaudeCodeFile", () => {
           ],
           "preview": "go to google.com, make a screenshoot, look at it, and tell me what you think",
           "source": "claude-code",
+          "summary": null,
           "timestamp": "2026-01-10T15:02:45.165Z",
           "tokenUsage": {
             "cachedInputTokens": 67843,
