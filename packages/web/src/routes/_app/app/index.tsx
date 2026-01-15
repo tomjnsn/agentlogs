@@ -2,8 +2,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { FileCode, Folder, MessageSquare, Search, Terminal, Wrench } from "lucide-react";
-import { ClaudeCodeIcon, CodexIcon, OpenCodeIcon } from "../../../components/icons/source-icons";
+import { MessageSquare, Search, Terminal } from "lucide-react";
+import { ClaudeCodeIcon, CodexIcon, GitHubIcon, OpenCodeIcon } from "../../../components/icons/source-icons";
 import { useMemo, useState } from "react";
 import { getAllTranscripts } from "../../../lib/server-functions";
 
@@ -117,11 +117,11 @@ function HomeComponent() {
   return (
     <div className="space-y-6">
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[200px] max-w-[300px]">
+      <div className="flex flex-wrap items-center justify-center gap-3">
+        <div className="relative min-w-[200px] max-w-[300px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search threads..."
+            placeholder="Search logs"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
@@ -169,7 +169,7 @@ function TranscriptItem({ transcript }: { transcript: TranscriptData }) {
 
   return (
     <Link to="/app/logs/$id" params={{ id: transcript.id }} className="block group">
-      <div className="flex gap-4 py-3 px-2 rounded-lg hover:bg-accent/50 transition-colors">
+      <div className="flex gap-4 py-3 px-2 rounded-lg hover:bg-accent/25 transition-colors">
         {/* Avatar */}
         <Avatar className="h-10 w-10 shrink-0 self-center">
           <AvatarImage src={transcript.userImage || undefined} alt={transcript.userName || "User"} />
@@ -179,7 +179,7 @@ function TranscriptItem({ transcript }: { transcript: TranscriptData }) {
         {/* Content */}
         <div className="flex-1 min-w-0 space-y-1.5">
           {/* Summary */}
-          {transcript.summary && <p className="text-sm">{transcript.summary}</p>}
+          {transcript.summary && <p className="text-sm font-medium">{transcript.summary}</p>}
 
           {/* Preview */}
           {transcript.preview && (
@@ -198,16 +198,6 @@ function TranscriptItem({ transcript }: { transcript: TranscriptData }) {
               <MessageSquare className="h-3 w-3" />
               {transcript.userMessageCount}
             </span>
-            <span className="flex items-center gap-1">
-              <Wrench className="h-3 w-3" />
-              {transcript.toolCount}
-            </span>
-            {transcript.filesChanged > 0 && (
-              <span className="flex items-center gap-1">
-                <FileCode className="h-3 w-3" />
-                {transcript.filesChanged}
-              </span>
-            )}
             {(transcript.linesAdded > 0 || transcript.linesRemoved > 0) && (
               <span>
                 <span className="text-green-500">+{transcript.linesAdded}</span>
@@ -216,18 +206,15 @@ function TranscriptItem({ transcript }: { transcript: TranscriptData }) {
               </span>
             )}
             {transcript.repoName && (
-              <span className="flex items-center gap-1">
-                <Folder className="h-3.5 w-3.5" />
-                <span>
-                  {transcript.repoName}
-                  {transcript.branch && `:${transcript.branch}`}
-                </span>
-              </span>
-            )}
-            {transcript.costUsd > 0 && (
               <>
                 <span>•</span>
-                <span>${transcript.costUsd.toFixed(2)}</span>
+                <span className="flex items-center gap-1">
+                  <GitHubIcon className="h-3.5 w-3.5" />
+                  <span>
+                    <span className="text-foreground/80">{transcript.repoName.replace(/^github\.com\//, "")}</span>
+                    {transcript.branch && `@${transcript.branch}`}
+                  </span>
+                </span>
               </>
             )}
           </div>
