@@ -44,7 +44,7 @@ function AppLayout() {
     <div className="min-h-screen bg-background dark scheme-dark">
       <header className="flex h-16 items-center justify-between border-b border-white/10">
         <div className="flex items-center gap-2 p-4">
-          <Link to="/" className="text-lg font-semibold text-white/90 hover:text-white transition-colors">
+          <Link to="/app" className="text-lg font-semibold text-white/90 hover:text-white transition-colors">
             AgentLogs
           </Link>
         </div>
