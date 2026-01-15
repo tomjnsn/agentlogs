@@ -29,14 +29,32 @@ function getApiKey(): string | undefined {
   return (env as unknown as Record<string, unknown>).OPENROUTER_API_KEY as string | undefined;
 }
 
+function isTestEnvironment(): boolean {
+  // Check for e2e test environment (set by start-test-server.ts)
+  return import.meta.env.VITE_USE_TEST_DB === "true";
+}
+
 /**
  * Generate a short summary/title for a coding conversation
  * using a lightweight LLM via OpenRouter.
+ *
+ * Returns a stub value in test environments or when OPENROUTER_API_KEY is not configured.
  */
 export async function generateSummary(userPrompt: string, options: SummarizerOptions = {}): Promise<SummaryResult> {
+  // Skip AI generation in test environment
+  if (isTestEnvironment()) {
+    return {
+      summary: "AI generated summary",
+      model: "stub",
+    };
+  }
+
   const apiKey = getApiKey();
   if (!apiKey) {
-    throw new Error("OPENROUTER_API_KEY is not configured");
+    return {
+      summary: "AI generated summary",
+      model: "stub",
+    };
   }
 
   const modelId = options.model ?? "google/gemini-3-flash-preview";

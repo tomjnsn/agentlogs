@@ -70,13 +70,14 @@ function seedDatabase() {
   const sqlite = new Database(dbPath);
   const db = drizzle(sqlite, { schema });
 
-  // Seed test user
+  // Seed test user with "user" role (not "waitlist") so they can access /app
   db.insert(schema.user)
     .values({
       id: "test-user-id",
       name: "Test User",
       email: "test@example.com",
       emailVerified: true,
+      role: "user",
       createdAt: new Date(),
       updatedAt: new Date(),
     })
