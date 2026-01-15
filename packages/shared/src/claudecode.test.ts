@@ -99,7 +99,61 @@ describe("convertClaudeCodeFile", () => {
             },
             {
               "id": "cff5fe4f-d7c3-4631-8580-3176d62c0e62",
-              "text": "This session is being continued from a previous conversation that ran out of context. The conversation is summarized below: Analysis: Let me analyze the conversation chronologically: 1. **Message 1**: User ran \`/clear\` command (local command, should be ignored per instructions) 2. **Message 2**: User asked "how are you doing" 3. **Message 3**: I responded politely that I'm doing well and asked what they'd like to work on 4. **Message 4**: User is now requesting a detailed summary of the conversation This is a very brief conversation with minimal technical content. The user has: - Cleared the conversation history - Made a casual greeting - Requested a summary There have been NO: - Technical requests - File operations - Code changes - Errors - Problem solving - Pending tasks - Current work in progress The conversation literally just started after a clear command, so there is essentially nothing to summarize in terms of development work, technical decisions, or code patterns. Summary: 1. Primary Request and Intent: The user cleared the conversation history, made a casual greeting ("how are you doing"), and then requested a detailed summary of the conversation. There have been no explicit technical requests or development intents expressed in this conversation. 2. Key Technical Concepts: None discussed in this conversation. 3. Files and Code Sections: No files have been read, modified, or created in this conversation. 4. Errors and fixes: No errors encountered in this conversation. 5. Problem Solving: No problems have been addressed or troubleshooting efforts undertaken in this conversation. 6. All user messages: - "how are you doing" - [Current request for conversation summary] 7. Pending Tasks: No pending tasks have been identified or requested. 8. Current Work: No development work was being performed before this summary request. The conversation just began after a \`/clear\` command, with only a casual greeting exchange before the summary was requested. 9. Optional Next Step: None. There is no ongoing work to continue. Awaiting the user's next request or direction for what they would like to work on..",
+              "text": 
+      "This session is being continued from a previous conversation that ran out of context. The conversation is summarized below:
+      Analysis:
+      Let me analyze the conversation chronologically:
+
+      1. **Message 1**: User ran \`/clear\` command (local command, should be ignored per instructions)
+      2. **Message 2**: User asked "how are you doing"
+      3. **Message 3**: I responded politely that I'm doing well and asked what they'd like to work on
+      4. **Message 4**: User is now requesting a detailed summary of the conversation
+
+      This is a very brief conversation with minimal technical content. The user has:
+      - Cleared the conversation history
+      - Made a casual greeting
+      - Requested a summary
+
+      There have been NO:
+      - Technical requests
+      - File operations
+      - Code changes
+      - Errors
+      - Problem solving
+      - Pending tasks
+      - Current work in progress
+
+      The conversation literally just started after a clear command, so there is essentially nothing to summarize in terms of development work, technical decisions, or code patterns.
+
+      Summary:
+      1. Primary Request and Intent:
+         The user cleared the conversation history, made a casual greeting ("how are you doing"), and then requested a detailed summary of the conversation. There have been no explicit technical requests or development intents expressed in this conversation.
+
+      2. Key Technical Concepts:
+         None discussed in this conversation.
+
+      3. Files and Code Sections:
+         No files have been read, modified, or created in this conversation.
+
+      4. Errors and fixes:
+         No errors encountered in this conversation.
+
+      5. Problem Solving:
+         No problems have been addressed or troubleshooting efforts undertaken in this conversation.
+
+      6. All user messages:
+         - "how are you doing"
+         - [Current request for conversation summary]
+
+      7. Pending Tasks:
+         No pending tasks have been identified or requested.
+
+      8. Current Work:
+         No development work was being performed before this summary request. The conversation just began after a \`/clear\` command, with only a casual greeting exchange before the summary was requested.
+
+      9. Optional Next Step:
+         None. There is no ongoing work to continue. Awaiting the user's next request or direction for what they would like to work on.."
+      ,
               "timestamp": "2025-10-10T21:57:51.963Z",
               "type": "compaction-summary",
             },

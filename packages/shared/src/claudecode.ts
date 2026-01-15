@@ -1598,8 +1598,7 @@ function extractUserContent(record: ClaudeMessageRecord): ExtractedUserContent {
 
   const content = payload.content;
   if (typeof content === "string") {
-    const normalized = collapseWhitespace(content);
-    return normalized ? { texts: [normalized], toolResults: [] } : { texts: [], toolResults: [] };
+    return content ? { texts: [content], toolResults: [] } : { texts: [], toolResults: [] };
   }
 
   if (!Array.isArray(content)) {
@@ -1615,9 +1614,8 @@ function extractUserContent(record: ClaudeMessageRecord): ExtractedUserContent {
     }
 
     if (typeof part === "string") {
-      const normalized = collapseWhitespace(part);
-      if (normalized) {
-        texts.push(normalized);
+      if (part) {
+        texts.push(part);
       }
       continue;
     }
@@ -1658,20 +1656,16 @@ function extractUserContent(record: ClaudeMessageRecord): ExtractedUserContent {
     }
 
     if (type === "text" && typeof recordPart.text === "string") {
-      const normalized = collapseWhitespace(recordPart.text);
-      if (normalized) {
-        texts.push(normalized);
+      if (recordPart.text) {
+        texts.push(recordPart.text);
       }
       continue;
     }
 
     for (const key of ["content", "text"]) {
       const value = recordPart[key];
-      if (typeof value === "string") {
-        const normalized = collapseWhitespace(value);
-        if (normalized) {
-          texts.push(normalized);
-        }
+      if (typeof value === "string" && value) {
+        texts.push(value);
       }
     }
   }
