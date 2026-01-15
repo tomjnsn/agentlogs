@@ -42,41 +42,36 @@ function AppLayout() {
 
   return (
     <div className="min-h-screen bg-background dark scheme-dark">
-      <header className="border-b border-border px-6 py-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold">
-            <Link to="/" className="transition-colors hover:text-primary">
-              AgentLogs
-            </Link>
-          </h1>
+      <header className="flex h-16 items-center justify-between line-b">
+        <div className="flex items-center gap-2 p-4">
+          <Link to="/" className="text-lg font-semibold text-white/90 hover:text-white transition-colors">
+            AgentLogs
+          </Link>
+        </div>
 
-          <div className="flex items-center gap-4">
-            {isSigningIn ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-border border-t-primary"></div>
-                <span>Redirecting to GitHub...</span>
-              </div>
-            ) : session ? (
-              <>
-                {session.user.role === "admin" && (
-                  <Link
-                    to="/app/admin"
-                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    Admin
-                  </Link>
-                )}
-                <span className="text-sm text-foreground">{session.user.name || session.user.email}</span>
-                <Button onClick={handleSignOut} variant="outline" size="sm">
-                  Sign Out
-                </Button>
-              </>
-            ) : (
-              <Button onClick={handleSignIn} size="sm" disabled={isSigningIn}>
-                Sign in with GitHub
+        <div className="flex h-full items-center gap-4 text-white/90 px-4">
+          {isSigningIn ? (
+            <div className="flex items-center gap-2 text-sm">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white/80"></div>
+              <span>Redirecting to GitHub...</span>
+            </div>
+          ) : session ? (
+            <>
+              {session.user.role === "admin" && (
+                <Link to="/app/admin" className="text-sm text-white/50 transition-colors hover:text-white/90">
+                  Admin
+                </Link>
+              )}
+              <span className="text-sm">{session.user.name || session.user.email}</span>
+              <Button onClick={handleSignOut} variant="outline" size="sm">
+                Sign Out
               </Button>
-            )}
-          </div>
+            </>
+          ) : (
+            <Button onClick={handleSignIn} size="sm" disabled={isSigningIn}>
+              Sign in with GitHub
+            </Button>
+          )}
         </div>
       </header>
       <main className="container mx-auto px-6 py-8">
