@@ -60,7 +60,7 @@ function RootComponent() {
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html className="dark:scheme-dark">
-      <head>
+      <head suppressHydrationWarning>
         <HeadContent />
         {import.meta.env.DEV && (
           <>
