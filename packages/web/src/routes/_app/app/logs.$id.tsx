@@ -632,73 +632,119 @@ interface ToolCallBlockProps {
   isError?: boolean | string;
 }
 
+// Parse diff to count additions and deletions
+function parseDiffStats(diff: string): { additions: number; deletions: number } {
+  const lines = diff.split("\n");
+  let additions = 0;
+  let deletions = 0;
+  for (const line of lines) {
+    if (line.startsWith("+") && !line.startsWith("+++")) additions++;
+    else if (line.startsWith("-") && !line.startsWith("---")) deletions++;
+  }
+  return { additions, deletions };
+}
+
+// Get display name for tool (some tools have different display names)
+function getToolDisplayName(toolName: string | null): string {
+  if (toolName === "Bash") return "Shell";
+  return toolName || "Tool";
+}
+
 function ToolCallBlock({ messageId, toolName, input, output, error, isError }: ToolCallBlockProps) {
   const Icon = getToolIcon(toolName);
   const description = getToolDescription(toolName, input);
+  const displayName = getToolDisplayName(toolName);
 
   // Extract images from input/output
   const inputImages = extractImageReferences(input);
   const outputImages = extractImageReferences(output);
 
-  // Check if this is an Edit tool with a diff
   const inputObj = input as Record<string, unknown> | undefined;
   const isEditWithDiff = toolName === "Edit" && !!inputObj?.file_path && !!inputObj?.diff;
   const isWriteWithContent = toolName === "Write" && !!inputObj?.file_path && !!inputObj?.content;
   const isBashWithCommand = toolName === "Bash" && !!inputObj?.command;
 
-  // For Edit/Write tools, show a file-based view
-  if (isEditWithDiff || isWriteWithContent) {
-    const filePath = String(inputObj!.file_path);
+  // Calculate diff stats for Edit tool
+  const diffStats = isEditWithDiff ? parseDiffStats(String(inputObj!.diff)) : null;
 
+  // For Bash, use description if available, otherwise truncated command
+  const bashDescription = isBashWithCommand
+    ? inputObj?.description
+      ? String(inputObj.description)
+      : String(inputObj!.command)
+    : "";
+
+  // Determine file path for file-based tools
+  const filePath = inputObj?.file_path ? String(inputObj.file_path) : "";
+
+  // Common trigger style
+  const triggerClassName =
+    "flex w-full cursor-pointer items-center gap-3 rounded-lg border border-border bg-zinc-900/50 px-3 py-2 text-left transition-colors hover:bg-zinc-900";
+
+  // For Edit/Write tools, wrap DiffViewer/FileViewer in collapsible
+  if (isEditWithDiff || isWriteWithContent) {
     return (
-      <div id={messageId} className="space-y-2">
-        {isEditWithDiff && (
-          <DiffViewer
-            filePath={filePath}
-            diff={String(inputObj!.diff)}
-            lineOffset={typeof inputObj!.lineOffset === "number" ? inputObj!.lineOffset : undefined}
-          />
-        )}
-        {isWriteWithContent && <FileViewer filePath={filePath} content={String(inputObj!.content)} />}
-        {(error || isError) && (
-          <div className="rounded-lg bg-destructive/10 p-3">
-            <div className="mb-1.5 text-xs font-medium text-destructive">Error</div>
-            <pre className="text-xs text-destructive">{error || "Operation failed"}</pre>
+      <Collapsible id={messageId} defaultOpen={false} className="group">
+        <CollapsibleTrigger className={triggerClassName}>
+          <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="text-sm font-medium">{displayName}</span>
+          <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{filePath}</span>
+          {diffStats && (
+            <span className="shrink-0 text-sm">
+              <span className="text-green-500">+{diffStats.additions}</span>{" "}
+              <span className="text-red-500">-{diffStats.deletions}</span>
+            </span>
+          )}
+          {(error || isError) && (
+            <span className="shrink-0 rounded bg-destructive/20 px-1.5 py-0.5 text-xs text-destructive">Error</span>
+          )}
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="mt-2">
+            {isEditWithDiff && (
+              <DiffViewer
+                filePath={filePath}
+                diff={String(inputObj!.diff)}
+                lineOffset={typeof inputObj!.lineOffset === "number" ? inputObj!.lineOffset : undefined}
+              />
+            )}
+            {isWriteWithContent && <FileViewer filePath={filePath} content={String(inputObj!.content)} />}
+            {(error || isError) && (
+              <div className="mt-2 rounded-lg bg-destructive/10 p-3">
+                <div className="mb-1.5 text-xs font-medium text-destructive">Error</div>
+                <pre className="text-xs text-destructive">{error || "Operation failed"}</pre>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </CollapsibleContent>
+      </Collapsible>
     );
   }
 
-  // For Bash commands, show expandable view with status
+  // For Bash commands
   if (isBashWithCommand) {
     const outputObj = output as Record<string, unknown> | undefined;
-    const hasError = !!error || !!isError;
-    const hasStderr = outputObj?.stderr;
-    const isInterrupted = outputObj?.interrupted === true;
-    const isSuccess = !hasError && !hasStderr && !isInterrupted;
-
-    // Determine status text
-    let statusText = "Completed";
-    if (hasError) statusText = "Failed";
-    else if (isInterrupted) statusText = "Interrupted";
-    else if (hasStderr) statusText = "Completed with errors";
-
-    // Icon color: green for success, red for errors
-    const iconColorClass = isSuccess ? "text-green-500" : "text-red-500";
 
     return (
-      <Collapsible id={messageId} defaultOpen={false}>
-        <CollapsibleTrigger className="flex w-full cursor-pointer items-center gap-2 rounded-lg bg-zinc-800 px-3 py-2 text-left transition-colors hover:bg-zinc-700">
-          <SquareTerminal className={`h-4 w-4 shrink-0 ${iconColorClass}`} />
-          <code className="min-w-0 flex-1 truncate font-mono text-sm text-muted-foreground">
-            {String(inputObj!.command)}
-          </code>
-          <span className={`shrink-0 text-xs ${isSuccess ? "text-green-500" : "text-red-500"}`}>{statusText}</span>
-          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform [[data-state=open]>&]:rotate-180" />
+      <Collapsible id={messageId} defaultOpen={false} className="group">
+        <CollapsibleTrigger className={triggerClassName}>
+          <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="text-sm font-medium">{displayName}</span>
+          <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{bashDescription}</span>
+          {(error || isError) && (
+            <span className="shrink-0 rounded bg-destructive/20 px-1.5 py-0.5 text-xs text-destructive">Error</span>
+          )}
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="mt-2 space-y-3 rounded-lg bg-zinc-900/50 p-4">
+            <div>
+              <div className="mb-1.5 text-xs font-medium text-muted-foreground">Command</div>
+              <pre className="overflow-x-auto rounded-md bg-black/30 p-3 font-mono text-xs whitespace-pre-wrap">
+                {String(inputObj!.command)}
+              </pre>
+            </div>
             {outputObj?.stdout ? (
               <div>
                 <div className="mb-1.5 text-xs font-medium text-muted-foreground">Output</div>
@@ -734,16 +780,15 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError }: T
 
   // Default collapsible view for other tools
   return (
-    <Collapsible id={messageId} defaultOpen={false}>
-      <CollapsibleTrigger className="flex w-full cursor-pointer items-center gap-3 rounded-lg bg-zinc-900 px-4 py-3 text-left transition-colors hover:bg-zinc-800">
-        <Icon className="h-5 w-5 shrink-0 text-muted-foreground" />
-        <code className="min-w-0 flex-1 text-sm text-muted-foreground">
-          {description || toolName || "Unknown Tool"}
-        </code>
+    <Collapsible id={messageId} defaultOpen={false} className="group">
+      <CollapsibleTrigger className={triggerClassName}>
+        <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <span className="text-sm font-medium">{displayName}</span>
+        <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{description}</span>
         {(error || isError) && (
           <span className="shrink-0 rounded bg-destructive/20 px-1.5 py-0.5 text-xs text-destructive">Error</span>
         )}
-        <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform [[data-state=open]>&]:rotate-180" />
+        <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
       </CollapsibleTrigger>
       <CollapsibleContent>
         <div className="mt-2 space-y-3 rounded-lg bg-zinc-900/50 p-4">
