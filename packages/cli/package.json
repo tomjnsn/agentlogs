@@ -30,7 +30,7 @@
   },
   "dependencies": {
     "@napi-rs/keyring": "^1.2.0",
-    "commander": "^14.0.0"
+    "commander": "^14.0.2"
   },
   "devDependencies": {
     "@agentlogs/shared": "workspace:*",
