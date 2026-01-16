@@ -1,3 +1,4 @@
+import { init } from "@paralleldrive/cuid2";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
@@ -7,6 +8,18 @@ import * as queries from "../db/queries";
 import { teamInvites, teamMembers, teams, transcripts, visibilityOptions, type VisibilityOption } from "../db/schema";
 import { createAuth } from "./auth";
 import { logger } from "./logger";
+
+let cuidGenerator: (() => string) | undefined;
+const getCuidGenerator = () => {
+  if (!cuidGenerator) {
+    cuidGenerator = init({
+      random: () => crypto.getRandomValues(new Uint32Array(1))[0] / 0xffffffff,
+      length: 10,
+    });
+  }
+  return cuidGenerator;
+};
+const generateId = () => getCuidGenerator()();
 
 /**
  * Get the current authenticated user's ID
@@ -336,26 +349,24 @@ export const createTeam = createServerFn({ method: "POST" }).handler(async () =>
     throw new Error("Already in a team. Leave current team first.");
   }
 
-  // Transaction: create team + add owner as member atomically
-  const result = await db.transaction(async (tx) => {
-    const [newTeam] = await tx
-      .insert(teams)
-      .values({
-        name: teamName,
-        ownerId: userId,
-      })
-      .returning();
+  // Batch: create team + add owner as member atomically
+  // Pre-generate ID since batch can't reference results between statements
+  const teamId = generateId();
 
-    await tx.insert(teamMembers).values({
-      teamId: newTeam.id,
+  await db.batch([
+    db.insert(teams).values({
+      id: teamId,
+      name: teamName,
+      ownerId: userId,
+    }),
+    db.insert(teamMembers).values({
+      teamId: teamId,
       userId: userId,
-    });
+    }),
+  ]);
 
-    return newTeam;
-  });
-
-  logger.info("Team created", { teamId: result.id, ownerId: userId });
-  return { id: result.id, name: result.name };
+  logger.info("Team created", { teamId, ownerId: userId });
+  return { id: teamId, name: teamName };
 });
 
 /**

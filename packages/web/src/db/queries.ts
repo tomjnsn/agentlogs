@@ -364,15 +364,15 @@ function buildVisibilityCondition(viewerId: string) {
       eq(transcripts.visibility, "team"),
       // Viewer is in the sharedWithTeamId team
       exists(
-        sql`SELECT 1 FROM ${teamMembers} AS viewer_tm
+        sql`(SELECT 1 FROM ${teamMembers} AS viewer_tm
             WHERE viewer_tm.team_id = ${transcripts.sharedWithTeamId}
-            AND viewer_tm.user_id = ${viewerId}`,
+            AND viewer_tm.user_id = ${viewerId})`,
       ),
       // Owner is ALSO in the sharedWithTeamId team
       exists(
-        sql`SELECT 1 FROM ${teamMembers} AS owner_tm
+        sql`(SELECT 1 FROM ${teamMembers} AS owner_tm
             WHERE owner_tm.team_id = ${transcripts.sharedWithTeamId}
-            AND owner_tm.user_id = ${transcripts.userId}`,
+            AND owner_tm.user_id = ${transcripts.userId})`,
       ),
     ),
   );
