@@ -38,6 +38,9 @@ export async function uploadCommand(transcriptArg: string, source: TranscriptSou
       const envLabel = envResult.envName === "dev" ? "Development" : "Production";
       if (envResult.success) {
         console.log(`✓ ${envLabel}: uploaded successfully`);
+        if (envResult.id) {
+          console.log(`  ID: ${envResult.id}`);
+        }
         if (envResult.transcriptId) {
           console.log(`  Transcript ID: ${envResult.transcriptId}`);
         }

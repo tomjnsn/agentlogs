@@ -35,6 +35,7 @@ export const Route = createFileRoute("/api/ingest")({
 
           // Parse multipart form data (raw transcript upload)
           const formData = await request.formData();
+          const clientId = formData.get("id");
           const sha256 = formData.get("sha256");
           const transcriptPart = formData.get("transcript");
           const unifiedTranscriptField = formData.get("unifiedTranscript");
@@ -46,6 +47,9 @@ export const Route = createFileRoute("/api/ingest")({
             });
             return json({ error: "Invalid form data" }, { status: 400 });
           }
+
+          // clientId is optional for backwards compatibility
+          const providedId = typeof clientId === "string" && clientId.length > 0 ? clientId : null;
 
           const transcriptContent =
             typeof transcriptPart === "string" ? transcriptPart : await (transcriptPart as File).text();
@@ -86,6 +90,61 @@ export const Route = createFileRoute("/api/ingest")({
               ? unifiedTranscript.source
               : "claude-code";
           const cwd = unifiedTranscript.cwd ?? "";
+
+          // Validate client-provided ID if present
+          if (providedId) {
+            const existingById = await db.query.transcripts.findFirst({
+              where: eq(transcripts.id, providedId),
+              columns: { id: true, userId: true, transcriptId: true },
+            });
+
+            if (existingById) {
+              // Record exists with this ID - validate ownership and transcriptId
+              if (existingById.userId !== userId) {
+                logger.warn("Ingest rejected: ID belongs to another user", {
+                  userId,
+                  providedId,
+                  existingUserId: existingById.userId,
+                });
+                return json({ error: "Forbidden: ID belongs to another user" }, { status: 403 });
+              }
+              if (existingById.transcriptId !== transcriptId) {
+                logger.warn("Ingest rejected: ID/transcriptId mismatch", {
+                  userId,
+                  providedId,
+                  existingTranscriptId: existingById.transcriptId,
+                  providedTranscriptId: transcriptId,
+                });
+                return json({ error: "Bad Request: ID does not match transcriptId" }, { status: 400 });
+              }
+              // Ownership and transcriptId verified - will proceed with upsert
+            } else {
+              // No record with this ID - check if transcriptId already exists for this user
+              const existingByTranscriptId = await db.query.transcripts.findFirst({
+                where: and(eq(transcripts.transcriptId, transcriptId), eq(transcripts.userId, userId)),
+                columns: { id: true },
+              });
+
+              if (existingByTranscriptId) {
+                // Client lost local DB - return existing ID for caching
+                logger.info("Ingest: returning existing ID (client lost local DB)", {
+                  userId,
+                  transcriptId,
+                  existingId: existingByTranscriptId.id,
+                  providedId,
+                });
+                return json({
+                  success: true,
+                  id: existingByTranscriptId.id,
+                  transcriptId,
+                  eventsReceived: 0,
+                  sha256,
+                  status: "exists",
+                });
+              }
+              // New transcript - will create with client-provided ID
+            }
+          }
 
           const rawRecords = parseJsonlRecords(transcriptContent);
 
@@ -152,6 +211,7 @@ export const Route = createFileRoute("/api/ingest")({
             });
             return json({
               success: true,
+              id: existingTranscript.transcripts[0].id,
               transcriptId,
               eventsReceived: eventCount,
               sha256,
@@ -317,10 +377,12 @@ export const Route = createFileRoute("/api/ingest")({
           };
 
           // Insert transcript with summary included
+          // Use client-provided ID if available, otherwise let the database generate one
           const insertedTranscript = await Sentry.startSpan({ name: "db.insertTranscript", op: "db.query" }, () =>
             db
               .insert(transcripts)
               .values({
+                ...(providedId ? { id: providedId } : {}),
                 repoId: repoDbId,
                 userId,
                 sha256,
@@ -363,6 +425,7 @@ export const Route = createFileRoute("/api/ingest")({
 
           return json({
             success: true,
+            id: transcriptDbId,
             transcriptId,
             eventsReceived: eventCount,
             sha256,

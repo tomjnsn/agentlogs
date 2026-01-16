@@ -197,14 +197,16 @@ export const getTranscript = createServerFn({ method: "GET" })
   });
 
 /**
- * Server function to fetch a transcript ID by session/transcript ID.
+ * Server function to fetch a transcript by ID or transcriptId.
+ * First tries to find by database ID (CUID2), then falls back to transcriptId lookup.
+ * This supports both old session IDs and new client-generated IDs.
  */
 export const getTranscriptBySessionId = createServerFn({ method: "GET" })
-  .inputValidator((sessionId: string) => sessionId)
-  .handler(async ({ data: sessionId }) => {
+  .inputValidator((param: string) => param)
+  .handler(async ({ data: param }) => {
     const db = createDrizzle(env.DB);
     const userId = await getAuthenticatedUserId();
-    const transcript = await queries.getTranscriptByTranscriptId(db, userId, sessionId);
+    const transcript = await queries.getTranscriptByIdOrTranscriptId(db, userId, param);
 
     if (!transcript) {
       throw new Error("Transcript not found");

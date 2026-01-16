@@ -21,6 +21,7 @@
       },
       "dependencies": {
         "@napi-rs/keyring": "^1.2.0",
+        "@paralleldrive/cuid2": "^2.3.0",
         "commander": "^14.0.2",
       },
       "devDependencies": {

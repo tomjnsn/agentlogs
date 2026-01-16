@@ -87,6 +87,34 @@ export async function getTranscriptByTranscriptId(db: DrizzleDB, userId: string,
 }
 
 /**
+ * Get a transcript by its database ID or transcriptId.
+ * First tries to find by ID (CUID2), then falls back to transcriptId lookup.
+ */
+export async function getTranscriptByIdOrTranscriptId(db: DrizzleDB, userId: string, param: string) {
+  // First try lookup by id (CUID2)
+  const byId = await db.query.transcripts.findFirst({
+    columns: {
+      id: true,
+      transcriptId: true,
+    },
+    where: and(eq(transcripts.id, param), eq(transcripts.userId, userId)),
+  });
+
+  if (byId) {
+    return byId;
+  }
+
+  // Fall back to lookup by transcriptId
+  return await db.query.transcripts.findFirst({
+    columns: {
+      id: true,
+      transcriptId: true,
+    },
+    where: and(eq(transcripts.transcriptId, param), eq(transcripts.userId, userId)),
+  });
+}
+
+/**
  * Get private transcripts (no repo) grouped by cwd
  */
 export async function getPrivateTranscriptsByCwd(db: DrizzleDB, userId: string) {

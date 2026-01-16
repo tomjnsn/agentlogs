@@ -63,7 +63,7 @@ async function filterNewBlobs(
 export async function uploadTranscript(
   payload: UploadPayload,
   options: UploadOptions = {},
-): Promise<{ success: boolean; transcriptId?: string }> {
+): Promise<{ success: boolean; id?: string; transcriptId?: string }> {
   const serverUrl = options.serverUrl ?? process.env.VI_SERVER_URL ?? DEFAULT_SERVER_URL;
   const authToken = options.authToken ?? null;
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -73,6 +73,10 @@ export async function uploadTranscript(
   const formData = new FormData();
   const filename = `${payload.unifiedTranscript.id || "transcript"}.jsonl`;
 
+  // Include client-generated ID if provided
+  if (payload.id) {
+    formData.set("id", payload.id);
+  }
   formData.set("sha256", payload.sha256);
   formData.set("unifiedTranscript", JSON.stringify(payload.unifiedTranscript));
   formData.set(
@@ -117,6 +121,7 @@ export async function uploadTranscript(
     if (isUploadResponse(result)) {
       return {
         success: true,
+        id: result.id,
         transcriptId: result.transcriptId,
       };
     }
@@ -140,7 +145,8 @@ function isUploadResponse(data: unknown): data is UploadResponse {
 
   return (
     typeof maybeResponse.success === "boolean" &&
-    (maybeResponse.success === false || typeof maybeResponse.transcriptId === "string") &&
+    (maybeResponse.success === false ||
+      (typeof maybeResponse.id === "string" && typeof maybeResponse.transcriptId === "string")) &&
     (maybeResponse.eventsReceived === undefined || typeof maybeResponse.eventsReceived === "number")
   );
 }
