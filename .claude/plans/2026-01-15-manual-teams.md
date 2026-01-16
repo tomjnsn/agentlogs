@@ -23,6 +23,7 @@ Enable team members to see each other's transcripts via manual team invites.
 **App Constraint:** 0-1 team per user is enforced in application code (check before create/join). DB schema allows multiple teams for future flexibility - no migration needed to enable multi-team support.
 
 **Multi-Team Future:** The `sharedWithTeamId` column stores which specific team a transcript is shared with. This naturally supports multi-team:
+
 - When visibility='team', `sharedWithTeamId` records the exact team (not "any team the user is in")
 - If user joins multiple teams, each transcript is explicitly shared with one specific team
 - To share with a different team, user changes the `sharedWithTeamId` (or sets visibility='public')
@@ -33,6 +34,7 @@ Enable team members to see each other's transcripts via manual team invites.
 ## Sharing Options
 
 Three visibility levels:
+
 - **`private`** - Only the owner can see the transcript
 - **`team`** - Owner + team members can see the transcript
 - **`public`** - Anyone can see the transcript (no auth required)
@@ -42,6 +44,7 @@ Three visibility levels:
 ## Default Sharing Behavior
 
 When a transcript is uploaded:
+
 1. **If repo is open source** → `visibility = "public"`
 2. **Else if has a repo AND user is in a team** → `visibility = "team"`
 3. **Otherwise** → `visibility = "private"` (includes non-repo transcripts)
@@ -49,13 +52,16 @@ When a transcript is uploaded:
 ### Open Source Detection
 
 Check if repo is public via GitHub API on **every upload** (ensures fresh data):
+
 ```
 GET https://api.github.com/repos/{owner}/{repo}
 ```
+
 - If 200 response → repo is public → default to `public`
 - If 404 or private → fall through to team/private logic
 
 **Implementation:**
+
 - Extract `{owner}/{repo}` from transcript's `repo` field (e.g., `sourcegraph/cody` from full path)
 - Always fetch fresh from GitHub on upload (no TTL complexity)
 - Update `repos.isPublic` cache after each fetch
@@ -169,6 +175,7 @@ ORDER BY t.createdAt DESC
 ```
 
 **Key change:** Team access now checks `sharedWithTeamId` specifically, and requires the owner to still be in that team. This means:
+
 - Leaving a team → your team transcripts become inaccessible (no reset needed)
 - Joining a new team → old transcripts stay private (they reference old team ID)
 
@@ -219,10 +226,7 @@ export async function checkBlobAccess(db: DrizzleDB, sha256: string, userId: str
       .select({ one: sql`1` })
       .from(transcriptBlobs)
       .innerJoin(transcripts, eq(transcriptBlobs.transcriptId, transcripts.id))
-      .where(and(
-        eq(transcriptBlobs.sha256, sha256),
-        eq(transcripts.visibility, "public")
-      ))
+      .where(and(eq(transcriptBlobs.sha256, sha256), eq(transcripts.visibility, "public")))
       .limit(1);
     return result.length > 0;
   }
@@ -233,22 +237,16 @@ export async function checkBlobAccess(db: DrizzleDB, sha256: string, userId: str
     .from(transcriptBlobs)
     .innerJoin(transcripts, eq(transcriptBlobs.transcriptId, transcripts.id))
     .leftJoin(ownerTeamMembers, eq(transcripts.userId, ownerTeamMembers.userId))
-    .leftJoin(myTeamMembers, and(
-      eq(ownerTeamMembers.teamId, myTeamMembers.teamId),
-      eq(myTeamMembers.userId, userId)
-    ))
+    .leftJoin(myTeamMembers, and(eq(ownerTeamMembers.teamId, myTeamMembers.teamId), eq(myTeamMembers.userId, userId)))
     .where(
       and(
         eq(transcriptBlobs.sha256, sha256),
         or(
           eq(transcripts.visibility, "public"),
           eq(transcripts.userId, userId),
-          and(
-            eq(transcripts.visibility, "team"),
-            isNotNull(myTeamMembers.userId)
-          )
-        )
-      )
+          and(eq(transcripts.visibility, "team"), isNotNull(myTeamMembers.userId)),
+        ),
+      ),
     )
     .limit(1);
   return result.length > 0;
@@ -259,21 +257,22 @@ export async function checkBlobAccess(db: DrizzleDB, sha256: string, userId: str
 
 ## State Transitions & Edge Cases
 
-| Scenario | Behavior |
-|----------|----------|
-| Owner tries to leave team | Blocked - must delete team |
-| Owner deletes account | Team deleted (CASCADE), transcripts.sharedWithTeamId SET NULL, access check fails (no team) |
-| Member leaves team | Transcripts remain visibility='team' but inaccessible (owner no longer in sharedWithTeamId) |
-| Member removed by owner | Transcripts remain visibility='team' but inaccessible (member no longer in sharedWithTeamId) |
-| User joins Team B after leaving Team A | Old transcripts still point to Team A (sharedWithTeamId), not visible to Team B |
-| User already in team tries to join another | Blocked - "Leave current team first" |
-| Expired invite link used | 410 Gone - "Invite expired, ask for new link" |
-| Race condition: simultaneous joins | App-level check before insert; rare edge case acceptable |
-| Owner tries to remove self via DELETE endpoint | Blocked - "Cannot remove team owner" |
+| Scenario                                       | Behavior                                                                                     |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Owner tries to leave team                      | Blocked - must delete team                                                                   |
+| Owner deletes account                          | Team deleted (CASCADE), transcripts.sharedWithTeamId SET NULL, access check fails (no team)  |
+| Member leaves team                             | Transcripts remain visibility='team' but inaccessible (owner no longer in sharedWithTeamId)  |
+| Member removed by owner                        | Transcripts remain visibility='team' but inaccessible (member no longer in sharedWithTeamId) |
+| User joins Team B after leaving Team A         | Old transcripts still point to Team A (sharedWithTeamId), not visible to Team B              |
+| User already in team tries to join another     | Blocked - "Leave current team first"                                                         |
+| Expired invite link used                       | 410 Gone - "Invite expired, ask for new link"                                                |
+| Race condition: simultaneous joins             | App-level check before insert; rare edge case acceptable                                     |
+| Owner tries to remove self via DELETE endpoint | Blocked - "Cannot remove team owner"                                                         |
 
 **Why no visibility reset is needed:**
 
 With the `sharedWithTeamId` approach, access control queries check:
+
 1. Viewer is in `sharedWithTeamId` team
 2. Owner is still in `sharedWithTeamId` team
 
@@ -285,14 +284,14 @@ This also prevents the cross-team leak: if User A leaves Team X and joins Team Y
 
 ## Security Considerations
 
-| Risk | Mitigation |
-|------|------------|
-| Invite link enumeration | Crypto-random codes (16+ chars), rate limit endpoint |
-| IDOR on team operations | Always verify `ownerId = userId` for management ops |
+| Risk                           | Mitigation                                                   |
+| ------------------------------ | ------------------------------------------------------------ |
+| Invite link enumeration        | Crypto-random codes (16+ chars), rate limit endpoint         |
+| IDOR on team operations        | Always verify `ownerId = userId` for management ops          |
 | Unauthorized transcript access | Query always includes ownership OR (team + visibility) check |
-| Unauthorized blob access | Same team check applied to blob access endpoint |
-| CSRF on mutations | POST/DELETE methods only, verify Origin header |
-| Email case mismatch | Normalize to lowercase for comparison |
+| Unauthorized blob access       | Same team check applied to blob access endpoint              |
+| CSRF on mutations              | POST/DELETE methods only, verify Origin header               |
+| Email case mismatch            | Normalize to lowercase for comparison                        |
 
 ---
 
@@ -301,18 +300,18 @@ This also prevents the cross-team leak: if User A leaves Team X and joins Team Y
 All team features are implemented as TanStack Start server functions (not API routes).
 The CLI doesn't need team management - only `/api/blobs/:sha256` is modified for access control.
 
-| Function | Auth | Description |
-|----------|------|-------------|
-| `getTeam()` | user | Get user's team with members |
-| `createTeam()` | user | Create team (auto-generate name, add owner to members) |
-| `deleteTeam(teamId)` | owner | Delete team |
-| `leaveTeam(teamId)` | member | Leave team (not owner) |
-| `addMemberByEmail(teamId, email)` | owner | Add member by email (case-insensitive) |
-| `removeMember(teamId, userId)` | owner | Remove member (blocked if userId = ownerId) |
-| `generateInvite(teamId)` | owner | Generate invite link (replaces existing) |
-| `getInviteInfo(code)` | any | Get team info for invite (used in join page loader) |
-| `acceptInvite(code)` | user | Accept invite |
-| `updateVisibility(transcriptId, visibility)` | owner | Change transcript visibility |
+| Function                                     | Auth   | Description                                            |
+| -------------------------------------------- | ------ | ------------------------------------------------------ |
+| `getTeam()`                                  | user   | Get user's team with members                           |
+| `createTeam()`                               | user   | Create team (auto-generate name, add owner to members) |
+| `deleteTeam(teamId)`                         | owner  | Delete team                                            |
+| `leaveTeam(teamId)`                          | member | Leave team (not owner)                                 |
+| `addMemberByEmail(teamId, email)`            | owner  | Add member by email (case-insensitive)                 |
+| `removeMember(teamId, userId)`               | owner  | Remove member (blocked if userId = ownerId)            |
+| `generateInvite(teamId)`                     | owner  | Generate invite link (replaces existing)               |
+| `getInviteInfo(code)`                        | any    | Get team info for invite (used in join page loader)    |
+| `acceptInvite(code)`                         | user   | Accept invite                                          |
+| `updateVisibility(transcriptId, visibility)` | owner  | Change transcript visibility                           |
 
 **API Route (CLI access):**
 | Endpoint | Method | Auth | Description |
@@ -324,17 +323,20 @@ The CLI doesn't need team management - only `/api/blobs/:sha256` is modified for
 ## UI Components
 
 ### 1. Transcript List (`/app`)
+
 - Sharing indicator icon (lock = private, users = team, globe = public)
 - For teammate transcripts: "Shared by [name]" with avatar
 - For public transcripts from others: "Public by [name]" with avatar
 - Filter: "All" | "Mine" | "Team" | "Public"
 
 ### 2. Transcript Detail (`/app/logs/:id`)
+
 - Sharing dropdown (owner only): Private | Team | Public
 - Status badge: "Private", "Shared with [Team Name]", or "Public"
 - Auto-detected indicator: "Auto-shared (open source repo)" if defaulted to public
 
 ### 3. Team Page (`/app/team`)
+
 - **No team state:** "Create a Team" button (no name input - auto-generated)
 - **In team state:**
   - Team name header (shows "[Owner]'s Team")
@@ -343,6 +345,7 @@ The CLI doesn't need team management - only `/api/blobs/:sha256` is modified for
   - Leave/Delete button (context-dependent)
 
 ### 4. Join Page (`/join/:code`)
+
 - Team name display
 - "Join [Team Name]" button
 - If not logged in: redirect to GitHub OAuth, then back to join
@@ -352,6 +355,7 @@ The CLI doesn't need team management - only `/api/blobs/:sha256` is modified for
 ## Implementation Tasks
 
 ### Phase 1: Database & Schema
+
 1. Add `visibility` column to transcripts table (private | team | public)
 2. Add `isPublic` column to repos table (for caching open source status)
 3. Create `teams` table
@@ -360,6 +364,7 @@ The CLI doesn't need team management - only `/api/blobs/:sha256` is modified for
 6. Run migration
 
 **Phase 1 Verification:**
+
 ```bash
 # 1. Generate and run migrations
 bun db:generate && bun db:migrate
@@ -385,11 +390,13 @@ bun run --filter packages/web check
 ```
 
 ### Phase 1.5: Open Source Detection
+
 7. Create helper function to check if repo is public via GitHub API
 8. Update transcript upload to always check repo visibility (fresh on every upload)
 9. Update repos.isPublic cache after each check (for fallback on API failure)
 
 **Phase 1.5 Verification:**
+
 ```bash
 # 1. Test checkRepoIsPublic with known public repo
 # In test or REPL:
@@ -412,6 +419,7 @@ sqlite3 .wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite \
 ```
 
 ### Phase 2: Core Server Functions
+
 10. `createTeam()` - Create team (auto-generate name, insert owner into team_members)
 11. `getTeam()` - Get user's team with members
 12. `deleteTeam(teamId)` - Delete team (owner only)
@@ -420,6 +428,7 @@ sqlite3 .wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite \
 15. `leaveTeam(teamId)` - Leave team (not owner)
 
 **Phase 2 Verification:**
+
 ```bash
 DB=".wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite"
 
@@ -447,14 +456,16 @@ sqlite3 $DB "SELECT COUNT(*) FROM team_members" | grep -q "2" && echo "PASS: 2 m
 ```
 
 ### Phase 3: Invite System
+
 16. `generateInvite(teamId)` - Generate invite link (owner only, replaces existing)
 17. `getInviteInfo(code)` - Get invite info (used in join page loader)
 18. `acceptInvite(code)` - Accept invite
-20. Create /join/$code page with loader and UI
+19. Create /join/$code page with loader and UI
 
 **Note:** Expired invites don't need cleanup - they're filtered at query time. Stale rows have negligible storage impact.
 
 **Phase 3 Verification:**
+
 ```bash
 DB=".wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite"
 
@@ -486,6 +497,7 @@ sqlite3 $DB "UPDATE team_invites SET expires_at = 0 WHERE code = '$CODE'"
 ```
 
 ### Phase 4: Transcript Sharing
+
 21. `updateVisibility(transcriptId, visibility)` - Update visibility (private | team | public)
 22. Update transcript queries for team + public access (JOIN pattern)
 23. Update `/api/blobs/:sha256` for team + public access (CLI needs this)
@@ -493,6 +505,7 @@ sqlite3 $DB "UPDATE team_invites SET expires_at = 0 WHERE code = '$CODE'"
 25. Add visibility indicator to transcript list (lock/users/globe icons)
 
 **Phase 4 Verification:**
+
 ```bash
 DB=".wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite"
 
@@ -535,13 +548,15 @@ STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/blobs/
 ```
 
 ### Phase 5: Team Management UI
-26. Install @tanstack/react-query and set up QueryClientProvider in __root.tsx
+
+26. Install @tanstack/react-query and set up QueryClientProvider in \_\_root.tsx
 27. Create /app/team page with TanStack Query mutations
 28. Create team button (no form - just calls createTeam() with auto-generated name)
 29. Member list component (show owner badge)
 30. Invite controls component (link + email input) using useMutation
 
 **Phase 5 Verification:**
+
 ```bash
 # Chrome DevTools MCP E2E (primary verification):
 # 1. Navigate to team page as user without team
@@ -572,10 +587,12 @@ STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/blobs/
 ```
 
 ### Phase 6: Polish & Edge Cases
+
 31. Handle "already in team" error gracefully in UI
 32. Test access control behavior when team membership changes
 
 **Phase 6 Verification:**
+
 ```bash
 DB=".wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite"
 
@@ -815,41 +832,43 @@ export async function getVisibleTranscripts(db: DrizzleDB, userId: string | null
   const ownerTeamMembers = aliasedTable(teamMembers, "owner_tm");
 
   // Authenticated: own + team (via sharedWithTeamId) + public
-  return db
-    .select({
-      id: transcripts.id,
-      // ... other fields
-      visibility: transcripts.visibility,
-      sharedWithTeamId: transcripts.sharedWithTeamId,
-      isOwner: sql<boolean>`${transcripts.userId} = ${userId}`,
-      ownerName: user.name,
-      ownerImage: user.image,
-    })
-    .from(transcripts)
-    .leftJoin(user, eq(transcripts.userId, user.id))
-    // Join viewer's membership in sharedWithTeamId
-    .leftJoin(viewerTeamMembers, and(
-      eq(transcripts.sharedWithTeamId, viewerTeamMembers.teamId),
-      eq(viewerTeamMembers.userId, userId)
-    ))
-    // Join owner's membership in sharedWithTeamId (must still be in team)
-    .leftJoin(ownerTeamMembers, and(
-      eq(transcripts.sharedWithTeamId, ownerTeamMembers.teamId),
-      eq(ownerTeamMembers.userId, transcripts.userId)
-    ))
-    .where(
-      or(
-        eq(transcripts.userId, userId),                    // own transcripts
-        eq(transcripts.visibility, "public"),             // public transcripts
-        and(
-          eq(transcripts.visibility, "team"),
-          isNotNull(transcripts.sharedWithTeamId),
-          isNotNull(viewerTeamMembers.userId),            // viewer in shared team
-          isNotNull(ownerTeamMembers.userId)              // owner still in shared team
-        )
+  return (
+    db
+      .select({
+        id: transcripts.id,
+        // ... other fields
+        visibility: transcripts.visibility,
+        sharedWithTeamId: transcripts.sharedWithTeamId,
+        isOwner: sql<boolean>`${transcripts.userId} = ${userId}`,
+        ownerName: user.name,
+        ownerImage: user.image,
+      })
+      .from(transcripts)
+      .leftJoin(user, eq(transcripts.userId, user.id))
+      // Join viewer's membership in sharedWithTeamId
+      .leftJoin(
+        viewerTeamMembers,
+        and(eq(transcripts.sharedWithTeamId, viewerTeamMembers.teamId), eq(viewerTeamMembers.userId, userId)),
       )
-    )
-    .orderBy(desc(transcripts.createdAt));
+      // Join owner's membership in sharedWithTeamId (must still be in team)
+      .leftJoin(
+        ownerTeamMembers,
+        and(eq(transcripts.sharedWithTeamId, ownerTeamMembers.teamId), eq(ownerTeamMembers.userId, transcripts.userId)),
+      )
+      .where(
+        or(
+          eq(transcripts.userId, userId), // own transcripts
+          eq(transcripts.visibility, "public"), // public transcripts
+          and(
+            eq(transcripts.visibility, "team"),
+            isNotNull(transcripts.sharedWithTeamId),
+            isNotNull(viewerTeamMembers.userId), // viewer in shared team
+            isNotNull(ownerTeamMembers.userId), // owner still in shared team
+          ),
+        ),
+      )
+      .orderBy(desc(transcripts.createdAt))
+  );
 }
 
 // Get invite by code
@@ -912,10 +931,13 @@ export const createTeam = createServerFn({ method: "POST" }).handler(async () =>
 
   // Transaction: create team + add owner as member atomically
   const result = await db.transaction(async (tx) => {
-    const [newTeam] = await tx.insert(teams).values({
-      name: teamName,
-      ownerId: userId,
-    }).returning();
+    const [newTeam] = await tx
+      .insert(teams)
+      .values({
+        name: teamName,
+        ownerId: userId,
+      })
+      .returning();
 
     await tx.insert(teamMembers).values({
       teamId: newTeam.id,
@@ -989,9 +1011,7 @@ export const leaveTeam = createServerFn({ method: "POST" })
     }
 
     // Just remove membership - no visibility reset needed
-    await db.delete(teamMembers).where(
-      and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userId))
-    );
+    await db.delete(teamMembers).where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userId)));
 
     logger.info("User left team", { teamId, userId });
     return { success: true };
@@ -1074,9 +1094,7 @@ export const removeMember = createServerFn({ method: "POST" })
 
     // Just remove membership - access control handles visibility
     // (owner must still be in sharedWithTeamId team for transcripts to be visible)
-    await db.delete(teamMembers).where(
-      and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, targetUserId))
-    );
+    await db.delete(teamMembers).where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, targetUserId)));
 
     logger.info("Member removed from team", { teamId, memberId: targetUserId, removedBy: userId });
     return { success: true };
@@ -1216,10 +1234,11 @@ export const updateVisibility = createServerFn({ method: "POST" })
     }
 
     // Update visibility AND sharedWithTeamId together
-    await db.update(transcripts)
+    await db
+      .update(transcripts)
       .set({
         visibility: visibility as SharingOption,
-        sharedWithTeamId,  // null for private/public, teamId for team
+        sharedWithTeamId, // null for private/public, teamId for team
       })
       .where(eq(transcripts.id, transcriptId));
 
@@ -1329,7 +1348,7 @@ export async function getDefaultVisibility(
   db: DrizzleDB,
   repoId: string | null,
   repoFullName: string | null,
-  userId: string
+  userId: string,
 ): Promise<DefaultSharingSettings> {
   // 1. Check if repo is public (fresh fetch from GitHub)
   if (repoId && repoFullName) {
@@ -1368,11 +1387,13 @@ export async function getDefaultVisibility(
 ### TanStack Query Setup
 
 **Install dependency:**
+
 ```bash
 cd packages/web && bun add @tanstack/react-query
 ```
 
 **Query client (lib/query-client.ts):**
+
 ```typescript
 import { QueryClient } from "@tanstack/react-query";
 
@@ -1386,7 +1407,8 @@ export const queryClient = new QueryClient({
 });
 ```
 
-**Add provider to __root.tsx:**
+**Add provider to \_\_root.tsx:**
+
 ```typescript
 // ADD to imports
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -1897,4 +1919,3 @@ function JoinErrorPage({ error }: { error: Error }) {
 - Email notifications
 - Audit log
 - Ownership transfer (owner must delete team)
-
