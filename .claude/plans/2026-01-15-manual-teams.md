@@ -22,6 +22,12 @@ Enable team members to see each other's transcripts via manual team invites.
 
 **App Constraint:** 0-1 team per user is enforced in application code (check before create/join). DB schema allows multiple teams for future flexibility - no migration needed to enable multi-team support.
 
+**Multi-Team Future:** The `sharedWithTeamId` column stores which specific team a transcript is shared with. This naturally supports multi-team:
+- When visibility='team', `sharedWithTeamId` records the exact team (not "any team the user is in")
+- If user joins multiple teams, each transcript is explicitly shared with one specific team
+- To share with a different team, user changes the `sharedWithTeamId` (or sets visibility='public')
+- No schema changes needed when multi-team is enabled - just remove the app-level 0-1 check
+
 ---
 
 ## Sharing Options
@@ -37,8 +43,8 @@ Three visibility levels:
 
 When a transcript is uploaded:
 1. **If repo is open source** → `visibility = "public"`
-2. **Else if user is in a team** → `visibility = "team"`
-3. **Otherwise** → `visibility = "private"`
+2. **Else if has a repo AND user is in a team** → `visibility = "team"`
+3. **Otherwise** → `visibility = "private"` (includes non-repo transcripts)
 
 ### Open Source Detection
 
@@ -53,7 +59,7 @@ GET https://api.github.com/repos/{owner}/{repo}
 - Extract `{owner}/{repo}` from transcript's `repo` field (e.g., `sourcegraph/cody` from full path)
 - Always fetch fresh from GitHub on upload (no TTL complexity)
 - Update `repos.isPublic` cache after each fetch
-- **Fallback on API failure:** Use cached value if available, else default to `private` (safe)
+- **Fallback on API failure:** Use cached value if available, else check team membership (for repo transcripts) or default to `private`
 - Rate limit: 60 requests/hour unauthenticated (plenty for typical usage)
 
 Users can toggle visibility on any transcript they own (private ↔ team ↔ public).
@@ -114,11 +120,13 @@ team_invites (
   createdAt     INTEGER NOT NULL
 )
 
--- Transcripts (existing table, add column)
+-- Transcripts (existing table, add columns)
 transcripts (
   ...existing columns...
   visibility       TEXT DEFAULT 'private'  -- 'private' | 'team' | 'public'
+  sharedWithTeamId TEXT REFERENCES teams(id) ON DELETE SET NULL  -- specific team when visibility='team'
 )
+-- Constraint (enforced in app): visibility='team' requires sharedWithTeamId to be set
 
 -- Repo visibility cache (fallback when GitHub API fails)
 repos (
@@ -131,7 +139,7 @@ repos (
 
 ## Access Control Query
 
-Using JOINs for simplicity (safe with 0-1 team per user - no cartesian product):
+Using JOINs with `sharedWithTeamId` - requires both viewer AND owner to be in the specific team:
 
 ```sql
 -- Get visible transcripts for a user (authenticated)
@@ -141,12 +149,15 @@ SELECT t.*,
        u.image AS ownerImage
 FROM transcripts t
 LEFT JOIN user u ON t.userId = u.id
-LEFT JOIN team_members owner_tm ON t.userId = owner_tm.userId
-LEFT JOIN team_members my_tm ON owner_tm.teamId = my_tm.teamId AND my_tm.userId = :userId
+LEFT JOIN team_members viewer_tm ON t.sharedWithTeamId = viewer_tm.teamId AND viewer_tm.userId = :userId
+LEFT JOIN team_members owner_tm ON t.sharedWithTeamId = owner_tm.teamId AND owner_tm.userId = t.userId
 WHERE
-  t.visibility = 'public'                         -- public transcripts (anyone)
-  OR t.userId = :userId                           -- own transcripts
-  OR (t.visibility = 'team' AND my_tm.userId IS NOT NULL)  -- teammate's team transcripts
+  t.userId = :userId                              -- own transcripts
+  OR t.visibility = 'public'                      -- public transcripts
+  OR (t.visibility = 'team'
+      AND t.sharedWithTeamId IS NOT NULL
+      AND viewer_tm.userId IS NOT NULL            -- viewer is in shared team
+      AND owner_tm.userId IS NOT NULL)            -- owner is still in shared team
 ORDER BY t.createdAt DESC
 
 -- Get visible transcripts (unauthenticated / public feed)
@@ -156,6 +167,10 @@ LEFT JOIN user u ON t.userId = u.id
 WHERE t.visibility = 'public'
 ORDER BY t.createdAt DESC
 ```
+
+**Key change:** Team access now checks `sharedWithTeamId` specifically, and requires the owner to still be in that team. This means:
+- Leaving a team → your team transcripts become inaccessible (no reset needed)
+- Joining a new team → old transcripts stay private (they reference old team ID)
 
 **Note:** If multi-team support is enabled, revisit these queries (may need DISTINCT or EXISTS to avoid duplicates).
 
@@ -247,53 +262,24 @@ export async function checkBlobAccess(db: DrizzleDB, sha256: string, userId: str
 | Scenario | Behavior |
 |----------|----------|
 | Owner tries to leave team | Blocked - must delete team |
-| Owner deletes account | Team deleted (CASCADE), member transcripts reset via trigger |
-| Member leaves team | Their transcripts auto-flip to `visibility='private'` |
-| Member removed by owner | Their transcripts auto-flip to `visibility='private'` |
+| Owner deletes account | Team deleted (CASCADE), transcripts.sharedWithTeamId SET NULL, access check fails (no team) |
+| Member leaves team | Transcripts remain visibility='team' but inaccessible (owner no longer in sharedWithTeamId) |
+| Member removed by owner | Transcripts remain visibility='team' but inaccessible (member no longer in sharedWithTeamId) |
+| User joins Team B after leaving Team A | Old transcripts still point to Team A (sharedWithTeamId), not visible to Team B |
 | User already in team tries to join another | Blocked - "Leave current team first" |
 | Expired invite link used | 410 Gone - "Invite expired, ask for new link" |
 | Race condition: simultaneous joins | App-level check before insert; rare edge case acceptable |
 | Owner tries to remove self via DELETE endpoint | Blocked - "Cannot remove team owner" |
 
-### Transaction Requirements
+**Why no visibility reset is needed:**
 
-**Member leave/removal must be transactional** to avoid inconsistent state:
+With the `sharedWithTeamId` approach, access control queries check:
+1. Viewer is in `sharedWithTeamId` team
+2. Owner is still in `sharedWithTeamId` team
 
-```sql
-BEGIN;
-UPDATE transcripts SET visibility = 'private' WHERE userId = :leavingUserId AND visibility = 'team';
-DELETE FROM team_members WHERE userId = :leavingUserId AND teamId = :teamId;
-COMMIT;
-```
+When membership changes (leave, remove, team delete), the access check naturally fails because the user is no longer in the team. Transcripts keep their visibility='team' and sharedWithTeamId but become inaccessible.
 
-**Team deletion must reset all member transcripts first:**
-
-```sql
-BEGIN;
--- Reset all members' transcript visibility before CASCADE deletes memberships
-UPDATE transcripts SET visibility = 'private'
-WHERE visibility = 'team'
-  AND userId IN (SELECT userId FROM team_members WHERE teamId = :teamId);
-DELETE FROM teams WHERE id = :teamId;  -- CASCADE handles team_members and team_invites
-COMMIT;
-```
-
-**Owner account deletion requires a trigger** to reset member transcripts before CASCADE:
-
-When an owner deletes their account, the `ON DELETE CASCADE` on `teams.ownerId` deletes the team, but application-level logic doesn't run. Add a SQLite trigger:
-
-```sql
--- Reset transcript visibility when team_members rows are deleted (by any means)
-CREATE TRIGGER reset_visibility_on_membership_delete
-BEFORE DELETE ON team_members
-FOR EACH ROW
-BEGIN
-  UPDATE transcripts SET visibility = 'private'
-  WHERE userId = OLD.userId AND visibility = 'team';
-END;
-```
-
-This trigger fires for: explicit DELETE, CASCADE from team deletion, and CASCADE from user deletion. This ensures transcripts are always reset to private when membership ends, regardless of how.
+This also prevents the cross-team leak: if User A leaves Team X and joins Team Y, their old transcripts still have `sharedWithTeamId=TeamX`, so Team Y members can't see them.
 
 ---
 
@@ -320,11 +306,10 @@ The CLI doesn't need team management - only `/api/blobs/:sha256` is modified for
 | `getTeam()` | user | Get user's team with members |
 | `createTeam()` | user | Create team (auto-generate name, add owner to members) |
 | `deleteTeam(teamId)` | owner | Delete team |
-| `leaveTeam(teamId)` | member | Leave team (not owner), resets transcript visibility |
+| `leaveTeam(teamId)` | member | Leave team (not owner) |
 | `addMemberByEmail(teamId, email)` | owner | Add member by email (case-insensitive) |
 | `removeMember(teamId, userId)` | owner | Remove member (blocked if userId = ownerId) |
-| `generateInvite(teamId)` | owner | Generate invite link |
-| `revokeInvite(teamId)` | owner | Revoke invite link |
+| `generateInvite(teamId)` | owner | Generate invite link (replaces existing) |
 | `getInviteInfo(code)` | any | Get team info for invite (used in join page loader) |
 | `acceptInvite(code)` | user | Accept invite |
 | `updateVisibility(transcriptId, visibility)` | owner | Change transcript visibility |
@@ -370,7 +355,7 @@ The CLI doesn't need team management - only `/api/blobs/:sha256` is modified for
 1. Add `visibility` column to transcripts table (private | team | public)
 2. Add `isPublic` column to repos table (for caching open source status)
 3. Create `teams` table
-4. Create `team_members` table with indexes and trigger
+4. Create `team_members` table with indexes
 5. Create `team_invites` table
 6. Run migration
 
@@ -431,8 +416,8 @@ sqlite3 .wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite \
 11. `getTeam()` - Get user's team with members
 12. `deleteTeam(teamId)` - Delete team (owner only)
 13. `addMemberByEmail(teamId, email)` - Add by email (case-insensitive, owner only)
-14. `removeMember(teamId, userId)` - Remove member (block owner self-removal, reset visibility)
-15. `leaveTeam(teamId)` - Leave team (reset visibility to private)
+14. `removeMember(teamId, userId)` - Remove member (block owner self-removal)
+15. `leaveTeam(teamId)` - Leave team (not owner)
 
 **Phase 2 Verification:**
 ```bash
@@ -462,10 +447,9 @@ sqlite3 $DB "SELECT COUNT(*) FROM team_members" | grep -q "2" && echo "PASS: 2 m
 ```
 
 ### Phase 3: Invite System
-16. `generateInvite(teamId)` - Generate invite link (owner only)
-17. `revokeInvite(teamId)` - Revoke invite (owner only)
-18. `getInviteInfo(code)` - Get invite info (used in join page loader)
-19. `acceptInvite(code)` - Accept invite
+16. `generateInvite(teamId)` - Generate invite link (owner only, replaces existing)
+17. `getInviteInfo(code)` - Get invite info (used in join page loader)
+18. `acceptInvite(code)` - Accept invite
 20. Create /join/$code page with loader and UI
 
 **Note:** Expired invites don't need cleanup - they're filtered at query time. Stale rows have negligible storage impact.
@@ -589,7 +573,7 @@ STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/blobs/
 
 ### Phase 6: Polish & Edge Cases
 31. Handle "already in team" error gracefully in UI
-32. Auto-reset visibility to private on team leave AND removal (SQLite trigger)
+32. Test access control behavior when team membership changes
 
 **Phase 6 Verification:**
 ```bash
@@ -602,24 +586,26 @@ DB=".wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite"
 # mcp__chrome-devtools__click uid="[join-button]"
 # mcp__chrome-devtools__take_snapshot - verify "Already in a team" error message
 
-# 2. Test visibility auto-reset on leave
-# Setup: User has transcript with visibility="team"
-TRANSCRIPT_ID=$(sqlite3 $DB "SELECT id FROM transcripts WHERE visibility = 'team' LIMIT 1")
-USER_ID=$(sqlite3 $DB "SELECT user_id FROM transcripts WHERE id = '$TRANSCRIPT_ID'")
+# 2. Test transcript access after leaving team (no visibility reset needed - access control handles it)
+# Setup: User A (member) has transcript with visibility="team", sharedWithTeamId=Team1
+# User B (also in Team1) can see User A's transcript
+# mcp__chrome-devtools__navigate_page url="http://localhost:3000/app" (as User B)
+# mcp__chrome-devtools__take_snapshot - verify User A's transcript visible
 
-# Leave team via UI
-# mcp__chrome-devtools__navigate_page url="http://localhost:3000/app/team"
+# User A leaves team
+# mcp__chrome-devtools__navigate_page url="http://localhost:3000/app/team" (as User A)
 # mcp__chrome-devtools__click uid="[leave-team-button]"
 # mcp__chrome-devtools__handle_dialog action="accept"
 
-# Verify visibility reset in DB
-sqlite3 $DB "SELECT visibility FROM transcripts WHERE id = '$TRANSCRIPT_ID'" | grep -q "private" && \
-  echo "PASS: visibility reset to private on leave"
+# Verify transcript still has visibility='team' but is no longer visible to Team1
+sqlite3 $DB "SELECT visibility, shared_with_team_id FROM transcripts WHERE id = '$TRANSCRIPT_ID'" | grep -q "team" && \
+  echo "PASS: visibility unchanged (still 'team')"
+# mcp__chrome-devtools__navigate_page url="http://localhost:3000/app" (as User B)
+# mcp__chrome-devtools__take_snapshot - verify User A's transcript is NO LONGER visible (access denied)
 
-# 3. Test visibility auto-reset on member removal
-# As owner, remove a member who has team-shared transcripts
-# mcp__chrome-devtools__click uid="[remove-member-button]"
-# Verify their transcripts reset to private
+# 3. Test cross-team isolation
+# User A joins Team2, their old transcripts should NOT be visible to Team2 members
+# Old transcripts still have sharedWithTeamId=Team1, so Team2 can't see them
 
 # 4. Final E2E check - transcript list with visibility indicators
 # mcp__chrome-devtools__navigate_page url="http://localhost:3000/app"
@@ -804,8 +790,8 @@ export async function findUserByEmail(db: DrizzleDB, email: string) {
   return result[0] ?? null;
 }
 
-// Get visible transcripts (with team access)
-// Uses JOINs (safe with 0-1 team per user - revisit if multi-team enabled)
+// Get visible transcripts (with team access via sharedWithTeamId)
+// Team access requires both viewer AND owner to be in the sharedWithTeamId team
 export async function getVisibleTranscripts(db: DrizzleDB, userId: string | null) {
   if (!userId) {
     // Unauthenticated: only public
@@ -814,6 +800,7 @@ export async function getVisibleTranscripts(db: DrizzleDB, userId: string | null
         id: transcripts.id,
         // ... other fields
         visibility: transcripts.visibility,
+        sharedWithTeamId: transcripts.sharedWithTeamId,
         ownerName: user.name,
         ownerImage: user.image,
       })
@@ -823,34 +810,42 @@ export async function getVisibleTranscripts(db: DrizzleDB, userId: string | null
       .orderBy(desc(transcripts.createdAt));
   }
 
-  // Create aliases for self-join on team_members
+  // Create aliases for team_members joins
+  const viewerTeamMembers = aliasedTable(teamMembers, "viewer_tm");
   const ownerTeamMembers = aliasedTable(teamMembers, "owner_tm");
-  const myTeamMembers = aliasedTable(teamMembers, "my_tm");
 
-  // Authenticated: own + team + public
+  // Authenticated: own + team (via sharedWithTeamId) + public
   return db
     .select({
       id: transcripts.id,
       // ... other fields
       visibility: transcripts.visibility,
+      sharedWithTeamId: transcripts.sharedWithTeamId,
       isOwner: sql<boolean>`${transcripts.userId} = ${userId}`,
       ownerName: user.name,
       ownerImage: user.image,
     })
     .from(transcripts)
     .leftJoin(user, eq(transcripts.userId, user.id))
-    .leftJoin(ownerTeamMembers, eq(transcripts.userId, ownerTeamMembers.userId))
-    .leftJoin(myTeamMembers, and(
-      eq(ownerTeamMembers.teamId, myTeamMembers.teamId),
-      eq(myTeamMembers.userId, userId)
+    // Join viewer's membership in sharedWithTeamId
+    .leftJoin(viewerTeamMembers, and(
+      eq(transcripts.sharedWithTeamId, viewerTeamMembers.teamId),
+      eq(viewerTeamMembers.userId, userId)
+    ))
+    // Join owner's membership in sharedWithTeamId (must still be in team)
+    .leftJoin(ownerTeamMembers, and(
+      eq(transcripts.sharedWithTeamId, ownerTeamMembers.teamId),
+      eq(ownerTeamMembers.userId, transcripts.userId)
     ))
     .where(
       or(
-        eq(transcripts.visibility, "public"),
-        eq(transcripts.userId, userId),
+        eq(transcripts.userId, userId),                    // own transcripts
+        eq(transcripts.visibility, "public"),             // public transcripts
         and(
           eq(transcripts.visibility, "team"),
-          isNotNull(myTeamMembers.userId)
+          isNotNull(transcripts.sharedWithTeamId),
+          isNotNull(viewerTeamMembers.userId),            // viewer in shared team
+          isNotNull(ownerTeamMembers.userId)              // owner still in shared team
         )
       )
     )
@@ -936,9 +931,11 @@ export const createTeam = createServerFn({ method: "POST" }).handler(async () =>
 
 /**
  * Delete team (owner only)
+ * Note: No visibility reset needed - ON DELETE SET NULL handles sharedWithTeamId,
+ * and access control checks owner-in-team which will fail.
  */
 export const deleteTeam = createServerFn({ method: "POST" })
-  .validator((teamId: string) => teamId)
+  .inputValidator((teamId: string) => teamId)
   .handler(async ({ data: teamId }) => {
     const db = createDrizzle(env.DB);
     const userId = await getAuthenticatedUserId();
@@ -954,27 +951,8 @@ export const deleteTeam = createServerFn({ method: "POST" })
       throw new Error("Only the owner can delete the team");
     }
 
-    // Get all member IDs to reset their transcript visibility
-    const members = await db.query.teamMembers.findMany({
-      where: eq(teamMembers.teamId, teamId),
-    });
-    const memberIds = members.map((m) => m.userId);
-
-    // Transaction: reset visibility + delete team (cascades to members/invites)
-    await db.transaction(async (tx) => {
-      if (memberIds.length > 0) {
-        await tx
-          .update(transcripts)
-          .set({ visibility: "private" })
-          .where(
-            and(
-              inArray(transcripts.userId, memberIds),
-              eq(transcripts.visibility, "team")
-            )
-          );
-      }
-      await tx.delete(teams).where(eq(teams.id, teamId));
-    });
+    // Delete team (CASCADE deletes members/invites, SET NULL on transcripts.sharedWithTeamId)
+    await db.delete(teams).where(eq(teams.id, teamId));
 
     logger.info("Team deleted", { teamId, deletedBy: userId });
     return { success: true };
@@ -982,9 +960,11 @@ export const deleteTeam = createServerFn({ method: "POST" })
 
 /**
  * Leave team (non-owner only)
+ * Note: No visibility reset needed - access control checks owner-in-team which will fail
+ * after leaving. Transcripts with sharedWithTeamId still set become inaccessible.
  */
 export const leaveTeam = createServerFn({ method: "POST" })
-  .validator((teamId: string) => teamId)
+  .inputValidator((teamId: string) => teamId)
   .handler(async ({ data: teamId }) => {
     const db = createDrizzle(env.DB);
     const userId = await getAuthenticatedUserId();
@@ -1008,17 +988,10 @@ export const leaveTeam = createServerFn({ method: "POST" })
       throw new Error("Not a member of this team");
     }
 
-    // Transaction: reset transcripts + remove membership
-    await db.transaction(async (tx) => {
-      await tx
-        .update(transcripts)
-        .set({ visibility: "private" })
-        .where(and(eq(transcripts.userId, userId), eq(transcripts.visibility, "team")));
-
-      await tx.delete(teamMembers).where(
-        and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userId))
-      );
-    });
+    // Just remove membership - no visibility reset needed
+    await db.delete(teamMembers).where(
+      and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userId))
+    );
 
     logger.info("User left team", { teamId, userId });
     return { success: true };
@@ -1028,7 +1001,7 @@ export const leaveTeam = createServerFn({ method: "POST" })
  * Add member by email (owner only)
  */
 export const addMemberByEmail = createServerFn({ method: "POST" })
-  .validator((input: { teamId: string; email: string }) => input)
+  .inputValidator((input: { teamId: string; email: string }) => input)
   .handler(async ({ data: { teamId, email } }) => {
     const db = createDrizzle(env.DB);
     const userId = await getAuthenticatedUserId();
@@ -1072,7 +1045,7 @@ export const addMemberByEmail = createServerFn({ method: "POST" })
  * Remove member (owner only, cannot remove self)
  */
 export const removeMember = createServerFn({ method: "POST" })
-  .validator((input: { teamId: string; targetUserId: string }) => input)
+  .inputValidator((input: { teamId: string; targetUserId: string }) => input)
   .handler(async ({ data: { teamId, targetUserId } }) => {
     const db = createDrizzle(env.DB);
     const userId = await getAuthenticatedUserId();
@@ -1099,17 +1072,11 @@ export const removeMember = createServerFn({ method: "POST" })
       throw new Error("User is not a member of this team");
     }
 
-    // Transaction: reset transcripts + remove membership
-    await db.transaction(async (tx) => {
-      await tx
-        .update(transcripts)
-        .set({ visibility: "private" })
-        .where(and(eq(transcripts.userId, targetUserId), eq(transcripts.visibility, "team")));
-
-      await tx.delete(teamMembers).where(
-        and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, targetUserId))
-      );
-    });
+    // Just remove membership - access control handles visibility
+    // (owner must still be in sharedWithTeamId team for transcripts to be visible)
+    await db.delete(teamMembers).where(
+      and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, targetUserId))
+    );
 
     logger.info("Member removed from team", { teamId, memberId: targetUserId, removedBy: userId });
     return { success: true };
@@ -1119,7 +1086,7 @@ export const removeMember = createServerFn({ method: "POST" })
  * Generate invite link (owner only)
  */
 export const generateInvite = createServerFn({ method: "POST" })
-  .validator((teamId: string) => teamId)
+  .inputValidator((teamId: string) => teamId)
   .handler(async ({ data: teamId }) => {
     const db = createDrizzle(env.DB);
     const userId = await getAuthenticatedUserId();
@@ -1153,36 +1120,10 @@ export const generateInvite = createServerFn({ method: "POST" })
   });
 
 /**
- * Revoke invite (owner only)
- */
-export const revokeInvite = createServerFn({ method: "POST" })
-  .validator((teamId: string) => teamId)
-  .handler(async ({ data: teamId }) => {
-    const db = createDrizzle(env.DB);
-    const userId = await getAuthenticatedUserId();
-
-    // Verify team exists and user is owner
-    const team = await db.query.teams.findFirst({
-      where: eq(teams.id, teamId),
-    });
-    if (!team) {
-      throw new Error("Team not found");
-    }
-    if (team.ownerId !== userId) {
-      throw new Error("Only the owner can revoke invites");
-    }
-
-    await db.delete(teamInvites).where(eq(teamInvites.teamId, teamId));
-
-    logger.info("Invite revoked", { teamId });
-    return { success: true };
-  });
-
-/**
  * Get invite info (public - used in join page loader)
  */
 export const getInviteInfo = createServerFn({ method: "GET" })
-  .validator((code: string) => code)
+  .inputValidator((code: string) => code)
   .handler(async ({ data: code }) => {
     const db = createDrizzle(env.DB);
 
@@ -1206,7 +1147,7 @@ export const getInviteInfo = createServerFn({ method: "GET" })
  * Accept invite (authenticated users only)
  */
 export const acceptInvite = createServerFn({ method: "POST" })
-  .validator((code: string) => code)
+  .inputValidator((code: string) => code)
   .handler(async ({ data: code }) => {
     const db = createDrizzle(env.DB);
     const userId = await getAuthenticatedUserId();
@@ -1240,9 +1181,10 @@ export const acceptInvite = createServerFn({ method: "POST" })
 
 /**
  * Update transcript visibility
+ * When setting to 'team', also stores the specific sharedWithTeamId
  */
 export const updateVisibility = createServerFn({ method: "POST" })
-  .validator((input: { transcriptId: string; visibility: string }) => input)
+  .inputValidator((input: { transcriptId: string; visibility: string }) => input)
   .handler(async ({ data: { transcriptId, visibility } }) => {
     const db = createDrizzle(env.DB);
     const userId = await getAuthenticatedUserId();
@@ -1263,21 +1205,26 @@ export const updateVisibility = createServerFn({ method: "POST" })
       throw new Error(`Invalid visibility. Must be one of: ${visibilityOptions.join(", ")}`);
     }
 
-    // If setting to "team", verify user is in a team
+    // Determine sharedWithTeamId based on visibility
+    let sharedWithTeamId: string | null = null;
     if (visibility === "team") {
       const userTeam = await queries.getUserTeam(db, userId);
       if (!userTeam) {
         throw new Error("You must be in a team to share with team. Create or join a team first.");
       }
+      sharedWithTeamId = userTeam.id;
     }
 
-    // Update visibility
+    // Update visibility AND sharedWithTeamId together
     await db.update(transcripts)
-      .set({ visibility: visibility as SharingOption })
+      .set({
+        visibility: visibility as SharingOption,
+        sharedWithTeamId,  // null for private/public, teamId for team
+      })
       .where(eq(transcripts.id, transcriptId));
 
-    logger.info("Transcript visibility updated", { transcriptId, visibility, userId });
-    return { success: true, visibility };
+    logger.info("Transcript visibility updated", { transcriptId, visibility, sharedWithTeamId, userId });
+    return { success: true, visibility, sharedWithTeamId };
   });
 ```
 
@@ -1361,15 +1308,29 @@ export async function checkRepoIsPublic(repoFullName: string): Promise<boolean |
 }
 
 /**
+ * Default sharing settings for a new transcript.
+ * Returns both visibility AND sharedWithTeamId (for team sharing).
+ */
+type DefaultSharingSettings = {
+  visibility: SharingOption;
+  sharedWithTeamId: string | null;
+};
+
+/**
  * Get default visibility for a new transcript.
  * Always fetches fresh from GitHub, updates cache, falls back on failure.
+ *
+ * Logic:
+ * 1. If repo is open source → public
+ * 2. If has a repo AND user is in a team → team (with specific teamId)
+ * 3. Otherwise → private (includes non-repo transcripts)
  */
 export async function getDefaultVisibility(
   db: DrizzleDB,
   repoId: string | null,
   repoFullName: string | null,
   userId: string
-): Promise<SharingOption> {
+): Promise<DefaultSharingSettings> {
   // 1. Check if repo is public (fresh fetch from GitHub)
   if (repoId && repoFullName) {
     const freshIsPublic = await checkRepoIsPublic(repoFullName);
@@ -1379,28 +1340,28 @@ export async function getDefaultVisibility(
       await db.update(repos).set({ isPublic: freshIsPublic }).where(eq(repos.id, repoId));
 
       if (freshIsPublic) {
-        return "public";
+        return { visibility: "public", sharedWithTeamId: null };
       }
     } else {
       // API failed - check cached value as fallback
       const repo = await db.query.repos.findFirst({ where: eq(repos.id, repoId) });
       if (repo?.isPublic) {
-        return "public";
+        return { visibility: "public", sharedWithTeamId: null };
       }
-      // No cache or cache says private - fall through
+      // No cache or cache says private - fall through to team check
+    }
+
+    // 2. Has a repo (not public) - check if user is in a team
+    const membership = await db.query.teamMembers.findFirst({
+      where: eq(teamMembers.userId, userId),
+    });
+    if (membership) {
+      return { visibility: "team", sharedWithTeamId: membership.teamId };
     }
   }
 
-  // 2. Check if user is in a team
-  const membership = await db.query.teamMembers.findFirst({
-    where: eq(teamMembers.userId, userId),
-  });
-  if (membership) {
-    return "team";
-  }
-
-  // 3. Default to private
-  return "private";
+  // 3. Default to private (no repo, or repo but not in team)
+  return { visibility: "private", sharedWithTeamId: null };
 }
 ```
 
@@ -1540,12 +1501,12 @@ function TeamDashboard({ team }: { team: Team }) {
   const isOwner = team.ownerId === session.user.id;
 
   const deleteTeamMutation = useMutation({
-    mutationFn: () => deleteTeam(team.id),
+    mutationFn: () => deleteTeam({ data: team.id }),
     onSuccess: () => router.invalidate(),
   });
 
   const leaveTeamMutation = useMutation({
-    mutationFn: () => leaveTeam(team.id),
+    mutationFn: () => leaveTeam({ data: team.id }),
     onSuccess: () => router.invalidate(),
   });
 
@@ -1641,7 +1602,7 @@ function MemberRow({ teamId, member, isOwner, canRemove }: {
   const router = useRouter();
 
   const removeMutation = useMutation({
-    mutationFn: () => removeMember(teamId, member.userId),
+    mutationFn: () => removeMember({ data: { teamId, targetUserId: member.userId } }),
     onSuccess: () => router.invalidate(),
   });
 
@@ -1700,11 +1661,11 @@ function InviteSection({ teamId }: { teamId: string }) {
   const [copied, setCopied] = useState(false);
 
   const generateLinkMutation = useMutation({
-    mutationFn: () => generateInvite(teamId),
+    mutationFn: () => generateInvite({ data: teamId }),
   });
 
   const addMemberMutation = useMutation({
-    mutationFn: (email: string) => addMemberByEmail(teamId, email),
+    mutationFn: (email: string) => addMemberByEmail({ data: { teamId, email } }),
     onSuccess: () => {
       setEmail("");
       router.invalidate();
@@ -1826,7 +1787,7 @@ import { getInviteInfo, acceptInvite, getSession } from "../lib/server-functions
 export const Route = createFileRoute("/join/$code")({
   loader: async ({ params }) => {
     const session = await getSession();
-    const invite = await getInviteInfo(params.code);
+    const invite = await getInviteInfo({ data: params.code });
 
     if (!invite) {
       throw new Error("Invite not found or has been revoked");
@@ -1847,7 +1808,7 @@ function JoinPage() {
   const router = useRouter();
 
   const joinMutation = useMutation({
-    mutationFn: () => acceptInvite(invite.code),
+    mutationFn: () => acceptInvite({ data: invite.code }),
     onSuccess: () => {
       router.navigate({ to: "/app/team" });
     },
