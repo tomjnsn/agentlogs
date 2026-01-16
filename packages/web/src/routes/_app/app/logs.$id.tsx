@@ -508,7 +508,7 @@ function MessageBlock({ message, index, userImage, userName }: MessageBlockProps
           <AvatarImage src={userImage || undefined} alt={userName || "User"} />
           <AvatarFallback className="text-xs">{getInitials(userName)}</AvatarFallback>
         </Avatar>
-        <div className="min-w-0 rounded-2xl bg-secondary/60 px-4 py-2.5">
+        <div className="min-w-0 rounded-lg bg-secondary/60 px-4 py-2.5">
           <p className="text-sm break-all whitespace-pre-wrap">{message.text}</p>
         </div>
       </div>
@@ -559,7 +559,7 @@ function MessageBlock({ message, index, userImage, userName }: MessageBlockProps
         <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary/60">
           <Terminal className="h-4 w-4 text-muted-foreground" />
         </div>
-        <div className="rounded-2xl bg-secondary/60 px-4 py-2.5">
+        <div className="rounded-lg bg-secondary/60 px-4 py-2.5">
           <code className="font-mono text-sm">
             {message.name}
             {message.args && <span className="text-muted-foreground"> {message.args}</span>}
