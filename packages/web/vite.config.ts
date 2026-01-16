@@ -41,7 +41,7 @@ export default defineConfig({
     tanstackStart(),
     viteReact(),
     sentryVitePlugin({
-      org: "o4510717166682112",
+      org: "agentlogs",
       project: "agentlogs",
       authToken: process.env.SENTRY_AUTH_TOKEN,
       sourcemaps: {
