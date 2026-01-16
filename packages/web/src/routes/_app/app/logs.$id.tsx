@@ -1,5 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import type { UnifiedTranscriptMessage } from "@agentlogs/shared/claudecode";
 import { unifiedTranscriptSchema } from "@agentlogs/shared/schemas";
@@ -15,13 +16,13 @@ import {
   MessageSquare,
   Pencil,
   Search,
+  Brain,
   Sparkles,
   SquareTerminal,
-  Tag,
   Terminal,
   Zap,
 } from "lucide-react";
-import { ClaudeCodeIcon, CodexIcon, OpenCodeIcon } from "../../../components/icons/source-icons";
+import { ClaudeCodeIcon, CodexIcon, GitHubIcon, OpenCodeIcon } from "../../../components/icons/source-icons";
 import { DiffViewer, FileViewer } from "../../../components/diff-viewer";
 import { lazy, Suspense, useEffect, useState } from "react";
 
@@ -103,10 +104,28 @@ function getSourceIcon(source: string, className?: string) {
 
 function getModelDisplayName(model: string | null): string {
   if (!model) return "Unknown";
-  if (model.includes("opus")) return "Opus 4.5";
-  if (model.includes("sonnet")) return "Sonnet 4";
-  if (model.includes("haiku")) return "Haiku 3.5";
-  return model;
+
+  // Parse model strings like:
+  // - claude-opus-4-5-20251101 → Claude Opus 4.5
+  // - claude-sonnet-4-20250514 → Claude Sonnet 4
+  // - claude-3-5-haiku-20241022 → Claude Haiku 3.5
+  const match = model.match(/^claude-(?:(\d+)-(\d+)-)?(opus|sonnet|haiku)(?:-(\d+)(?:-(\d+))?)?-\d{8}$/);
+  if (!match) return model;
+
+  const [, oldMajor, oldMinor, family, newMajor, newMinor] = match;
+  const major = newMajor ?? oldMajor;
+  const minor = newMinor ?? oldMinor;
+  const version = minor ? `${major}.${minor}` : major;
+  const familyName = family.charAt(0).toUpperCase() + family.slice(1);
+
+  return `Claude ${familyName} ${version}`;
+}
+
+function formatRepoName(repo: string): { label: string; isGitHub: boolean } {
+  if (repo.startsWith("github.com/")) {
+    return { label: repo.replace("github.com/", ""), isGitHub: true };
+  }
+  return { label: repo, isGitHub: false };
 }
 
 function getInitials(name: string | null): string {
@@ -171,6 +190,7 @@ function TranscriptDetailComponent() {
   // Calculate token usage percentage (approximate context limit)
   const contextLimit = 200000; // Claude's context limit
   const tokenPercentage = Math.round((unifiedTranscript.tokenUsage.totalTokens / contextLimit) * 100);
+  const repoInfo = unifiedTranscript.git?.repo ? formatRepoName(unifiedTranscript.git.repo) : null;
 
   // Auto-scroll to message if hash is present in URL
   useEffect(() => {
@@ -192,19 +212,9 @@ function TranscriptDetailComponent() {
       <div className="min-w-0 flex-1">
         {/* Header */}
         <header className="mb-8">
-          <h1 className="mb-3 truncate text-2xl font-semibold tracking-tight">
+          <h1 className="truncate text-2xl font-semibold tracking-tight">
             {data.summary || unifiedTranscript.preview || "Untitled Thread"}
           </h1>
-          <div className="flex items-center gap-2">
-            <Avatar className="h-6 w-6">
-              <AvatarImage src={data.userImage || undefined} alt={data.userName || "User"} />
-              <AvatarFallback className="text-xs">{getInitials(data.userName)}</AvatarFallback>
-            </Avatar>
-            <span className="font-medium">{data.userName || "Unknown"}</span>
-            {data.userName && (
-              <span className="text-muted-foreground">@{data.userName.toLowerCase().replace(/\s/g, "")}</span>
-            )}
-          </div>
         </header>
 
         {/* Messages */}
@@ -220,13 +230,22 @@ function TranscriptDetailComponent() {
         <div className="space-y-6">
           {/* Thread Metadata */}
           <section>
-            <h2 className="mb-3 text-sm font-medium text-muted-foreground">Thread</h2>
+            <h2 className="mb-3 text-sm font-medium text-muted-foreground">Log</h2>
             <div className="space-y-2.5 text-sm">
+              <SidebarItem
+                icon={
+                  <Avatar className="h-4 w-4">
+                    <AvatarImage src={data.userImage || undefined} alt={data.userName || "User"} />
+                    <AvatarFallback className="text-[10px]">{getInitials(data.userName)}</AvatarFallback>
+                  </Avatar>
+                }
+                label={data.userName || "Unknown"}
+              />
               <SidebarItem icon={<Calendar className="h-4 w-4" />} label={timeAgo} />
-              {unifiedTranscript.git?.repo && (
+              {repoInfo && (
                 <SidebarItem
-                  icon={<Folder className="h-4 w-4" />}
-                  label={unifiedTranscript.git.repo}
+                  icon={repoInfo.isGitHub ? <GitHubIcon className="h-4 w-4" /> : <Folder className="h-4 w-4" />}
+                  label={repoInfo.label}
                   link={`/repos/${data.repoId}`}
                 />
               )}
@@ -234,8 +253,9 @@ function TranscriptDetailComponent() {
                 <SidebarItem icon={<GitBranch className="h-4 w-4" />} label={unifiedTranscript.git.branch} />
               )}
               <SidebarItem
-                icon={<Sparkles className="h-4 w-4" />}
+                icon={<Brain className="h-4 w-4" />}
                 label={getModelDisplayName(unifiedTranscript.model)}
+                tooltip={unifiedTranscript.model ?? undefined}
               />
               <SidebarItem
                 icon={<CircleDollarSign className="h-4 w-4" />}
@@ -268,22 +288,23 @@ function TranscriptDetailComponent() {
               </div>
             </section>
           )}
-
-          {/* Labels */}
-          <section>
-            <h2 className="mb-3 text-sm font-medium text-muted-foreground">Labels</h2>
-            <button className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
-              <Tag className="h-4 w-4" />
-              <span>Add label</span>
-            </button>
-          </section>
         </div>
       </aside>
     </div>
   );
 }
 
-function SidebarItem({ icon, label, link }: { icon: React.ReactNode; label: string; link?: string }) {
+function SidebarItem({
+  icon,
+  label,
+  link,
+  tooltip,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  link?: string;
+  tooltip?: string;
+}) {
   const content = (
     <div className="flex items-center gap-2 text-muted-foreground">
       {icon}
@@ -291,15 +312,26 @@ function SidebarItem({ icon, label, link }: { icon: React.ReactNode; label: stri
     </div>
   );
 
-  if (link) {
+  const wrapped = link ? (
+    <Link to={link} className="block transition-colors hover:text-foreground">
+      {content}
+    </Link>
+  ) : (
+    content
+  );
+
+  if (tooltip) {
     return (
-      <Link to={link} className="block transition-colors hover:text-foreground">
-        {content}
-      </Link>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="cursor-default">{wrapped}</div>
+        </TooltipTrigger>
+        <TooltipContent side="left">{tooltip}</TooltipContent>
+      </Tooltip>
     );
   }
 
-  return content;
+  return wrapped;
 }
 
 interface MessageNavigatorProps {
