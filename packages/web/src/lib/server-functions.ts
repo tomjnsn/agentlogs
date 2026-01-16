@@ -236,6 +236,7 @@ export const getAllTranscripts = createServerFn().handler(async () => {
     filesChanged: t.filesChanged,
     linesAdded: t.linesAdded,
     linesRemoved: t.linesRemoved,
+    linesModified: t.linesModified,
     costUsd: t.costUsd,
     userName: t.userName,
     userImage: t.userImage,

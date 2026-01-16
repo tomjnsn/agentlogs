@@ -295,6 +295,7 @@ export const Route = createFileRoute("/api/ingest")({
           filesChanged: unifiedTranscript.filesChanged,
           linesAdded: unifiedTranscript.linesAdded,
           linesRemoved: unifiedTranscript.linesRemoved,
+          linesModified: unifiedTranscript.linesModified,
           inputTokens: unifiedTranscript.tokenUsage.inputTokens,
           cachedInputTokens: unifiedTranscript.tokenUsage.cachedInputTokens,
           outputTokens: unifiedTranscript.tokenUsage.outputTokens,

@@ -152,6 +152,7 @@ export const transcripts = sqliteTable(
     filesChanged: integer("files_changed").notNull().default(0),
     linesAdded: integer("lines_added").notNull().default(0),
     linesRemoved: integer("lines_removed").notNull().default(0),
+    linesModified: integer("lines_modified").notNull().default(0),
     inputTokens: integer("input_tokens").notNull(),
     cachedInputTokens: integer("cached_input_tokens").notNull(),
     outputTokens: integer("output_tokens").notNull(),

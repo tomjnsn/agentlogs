@@ -441,13 +441,15 @@ function sanitizeToolInput(toolName: string, input: unknown, cwd: string | null)
 
   const record = { ...(input as Record<string, unknown>) };
 
-  // Relativize file paths
-  if (typeof record.filePath === "string" && cwd) {
-    record.filePath = relativizePath(record.filePath, cwd);
-  }
-  if (typeof record.file_path === "string" && cwd) {
+  // Normalize filePath → file_path (OpenCode uses camelCase, unified format uses snake_case)
+  if (typeof record.filePath === "string") {
+    record.file_path = cwd ? relativizePath(record.filePath, cwd) : record.filePath;
+    delete record.filePath;
+  } else if (typeof record.file_path === "string" && cwd) {
     record.file_path = relativizePath(record.file_path, cwd);
   }
+
+  // Relativize other path fields
   if (typeof record.path === "string" && cwd) {
     record.path = relativizePath(record.path, cwd);
   }

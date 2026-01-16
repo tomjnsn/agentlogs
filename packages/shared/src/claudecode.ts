@@ -166,13 +166,15 @@ export type TranscriptStats = {
   filesChanged: number;
   linesAdded: number;
   linesRemoved: number;
+  linesModified: number;
 };
 
 export function calculateTranscriptStats(messages: UnifiedTranscriptMessage[]): TranscriptStats {
   let toolCount = 0;
   let userMessageCount = 0;
-  let linesAdded = 0;
-  let linesRemoved = 0;
+  let totalAdded = 0;
+  let totalRemoved = 0;
+  let totalModified = 0;
   const changedFiles = new Set<string>();
 
   for (const msg of messages) {
@@ -184,23 +186,40 @@ export function calculateTranscriptStats(messages: UnifiedTranscriptMessage[]): 
       // Track file changes from Edit and Write tools
       const toolName = msg.toolName;
       const input = msg.input as Record<string, unknown> | undefined;
+      const output = msg.output as Record<string, unknown> | undefined;
 
+      // Unified format uses file_path (snake_case)
       if (input && typeof input.file_path === "string") {
         if (toolName === "Edit" || toolName === "Write") {
           changedFiles.add(input.file_path);
         }
       }
 
-      // Parse diff to count additions/removals
-      if (toolName === "Edit" && input && typeof input.diff === "string") {
-        const diffLines = input.diff.split("\n");
+      // Count lines from Write tool (new file creation)
+      if (toolName === "Write" && input && typeof input.content === "string") {
+        const lineCount = input.content.split("\n").length;
+        totalAdded += lineCount;
+      }
+
+      // Parse diff to count additions/removals/modifications
+      // Diff can be in input (Claude Code) or output (OpenCode)
+      const diff = input?.diff ?? output?.diff;
+      if (toolName === "Edit" && typeof diff === "string") {
+        let diffAdded = 0;
+        let diffRemoved = 0;
+        const diffLines = diff.split("\n");
         for (const line of diffLines) {
           if (line.startsWith("+") && !line.startsWith("+++")) {
-            linesAdded++;
+            diffAdded++;
           } else if (line.startsWith("-") && !line.startsWith("---")) {
-            linesRemoved++;
+            diffRemoved++;
           }
         }
+        // Modifications are paired additions/removals
+        const modified = Math.min(diffAdded, diffRemoved);
+        totalAdded += diffAdded - modified;
+        totalRemoved += diffRemoved - modified;
+        totalModified += modified;
       }
     }
   }
@@ -209,8 +228,9 @@ export function calculateTranscriptStats(messages: UnifiedTranscriptMessage[]): 
     toolCount,
     userMessageCount,
     filesChanged: changedFiles.size,
-    linesAdded,
-    linesRemoved,
+    linesAdded: totalAdded,
+    linesRemoved: totalRemoved,
+    linesModified: totalModified,
   };
 }
 

@@ -271,11 +271,11 @@ function TranscriptItem({ transcript }: { transcript: TranscriptData }) {
               <MessageSquare className="h-3 w-3" />
               {transcript.userMessageCount}
             </span>
-            {(transcript.linesAdded > 0 || transcript.linesRemoved > 0) && (
-              <span>
-                <span className="text-green-500">+{transcript.linesAdded}</span>
-                <span className="mx-0.5">/</span>
-                <span className="text-red-500">-{transcript.linesRemoved}</span>
+            {(transcript.linesAdded > 0 || transcript.linesRemoved > 0 || transcript.linesModified > 0) && (
+              <span className="flex items-center gap-1">
+                {transcript.linesAdded > 0 && <span className="text-green-500">+{transcript.linesAdded}</span>}
+                {transcript.linesModified > 0 && <span className="text-yellow-500">~{transcript.linesModified}</span>}
+                {transcript.linesRemoved > 0 && <span className="text-red-500">-{transcript.linesRemoved}</span>}
               </span>
             )}
             {transcript.repoName && (

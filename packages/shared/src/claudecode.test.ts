@@ -62,6 +62,7 @@ describe("convertClaudeCodeFile", () => {
           },
           "id": "0e26ec2f-937e-482c-b889-bc126f996913",
           "linesAdded": 0,
+          "linesModified": 0,
           "linesRemoved": 0,
           "messageCount": 5,
           "messages": [
@@ -210,8 +211,9 @@ describe("convertClaudeCodeFile", () => {
             "repo": "github.com/vibeinsights/vibeinsights",
           },
           "id": "8122657c-fe54-4dc9-89a3-20049e8a84f7",
-          "linesAdded": 3,
-          "linesRemoved": 1,
+          "linesAdded": 10,
+          "linesModified": 1,
+          "linesRemoved": 0,
           "messageCount": 16,
           "messages": [
             {
@@ -729,6 +731,7 @@ describe("convertClaudeCodeFile", () => {
           },
           "id": "609efeca-2f51-4118-b077-e91c9fe63f73",
           "linesAdded": 0,
+          "linesModified": 0,
           "linesRemoved": 0,
           "messageCount": 6,
           "messages": [
@@ -879,6 +882,7 @@ describe("convertClaudeCodeFile", () => {
           },
           "id": "0db46778-18a1-4d84-853f-d4dc72a07a1b",
           "linesAdded": 0,
+          "linesModified": 0,
           "linesRemoved": 0,
           "messageCount": 12,
           "messages": [
@@ -1234,6 +1238,7 @@ describe("convertClaudeCodeFile", () => {
           "git": null,
           "id": "794b4c5f-6354-422a-9e6d-c9f18e89e427",
           "linesAdded": 0,
+          "linesModified": 0,
           "linesRemoved": 0,
           "messageCount": 8,
           "messages": [
