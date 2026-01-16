@@ -73,6 +73,7 @@
         "@radix-ui/react-select": "^2.2.6",
         "@radix-ui/react-slot": "^1.2.3",
         "@radix-ui/react-tooltip": "^1.2.8",
+        "@sentry/cloudflare": "^10.34.0",
         "@sentry/tanstackstart-react": "^10.34.0",
         "@tanstack/react-router": "^1.145.11",
         "@tanstack/react-start": "^1.145.11",
@@ -685,6 +686,8 @@
     "@sentry/cli-win32-i686": ["@sentry/cli-win32-i686@2.58.4", "", { "os": "win32", "cpu": "ia32" }, "sha512-3triFD6jyvhVcXOmGyttf+deKZcC1tURdhnmDUIBkiDPJKGT/N5xa4qAtHJlAB/h8L9jgYih9bvJnvvFVM7yug=="],
 
     "@sentry/cli-win32-x64": ["@sentry/cli-win32-x64@2.58.4", "", { "os": "win32", "cpu": "x64" }, "sha512-cSzN4PjM1RsCZ4pxMjI0VI7yNCkxiJ5jmWncyiwHXGiXrV1eXYdQ3n1LhUYLZ91CafyprR0OhDcE+RVZ26Qb5w=="],
+
+    "@sentry/cloudflare": ["@sentry/cloudflare@10.34.0", "", { "dependencies": { "@opentelemetry/api": "^1.9.0", "@sentry/core": "10.34.0" }, "peerDependencies": { "@cloudflare/workers-types": "^4.x" }, "optionalPeers": ["@cloudflare/workers-types"] }, "sha512-GYBeFf/CGVJoWE6gTv7IP3hJdBecOTUUlhL74+hG6oELwn4qffCOknC/wrm3W94ydBMw0uLa4bM9Ev2ETOY8wg=="],
 
     "@sentry/core": ["@sentry/core@10.34.0", "", {}, "sha512-4FFpYBMf0VFdPcsr4grDYDOR87mRu6oCfb51oQjU/Pndmty7UgYo0Bst3LEC/8v0SpytBtzXq+Wx/fkwulBesg=="],
 

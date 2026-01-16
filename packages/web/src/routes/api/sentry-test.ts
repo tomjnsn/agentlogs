@@ -1,4 +1,4 @@
-import * as Sentry from "@sentry/tanstackstart-react";
+import * as Sentry from "@sentry/cloudflare";
 import { createFileRoute } from "@tanstack/react-router";
 import { json } from "@tanstack/react-start";
 import { env } from "cloudflare:workers";
