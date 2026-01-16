@@ -1,6 +1,6 @@
 import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
 import type { DrizzleDB } from ".";
-import { repos, transcripts, user, type UserRole } from "./schema";
+import { repos, teamInvites, teamMembers, teams, transcripts, user, type UserRole } from "./schema";
 
 /**
  * Get all repos for a user with computed transcript count
@@ -250,4 +250,90 @@ export async function getAdminAggregateStats(db: DrizzleDB) {
     ...transcriptStats,
     ...repoStats,
   };
+}
+
+// =============================================================================
+// Team Queries
+// =============================================================================
+
+/**
+ * Get user's current team (0 or 1)
+ * Returns null if user is not in any team
+ */
+export async function getUserTeam(db: DrizzleDB, userId: string) {
+  const membership = await db.query.teamMembers.findFirst({
+    where: eq(teamMembers.userId, userId),
+    with: {
+      team: {
+        with: {
+          owner: true,
+          members: { with: { user: true } },
+        },
+      },
+    },
+  });
+  return membership?.team ?? null;
+}
+
+/**
+ * Get team by ID with members
+ */
+export async function getTeamWithMembers(db: DrizzleDB, teamId: string) {
+  return db.query.teams.findFirst({
+    where: eq(teams.id, teamId),
+    with: {
+      owner: true,
+      members: { with: { user: true } },
+      invites: true,
+    },
+  });
+}
+
+/**
+ * Check if user is team owner
+ */
+export async function isTeamOwner(db: DrizzleDB, teamId: string, userId: string) {
+  const team = await db.query.teams.findFirst({
+    where: and(eq(teams.id, teamId), eq(teams.ownerId, userId)),
+  });
+  return !!team;
+}
+
+/**
+ * Check if user is team member
+ */
+export async function isTeamMember(db: DrizzleDB, teamId: string, userId: string) {
+  const member = await db.query.teamMembers.findFirst({
+    where: and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userId)),
+  });
+  return !!member;
+}
+
+/**
+ * Find user by email (case-insensitive)
+ */
+export async function findUserByEmail(db: DrizzleDB, email: string) {
+  const result = await db
+    .select()
+    .from(user)
+    .where(sql`LOWER(${user.email}) = LOWER(${email})`)
+    .limit(1);
+  return result[0] ?? null;
+}
+
+/**
+ * Get invite by code
+ */
+export async function getInviteByCode(db: DrizzleDB, code: string) {
+  return db.query.teamInvites.findFirst({
+    where: eq(teamInvites.code, code),
+    with: {
+      team: {
+        with: {
+          owner: true,
+          members: true,
+        },
+      },
+    },
+  });
 }
