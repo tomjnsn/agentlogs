@@ -16,7 +16,7 @@
     "db:migrate:remote": "wrangler d1 migrations apply agentlogs --remote",
     "db:studio": "DB_LOCAL_PATH=$(find $PWD/.wrangler/state/v3/d1/miniflare-D1DatabaseObject -type f -name '*.sqlite' -print -quit 2>/dev/null) bunx drizzle-kit studio --port 4983",
     "db:studio:test": "DB_LOCAL_PATH=$(find $PWD/.wrangler-test/state/v3/d1/miniflare-D1DatabaseObject -type f -name '*.sqlite' -print -quit 2>/dev/null) bunx drizzle-kit studio --port 4984",
-    "db:reset": "rm -rf .wrangler/state && bun run db:setup",
+    "db:reset": "rm -rf .wrangler/state && bun run db:migrate",
     "check": "tsgo --project tsconfig.json"
   },
   "dependencies": {
