@@ -30,7 +30,7 @@ function uploadFixtureTranscript(fixture: FixtureCase): UploadResult {
   const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), "agentlogs-test-"));
 
   try {
-    const output = execSync(`bun agentlogs ${fixture.uploadCommand} upload ${fixture.fixturePath}`, {
+    const output = execSync(`bun --silent agentlogs ${fixture.uploadCommand} upload ${fixture.fixturePath}`, {
       cwd: ROOT_DIR,
       env: {
         // Use temp HOME so CLI doesn't find existing config
