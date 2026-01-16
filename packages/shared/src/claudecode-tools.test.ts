@@ -218,6 +218,7 @@ describe("Tool Call Input/Output Processing", () => {
       "
       ,
           "file_path": "./fixtures/claudecode/JOKE.md",
+          "lineOffset": 1,
         },
         "model": "claude-sonnet-4-5-20250929",
         "output": {

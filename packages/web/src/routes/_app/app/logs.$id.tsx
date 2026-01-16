@@ -620,7 +620,13 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError }: T
 
     return (
       <div id={messageId} className="space-y-2">
-        {isEditWithDiff && <DiffViewer filePath={filePath} diff={String(inputObj!.diff)} />}
+        {isEditWithDiff && (
+          <DiffViewer
+            filePath={filePath}
+            diff={String(inputObj!.diff)}
+            lineOffset={typeof inputObj!.lineOffset === "number" ? inputObj!.lineOffset : undefined}
+          />
+        )}
         {isWriteWithContent && <FileViewer filePath={filePath} content={String(inputObj!.content)} />}
         {(error || isError) && (
           <div className="rounded-lg bg-destructive/10 p-3">

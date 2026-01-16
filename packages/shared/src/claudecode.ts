@@ -93,6 +93,9 @@ const IGNORE_STATUS_MESSAGES = new Set([
   "[request cancelled by user]",
 ]);
 
+// Commands to ignore when converting transcripts (no value in keeping them)
+const IGNORED_COMMANDS = new Set(["/clear"]);
+
 const COMMAND_ENVELOPE_PATTERN = /^<\/?(?:command|local)-[a-z-]+>/i;
 const SHELL_PROMPT_PATTERN = /^[α-ωΑ-Ω]\s/i;
 
@@ -273,7 +276,7 @@ export function convertClaudeCodeTranscript(
     model: primaryModel,
     blendedTokens,
     costUsd,
-    messageCount: flatTranscript.length,
+    messageCount: messages.length,
     ...stats,
     tokenUsage,
     modelUsage: Array.from(modelUsageMap.entries()).map(([model, usage]) => ({ model, usage })),
@@ -345,7 +348,7 @@ export async function convertClaudeCodeFile(
     model: primaryModel,
     blendedTokens,
     costUsd,
-    messageCount: flatTranscript.length,
+    messageCount: messages.length,
     ...stats,
     tokenUsage,
     modelUsage: Array.from(modelUsageMap.entries()).map(([model, usage]) => ({ model, usage })),
@@ -1392,6 +1395,9 @@ function convertTranscriptToMessages(transcript: ClaudeMessageRecord[]): Convert
     timestamp: string | undefined;
   } | null = null;
 
+  // Track if we should skip the next stdout (from an ignored command like /clear)
+  let skipNextStdout = false;
+
   // Get cwd for path relativization
   const cwd = deriveWorkingDirectory(transcript);
 
@@ -1414,6 +1420,11 @@ function convertTranscriptToMessages(transcript: ClaudeMessageRecord[]): Convert
         // Check if this is a local-command-stdout message
         const stdout = parseLocalCommandStdout(text);
         if (stdout !== null) {
+          // Skip stdout from ignored commands (like /clear)
+          if (skipNextStdout) {
+            skipNextStdout = false;
+            continue;
+          }
           // If we have a pending command, merge stdout into it and emit
           if (pendingCommand) {
             const cleanedOutput = stripAnsiCodes(stdout).trim();
@@ -1436,6 +1447,11 @@ function convertTranscriptToMessages(transcript: ClaudeMessageRecord[]): Convert
         // Check if this is a command-name message
         const parsedCommand = parseCommandMessage(text);
         if (parsedCommand) {
+          // Skip ignored commands (like /clear) - they add no value to the transcript
+          if (IGNORED_COMMANDS.has(parsedCommand.name)) {
+            skipNextStdout = true;
+            continue;
+          }
           // If we had a pending command without stdout, emit it first
           if (pendingCommand) {
             messages.push(
@@ -1821,19 +1837,37 @@ function sanitizeToolCall(
       const outputObj = cloneObject(output);
 
       let diffString: string | undefined;
+      let lineOffset: number | undefined;
+
+      // Extract line offset from structuredPatch if available
       if (outputObj && Array.isArray(outputObj.structuredPatch)) {
         const diffLines: string[] = [];
         for (const hunk of outputObj.structuredPatch as unknown[]) {
-          if (isPlainObject(hunk) && Array.isArray(hunk.lines)) {
-            for (const line of hunk.lines as unknown[]) {
-              if (typeof line === "string") {
-                diffLines.push(line);
+          if (isPlainObject(hunk)) {
+            // Extract line offset from first hunk
+            if (lineOffset === undefined && typeof hunk.oldStart === "number") {
+              lineOffset = hunk.oldStart;
+            }
+            if (Array.isArray(hunk.lines)) {
+              for (const line of hunk.lines as unknown[]) {
+                if (typeof line === "string") {
+                  diffLines.push(line);
+                }
               }
             }
           }
         }
         if (diffLines.length > 0) {
           diffString = `${diffLines.join("\n")}\n`;
+        }
+      }
+
+      // Extract line offset from string output containing cat -n format
+      // Format: "The file ... has been updated. Here's the result of running `cat -n`...\n    94→content"
+      if (lineOffset === undefined && typeof output === "string") {
+        const catNLineMatch = output.match(/^\s*(\d+)[→\t]/m);
+        if (catNLineMatch) {
+          lineOffset = parseInt(catNLineMatch[1], 10);
         }
       }
 
@@ -1855,7 +1889,7 @@ function sanitizeToolCall(
         const isErrorLike =
           isErrorValue === true ||
           isErrorValue === "true" ||
-          typeof output === "string" ||
+          (typeof output === "string" && !output.includes("has been updated")) ||
           (outputObj && typeof outputObj.type === "string" && outputObj.type === "error");
 
         if (!diffString && !isErrorLike && legacyOld !== undefined && legacyNew !== undefined) {
@@ -1878,6 +1912,10 @@ function sanitizeToolCall(
 
         if (diffString) {
           inputObj.diff = diffString;
+        }
+
+        if (lineOffset !== undefined && lineOffset > 0) {
+          inputObj.lineOffset = lineOffset;
         }
 
         sanitizedInput = inputObj;

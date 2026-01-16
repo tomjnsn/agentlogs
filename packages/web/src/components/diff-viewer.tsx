@@ -24,6 +24,7 @@ class DiffErrorBoundary extends Component<{ children: ReactNode; fallback: React
 interface DiffViewerProps {
   filePath: string;
   diff: string;
+  lineOffset?: number;
   className?: string;
 }
 
@@ -65,7 +66,7 @@ function isNewFile(diff: string): boolean {
 /**
  * Convert a simple diff string (lines starting with +/-/space) to a proper unified diff patch format
  */
-function convertToPatchFormat(filePath: string, diff: string): string {
+function convertToPatchFormat(filePath: string, diff: string, lineOffset: number = 1): string {
   const lines = diff.split("\n");
 
   // Filter to valid diff lines: +, -, or space (context)
@@ -112,15 +113,15 @@ function convertToPatchFormat(filePath: string, diff: string): string {
   if (isNew) {
     patchLines.push("--- /dev/null");
     patchLines.push(`+++ b/${filePath}`);
-    patchLines.push(`@@ -0,0 +1,${newCount} @@`);
+    patchLines.push(`@@ -0,0 +${lineOffset},${newCount} @@`);
   } else if (isDelete) {
     patchLines.push(`--- a/${filePath}`);
     patchLines.push("+++ /dev/null");
-    patchLines.push(`@@ -1,${oldCount} +0,0 @@`);
+    patchLines.push(`@@ -${lineOffset},${oldCount} +0,0 @@`);
   } else {
     patchLines.push(`--- a/${filePath}`);
     patchLines.push(`+++ b/${filePath}`);
-    patchLines.push(`@@ -1,${oldCount} +1,${newCount} @@`);
+    patchLines.push(`@@ -${lineOffset},${oldCount} +${lineOffset},${newCount} @@`);
   }
 
   // Add diff lines
@@ -139,10 +140,10 @@ function getFileName(filePath: string): string {
   return filePath.split("/").pop() || filePath;
 }
 
-export function DiffViewer({ filePath, diff, className }: DiffViewerProps) {
+export function DiffViewer({ filePath, diff, lineOffset = 1, className }: DiffViewerProps) {
   const stats = computeDiffStats(diff);
   const isNew = isNewFile(diff);
-  const patch = convertToPatchFormat(filePath, diff);
+  const patch = convertToPatchFormat(filePath, diff, lineOffset);
 
   // If no patch content, show a simple message
   if (!patch) {

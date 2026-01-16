@@ -63,16 +63,8 @@ describe("convertClaudeCodeFile", () => {
           "id": "0e26ec2f-937e-482c-b889-bc126f996913",
           "linesAdded": 0,
           "linesRemoved": 0,
-          "messageCount": 11,
+          "messageCount": 5,
           "messages": [
-            {
-              "args": undefined,
-              "id": "8bab5784-63f2-437f-8b71-b20a85327b44",
-              "name": "/clear",
-              "output": undefined,
-              "timestamp": "2025-10-10T21:56:01.409Z",
-              "type": "command",
-            },
             {
               "id": "3648cc91-eee4-4a25-bad3-31104269d5b8",
               "text": "how are you doing",
@@ -220,7 +212,7 @@ describe("convertClaudeCodeFile", () => {
           "id": "8122657c-fe54-4dc9-89a3-20049e8a84f7",
           "linesAdded": 3,
           "linesRemoved": 1,
-          "messageCount": 25,
+          "messageCount": 16,
           "messages": [
             {
               "id": "03ffd31e-6bc0-4899-9df7-9b484cfda8cf",
@@ -502,6 +494,7 @@ describe("convertClaudeCodeFile", () => {
       "
       ,
                 "file_path": "./JOKE.md",
+                "lineOffset": 1,
               },
               "model": "claude-sonnet-4-5-20250929",
               "output": {
@@ -737,7 +730,7 @@ describe("convertClaudeCodeFile", () => {
           "id": "609efeca-2f51-4118-b077-e91c9fe63f73",
           "linesAdded": 0,
           "linesRemoved": 0,
-          "messageCount": 7,
+          "messageCount": 6,
           "messages": [
             {
               "id": "d4051f12-b400-4141-b750-c5a6a0144cf2",
@@ -887,7 +880,7 @@ describe("convertClaudeCodeFile", () => {
           "id": "0db46778-18a1-4d84-853f-d4dc72a07a1b",
           "linesAdded": 0,
           "linesRemoved": 0,
-          "messageCount": 17,
+          "messageCount": 12,
           "messages": [
             {
               "id": "a47984ff-069f-4c10-890c-d39fafb506c3",
@@ -1242,7 +1235,7 @@ describe("convertClaudeCodeFile", () => {
           "id": "794b4c5f-6354-422a-9e6d-c9f18e89e427",
           "linesAdded": 0,
           "linesRemoved": 0,
-          "messageCount": 11,
+          "messageCount": 8,
           "messages": [
             {
               "id": "c3e4d9d7-4c50-4d9e-8a52-58d49da172c6",
