@@ -1,18 +1,22 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { acceptInvite, getInviteInfo, getSession } from "../../lib/server-functions";
+import { acceptInvite, getInviteInfo, getSession, getTeam } from "../../lib/server-functions";
 
 export const Route = createFileRoute("/_app/join/$code")({
   loader: async ({ params }) => {
-    const [invite, session] = await Promise.all([getInviteInfo({ data: params.code }), getSession()]);
-    return { invite, session, code: params.code };
+    const [invite, session, currentTeam] = await Promise.all([
+      getInviteInfo({ data: params.code }),
+      getSession(),
+      getTeam(),
+    ]);
+    return { invite, session, currentTeam, code: params.code };
   },
   component: JoinPage,
 });
 
 function JoinPage() {
-  const { invite, session, code } = Route.useLoaderData();
+  const { invite, session, currentTeam, code } = Route.useLoaderData();
   const navigate = useNavigate();
   const [isJoining, setIsJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,6 +78,27 @@ function JoinPage() {
           <Button asChild variant="outline">
             <Link to="/app">Go to Dashboard</Link>
           </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // User is already in a team
+  if (currentTeam) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16">
+        <div className="text-center space-y-4 max-w-md">
+          <h1 className="text-2xl font-semibold tracking-tight">Already in a Team</h1>
+          <p className="text-muted-foreground">
+            You're currently a member of <span className="font-medium text-foreground">{currentTeam.name}</span>. You
+            need to leave your current team before joining a new one.
+          </p>
+          <div className="flex flex-col gap-2">
+            <Button asChild>
+              <Link to="/app/team">Go to Your Team</Link>
+            </Button>
+            <p className="text-xs text-muted-foreground">You can leave your team from the team settings page.</p>
+          </div>
         </div>
       </div>
     );
