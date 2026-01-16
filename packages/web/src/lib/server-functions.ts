@@ -151,14 +151,17 @@ export const getTranscriptsByCwd = createServerFn()
   });
 
 /**
- * Server function to fetch a single transcript
+ * Server function to fetch a single transcript (with access control)
+ * Returns transcript if viewer owns it, it's public, or shared with viewer's team
  */
 export const getTranscript = createServerFn({ method: "GET" })
   .inputValidator((id: string) => id)
   .handler(async ({ data: id }) => {
     const db = createDrizzle(env.DB);
-    const userId = await getAuthenticatedUserId();
-    const transcript = await queries.getTranscript(db, userId, id);
+    const viewerId = await getAuthenticatedUserId();
+
+    // Use access-controlled query
+    const transcript = await queries.getTranscriptWithAccess(db, viewerId, id);
 
     if (!transcript) {
       throw new Error("Transcript not found");
@@ -166,12 +169,12 @@ export const getTranscript = createServerFn({ method: "GET" })
 
     // Fetch unified transcript from R2
     const r2Bucket = env.BUCKET;
-    const repo = transcript.repo;
 
     // Determine R2 key based on whether this is a repo or private transcript
-    const r2Key = repo
-      ? `${repo.repo}/${transcript.transcriptId}.json`
-      : `private/${userId}/${transcript.transcriptId}.json`;
+    // Note: Use transcript owner's userId for R2 path, not viewer's
+    const r2Key = transcript.repoName
+      ? `${transcript.repoName}/${transcript.transcriptId}.json`
+      : `private/${transcript.userId}/${transcript.transcriptId}.json`;
     const r2Object = await r2Bucket.get(r2Key);
     if (!r2Object) {
       logger.error("Unified transcript not found in R2", { key: r2Key });
@@ -190,9 +193,11 @@ export const getTranscript = createServerFn({ method: "GET" })
       preview: transcript.preview,
       createdAt: transcript.createdAt,
       updatedAt: transcript.updatedAt,
+      visibility: transcript.visibility,
       unifiedTranscript,
-      userName: transcript.user?.name,
-      userImage: transcript.user?.image,
+      userName: transcript.userName,
+      userImage: transcript.userImage,
+      isOwner: transcript.userId === viewerId,
     };
   });
 
@@ -214,14 +219,17 @@ export const getTranscriptBySessionId = createServerFn({ method: "GET" })
   });
 
 /**
- * Server function to fetch all transcripts for the authenticated user
+ * Server function to fetch all visible transcripts for the authenticated user
+ * Includes: own transcripts, public transcripts, team-shared transcripts
  */
 export const getAllTranscripts = createServerFn().handler(async () => {
   const db = createDrizzle(env.DB);
-  const userId = await getAuthenticatedUserId();
-  const transcripts = await queries.getAllTranscripts(db, userId);
+  const viewerId = await getAuthenticatedUserId();
 
-  return transcripts.map((t) => ({
+  // Use access-controlled query
+  const allTranscripts = await queries.getVisibleTranscripts(db, viewerId);
+
+  return allTranscripts.map((t) => ({
     id: t.id,
     repoId: t.repoId,
     transcriptId: t.transcriptId,
@@ -242,6 +250,8 @@ export const getAllTranscripts = createServerFn().handler(async () => {
     repoName: t.repoName,
     branch: t.branch,
     cwd: t.cwd,
+    visibility: t.visibility,
+    isOwner: t.userId === viewerId,
   }));
 });
 
