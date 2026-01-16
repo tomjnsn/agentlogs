@@ -1,5 +1,19 @@
 {
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
   "printWidth": 120,
-  "ignorePatterns": ["bun.lock", "**/dist/**", "**/node_modules/**", "**/.vinxi/**", "**/routeTree.gen.ts", "**/*.d.ts"]
+  "ignorePatterns": [
+    "bun.lock",
+    "**/dist/**",
+    "**/node_modules/**",
+    "**/.vinxi/**",
+    "**/routeTree.gen.ts",
+    "**/*.d.ts"
+  ],
+  "experimentalTailwindcss": {
+    "stylesheet": "./packages/web/src/styles/globals.css",
+    "attributes": ["class", "className"],
+    "functions": ["clsx", "cn"],
+    "preserveDuplicates": false,
+    "preserveWhitespace": false
+  }
 }

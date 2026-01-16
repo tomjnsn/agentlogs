@@ -36,12 +36,12 @@ function LandingPage() {
   const [activeTab, setActiveTab] = useState<Integration>("claude-code");
 
   return (
-    <main className="mx-auto max-w-4xl overflow-hidden dark scheme-dark">
+    <main className="dark mx-auto max-w-4xl overflow-hidden scheme-dark">
       <div className="min-h-screen border-x border-white/10">
         {/* Header */}
-        <header className="flex h-16 items-center justify-between line-b">
+        <header className="line-b flex h-16 items-center justify-between">
           <div className="flex items-center gap-2 p-4">
-            <span className="text-lg font-mono text-white/90">AgentLogs</span>
+            <span className="font-mono text-lg text-white/90">AgentLogs</span>
           </div>
           <div className="flex h-full items-center font-mono text-white/90">
             <a
@@ -54,12 +54,12 @@ function LandingPage() {
         </header>
 
         {/* Hero */}
-        <section className="relative flex flex-col items-center justify-center bg-dot-pattern py-24">
+        <section className="bg-dot-pattern relative flex flex-col items-center justify-center py-24">
           <h1 className="ml-4 text-center font-serif text-[60px] leading-[1.1] tracking-tight text-white/95 md:text-[80px]">
             Prompts deserve git
           </h1>
 
-          <p className="ml-4 mt-8 max-w-xl text-center font-mono text-lg text-white/80 text-pretty">
+          <p className="mt-8 ml-4 max-w-xl text-center font-mono text-lg text-pretty text-white/80">
             Prompt history for teams. Learn what works. Ship faster together.
           </p>
 
@@ -165,19 +165,19 @@ function LandingPage() {
                   <div className="absolute inset-4 rounded-full border border-white/10" />
                   <div className="absolute inset-8 rounded-full border border-white/10" />
                   {/* Crosshairs */}
-                  <div className="absolute top-1/2 left-0 right-0 h-px bg-white/10" />
-                  <div className="absolute left-1/2 top-0 bottom-0 w-px bg-white/10" />
+                  <div className="absolute top-1/2 right-0 left-0 h-px bg-white/10" />
+                  <div className="absolute top-0 bottom-0 left-1/2 w-px bg-white/10" />
                   {/* Sweep line */}
-                  <div className="absolute inset-0 animate-radar-sweep origin-center">
-                    <div className="absolute top-1/2 left-1/2 w-1/2 h-px bg-linear-to-r from-white/60 to-transparent origin-left" />
+                  <div className="animate-radar-sweep absolute inset-0 origin-center">
+                    <div className="absolute top-1/2 left-1/2 h-px w-1/2 origin-left bg-linear-to-r from-white/60 to-transparent" />
                   </div>
                   {/* Blips */}
                   <div
-                    className="absolute top-[28%] right-[22%] size-2 bg-white rounded-full"
+                    className="absolute top-[28%] right-[22%] size-2 rounded-full bg-white"
                     style={{ animation: "radar-blip 4s ease-out infinite", animationDelay: "3.5s" }}
                   />
                   <div
-                    className="absolute bottom-[30%] left-[28%] size-1.5 bg-white rounded-full"
+                    className="absolute bottom-[30%] left-[28%] size-1.5 rounded-full bg-white"
                     style={{ animation: "radar-blip 4s ease-out infinite", animationDelay: "1.5s" }}
                   />
                 </div>
@@ -249,13 +249,13 @@ function LandingPage() {
                     style={{ animationDelay: "0.4s" }}
                   />
                   {/* Labels */}
-                  <text x="22" y="75" className="fill-white/30 text-[8px] font-mono" textAnchor="middle">
+                  <text x="22" y="75" className="fill-white/30 font-mono text-[8px]" textAnchor="middle">
                     session
                   </text>
-                  <text x="70" y="75" className="fill-white/30 text-[8px] font-mono" textAnchor="middle">
+                  <text x="70" y="75" className="fill-white/30 font-mono text-[8px]" textAnchor="middle">
                     commit
                   </text>
-                  <text x="118" y="75" className="fill-white/30 text-[8px] font-mono" textAnchor="middle">
+                  <text x="118" y="75" className="fill-white/30 font-mono text-[8px]" textAnchor="middle">
                     code
                   </text>
                   {/* Active dot */}
@@ -267,7 +267,7 @@ function LandingPage() {
         </section>
 
         {/* Quote */}
-        <section className="line-b bg-dot-pattern py-16">
+        <section className="bg-dot-pattern line-b py-16">
           <blockquote className="mx-auto max-w-2xl px-6 text-center font-serif text-2xl leading-snug text-white/90 md:text-3xl">
             "Some devs 10x with AI.
             <br />
@@ -277,7 +277,7 @@ function LandingPage() {
 
         {/* Install */}
         <section className="line-b px-6 py-16">
-          <p className="mb-8 font-mono text-sm uppercase tracking-wide text-white/50">Install</p>
+          <p className="mb-8 font-mono text-sm tracking-wide text-white/50 uppercase">Install</p>
 
           {/* Tabs */}
           <div className="mb-6 flex gap-1 border-b border-white/10">
@@ -307,7 +307,7 @@ function LandingPage() {
         </section>
 
         {/* CTA */}
-        <section className="line-b bg-dot-pattern py-20 text-center">
+        <section className="bg-dot-pattern line-b py-20 text-center">
           <p className="mb-8 font-mono text-white/60">Your best prompts shouldn't disappear into chat history.</p>
           <a
             href="/auth/github"
@@ -318,7 +318,7 @@ function LandingPage() {
         </section>
 
         {/* Footer */}
-        <footer className="flex min-h-20 items-center justify-center bg-dot-pattern line-t">
+        <footer className="bg-dot-pattern line-t flex min-h-20 items-center justify-center">
           <p className="font-mono text-sm text-white/50">© 2025 AgentLogs. All rights reserved.</p>
         </footer>
       </div>

@@ -185,7 +185,7 @@ function HomeComponent() {
       {/* Filters + Activity Chart */}
       <div className="flex items-center gap-4 pl-15">
         <div className="relative min-w-[300px]">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search logs..."
             value={searchQuery}
@@ -219,7 +219,7 @@ function HomeComponent() {
 
       {/* Transcript List */}
       {filteredTranscripts.length === 0 ? (
-        <p className="text-muted-foreground py-8 text-center">
+        <p className="py-8 text-center text-muted-foreground">
           {transcripts.length === 0
             ? "No transcripts yet. Start capturing transcripts!"
             : "No transcripts match your filters."}
@@ -241,8 +241,8 @@ function TranscriptItem({ transcript }: { transcript: TranscriptData }) {
   const timeAgo = formatTimeAgo(new Date(transcript.createdAt));
 
   return (
-    <Link to="/app/logs/$id" params={{ id: transcript.id }} className="block group">
-      <div className="flex gap-4 py-3 px-2 rounded-lg hover:bg-accent/25 transition-colors">
+    <Link to="/app/logs/$id" params={{ id: transcript.id }} className="group block">
+      <div className="flex gap-4 rounded-lg px-2 py-3 transition-colors hover:bg-accent/25">
         {/* Avatar */}
         <Avatar className="h-10 w-10 shrink-0 self-center">
           <AvatarImage src={transcript.userImage || undefined} alt={transcript.userName || "User"} />
@@ -250,19 +250,19 @@ function TranscriptItem({ transcript }: { transcript: TranscriptData }) {
         </Avatar>
 
         {/* Content */}
-        <div className="flex-1 min-w-0 space-y-1.5">
+        <div className="min-w-0 flex-1 space-y-1.5">
           {/* Summary */}
           {transcript.summary && <p className="text-sm font-medium">{transcript.summary}</p>}
 
           {/* Preview */}
           {transcript.preview && (
-            <div className="bg-secondary/50 rounded-md px-3 py-2 text-sm text-muted-foreground truncate">
+            <div className="truncate rounded-md bg-secondary/50 px-3 py-2 text-sm text-muted-foreground">
               {transcript.preview}
             </div>
           )}
 
           {/* Meta row */}
-          <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             {getSourceIcon(transcript.source, "h-3.5 w-3.5")}
             <span className="font-medium text-foreground/80">{transcript.userName || "Unknown"}</span>
             <span>{timeAgo}</span>

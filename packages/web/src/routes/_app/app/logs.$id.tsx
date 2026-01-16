@@ -192,7 +192,7 @@ function TranscriptDetailComponent() {
       <div className="min-w-0 flex-1">
         {/* Header */}
         <header className="mb-8">
-          <h1 className="mb-3 text-2xl font-semibold tracking-tight truncate">
+          <h1 className="mb-3 truncate text-2xl font-semibold tracking-tight">
             {data.summary || unifiedTranscript.preview || "Untitled Thread"}
           </h1>
           <div className="flex items-center gap-2">
@@ -362,7 +362,7 @@ function MessageNavigator({ userMessages }: MessageNavigatorProps) {
   if (userMessages.length === 0) return null;
 
   return (
-    <div className="fixed left-4 top-1/2 z-50 hidden -translate-y-1/2 lg:block">
+    <div className="fixed top-1/2 left-4 z-50 hidden -translate-y-1/2 lg:block">
       <div className="relative">
         {/* Dynamic lines indicator */}
         <button
@@ -381,7 +381,7 @@ function MessageNavigator({ userMessages }: MessageNavigatorProps) {
         </button>
 
         {isOpen && (
-          <div className="absolute left-12 top-0 w-72 rounded-lg border border-border bg-background/95 p-3 shadow-xl backdrop-blur">
+          <div className="absolute top-0 left-12 w-72 rounded-lg border border-border bg-background/95 p-3 shadow-xl backdrop-blur">
             <ol className="space-y-2">
               {userMessages.map((msg, i) => (
                 <li key={msg.index}>
@@ -509,7 +509,7 @@ function MessageBlock({ message, index, userImage, userName }: MessageBlockProps
           <AvatarFallback className="text-xs">{getInitials(userName)}</AvatarFallback>
         </Avatar>
         <div className="min-w-0 rounded-2xl bg-secondary/60 px-4 py-2.5">
-          <p className="text-sm whitespace-pre-wrap break-all">{message.text}</p>
+          <p className="text-sm break-all whitespace-pre-wrap">{message.text}</p>
         </div>
       </div>
     );
@@ -560,12 +560,12 @@ function MessageBlock({ message, index, userImage, userName }: MessageBlockProps
           <Terminal className="h-4 w-4 text-muted-foreground" />
         </div>
         <div className="rounded-2xl bg-secondary/60 px-4 py-2.5">
-          <code className="text-sm font-mono">
+          <code className="font-mono text-sm">
             {message.name}
             {message.args && <span className="text-muted-foreground"> {message.args}</span>}
           </code>
           {message.output && (
-            <pre className="mt-2 text-xs text-muted-foreground whitespace-pre-wrap">{message.output}</pre>
+            <pre className="mt-2 text-xs whitespace-pre-wrap text-muted-foreground">{message.output}</pre>
           )}
         </div>
       </div>
@@ -672,7 +672,7 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError }: T
             {outputObj?.stderr ? (
               <div>
                 <div className="mb-1.5 text-xs font-medium text-red-400">Stderr</div>
-                <pre className="overflow-x-auto rounded-md bg-red-950/30 p-3 font-mono text-xs text-red-300 whitespace-pre-wrap">
+                <pre className="overflow-x-auto rounded-md bg-red-950/30 p-3 font-mono text-xs whitespace-pre-wrap text-red-300">
                   {String(outputObj.stderr)}
                 </pre>
               </div>
@@ -680,7 +680,7 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError }: T
             {error && (
               <div>
                 <div className="mb-1.5 text-xs font-medium text-destructive">Error</div>
-                <pre className="overflow-x-auto rounded-md bg-destructive/10 p-3 font-mono text-xs text-destructive whitespace-pre-wrap">
+                <pre className="overflow-x-auto rounded-md bg-destructive/10 p-3 font-mono text-xs whitespace-pre-wrap text-destructive">
                   {error}
                 </pre>
               </div>

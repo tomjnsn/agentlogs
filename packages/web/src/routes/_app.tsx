@@ -41,15 +41,15 @@ function AppLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-background dark scheme-dark">
+    <div className="dark min-h-screen bg-background scheme-dark">
       <header className="flex h-16 items-center justify-between border-b border-white/10">
         <div className="flex items-center gap-2 p-4">
-          <Link to="/app" className="text-lg font-semibold text-white/90 hover:text-white transition-colors">
+          <Link to="/app" className="text-lg font-semibold text-white/90 transition-colors hover:text-white">
             AgentLogs
           </Link>
         </div>
 
-        <div className="flex h-full items-center gap-4 text-white/90 px-4">
+        <div className="flex h-full items-center gap-4 px-4 text-white/90">
           {isSigningIn ? (
             <div className="flex items-center gap-2 text-sm">
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white/80"></div>
@@ -74,7 +74,7 @@ function AppLayout() {
           )}
         </div>
       </header>
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="mx-auto max-w-7xl px-6 py-8">
         <Outlet />
       </main>
     </div>
