@@ -113,6 +113,20 @@
       "when": 1768581432076,
       "tag": "0015_wealthy_marauders",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "6",
+      "when": 1768604018418,
+      "tag": "0016_perfect_wild_pack",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1768605576524,
+      "tag": "0017_violet_morg",
+      "breakpoints": true
     }
   ]
 }

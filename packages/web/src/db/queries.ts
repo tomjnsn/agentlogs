@@ -1,4 +1,4 @@
-import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, count, desc, eq, isNull, or, lt, sql } from "drizzle-orm";
 import type { DrizzleDB } from ".";
 import { repos, transcripts, user, type UserRole } from "./schema";
 
@@ -214,6 +214,91 @@ export async function getAllTranscripts(db: DrizzleDB, userId: string) {
     .leftJoin(repos, eq(transcripts.repoId, repos.id))
     .where(eq(transcripts.userId, userId))
     .orderBy(desc(transcripts.createdAt));
+}
+
+export interface PaginatedTranscriptsParams {
+  cursor?: { createdAt: Date; id: string };
+  limit: number;
+}
+
+export interface PaginatedTranscriptsResult {
+  items: Awaited<ReturnType<typeof getAllTranscripts>>;
+  nextCursor: { createdAt: Date; id: string } | null;
+  hasMore: boolean;
+}
+
+/**
+ * Get transcripts for a user with cursor-based pagination
+ */
+export async function getTranscriptsPaginated(
+  db: DrizzleDB,
+  userId: string,
+  params: PaginatedTranscriptsParams,
+): Promise<PaginatedTranscriptsResult> {
+  const { cursor, limit } = params;
+
+  // Build conditions
+  const conditions = [eq(transcripts.userId, userId)];
+
+  if (cursor) {
+    // Cursor comparison: (createdAt, id) < (cursor.createdAt, cursor.id)
+    // This means: createdAt < cursor.createdAt OR (createdAt = cursor.createdAt AND id < cursor.id)
+    conditions.push(
+      or(
+        lt(transcripts.createdAt, cursor.createdAt),
+        and(eq(transcripts.createdAt, cursor.createdAt), lt(transcripts.id, cursor.id)),
+      )!,
+    );
+  }
+
+  const items = await db
+    .select({
+      id: transcripts.id,
+      repoId: transcripts.repoId,
+      userId: transcripts.userId,
+      sha256: transcripts.sha256,
+      transcriptId: transcripts.transcriptId,
+      source: transcripts.source,
+      createdAt: transcripts.createdAt,
+      preview: transcripts.preview,
+      summary: transcripts.summary,
+      model: transcripts.model,
+      costUsd: transcripts.costUsd,
+      blendedTokens: transcripts.blendedTokens,
+      messageCount: transcripts.messageCount,
+      toolCount: transcripts.toolCount,
+      userMessageCount: transcripts.userMessageCount,
+      filesChanged: transcripts.filesChanged,
+      linesAdded: transcripts.linesAdded,
+      linesRemoved: transcripts.linesRemoved,
+      linesModified: transcripts.linesModified,
+      inputTokens: transcripts.inputTokens,
+      cachedInputTokens: transcripts.cachedInputTokens,
+      outputTokens: transcripts.outputTokens,
+      reasoningOutputTokens: transcripts.reasoningOutputTokens,
+      totalTokens: transcripts.totalTokens,
+      relativeCwd: transcripts.relativeCwd,
+      branch: transcripts.branch,
+      cwd: transcripts.cwd,
+      updatedAt: transcripts.updatedAt,
+      userName: user.name,
+      userImage: user.image,
+      repoName: repos.repo,
+    })
+    .from(transcripts)
+    .leftJoin(user, eq(transcripts.userId, user.id))
+    .leftJoin(repos, eq(transcripts.repoId, repos.id))
+    .where(and(...conditions))
+    .orderBy(desc(transcripts.createdAt), desc(transcripts.id))
+    .limit(limit + 1);
+
+  const hasMore = items.length > limit;
+  const returnItems = hasMore ? items.slice(0, limit) : items;
+
+  const lastItem = returnItems[returnItems.length - 1];
+  const nextCursor = hasMore && lastItem ? { createdAt: lastItem.createdAt, id: lastItem.id } : null;
+
+  return { items: returnItems, nextCursor, hasMore };
 }
 
 /**

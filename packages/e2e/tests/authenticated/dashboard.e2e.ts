@@ -50,6 +50,66 @@ test.describe.serial("Dashboard", () => {
   });
 });
 
+test.describe.serial("Infinite Scroll", () => {
+  test("loads more transcripts when scrolling to bottom", async ({ page }) => {
+    const id = testId();
+    const { db, sqlite, schema } = getTestDb();
+    const repo = createRepo(id);
+    db.insert(schema.repos).values(repo).run();
+
+    // Create multiple transcripts with different timestamps to test pagination
+    const now = Date.now();
+    for (let i = 0; i < 5; i++) {
+      db.insert(schema.transcripts)
+        .values(
+          createTranscript(`${id}-${i}`, {
+            repoId: repo.id,
+            preview: `Transcript ${i + 1} of ${id}`,
+            createdAt: new Date(now - i * 60000), // 1 minute apart
+          }),
+        )
+        .run();
+    }
+    sqlite.close();
+
+    await page.goto("/app");
+
+    // Wait for initial load - first transcript should be visible
+    await expect(page.getByText(`Transcript 1 of ${id}`)).toBeVisible();
+
+    // With PAGE_SIZE=1 for testing, only 1 transcript loads initially
+    // Scroll to trigger loading more
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+
+    // Wait for more transcripts to load
+    await expect(page.getByText(`Transcript 2 of ${id}`)).toBeVisible({ timeout: 5000 });
+
+    // Scroll again to load even more
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await expect(page.getByText(`Transcript 3 of ${id}`)).toBeVisible({ timeout: 5000 });
+  });
+
+  test("shows end of list quote when all transcripts loaded", async ({ page }) => {
+    const id = testId();
+    const { db, sqlite, schema } = getTestDb();
+    db.insert(schema.transcripts)
+      .values(createTranscript(id, { repoId: null }))
+      .run();
+    sqlite.close();
+
+    await page.goto("/app");
+
+    // Wait for transcript to load
+    await expect(page.getByText(`Test transcript ${id}`)).toBeVisible();
+
+    // Scroll to bottom
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+
+    // Should show an end-of-list quote (check for the em-dash author attribution pattern)
+    await expect(page.getByText(/—\s+\w+/)).toBeVisible({ timeout: 5000 });
+  });
+});
+
 test.describe.serial("Navigation", () => {
   test("transcript link has correct href", async ({ page }) => {
     const id = testId();

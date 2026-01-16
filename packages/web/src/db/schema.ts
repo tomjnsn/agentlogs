@@ -174,6 +174,7 @@ export const transcripts = sqliteTable(
     userTranscriptIdx: uniqueIndex("idx_user_transcript").on(table.userId, table.transcriptId),
     repoIdx: index("idx_repo_id").on(table.repoId),
     userIdx: index("idx_user_id").on(table.userId),
+    userCreatedAtIdx: index("idx_user_created_at").on(table.userId, table.createdAt, table.id),
   }),
 );
 

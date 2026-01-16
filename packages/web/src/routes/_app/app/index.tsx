@@ -3,10 +3,47 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { MessageSquare, Search, Terminal } from "lucide-react";
+import { Loader2, MessageSquare, Search, Terminal } from "lucide-react";
 import { ClaudeCodeIcon, CodexIcon, GitHubIcon, OpenCodeIcon } from "../../../components/icons/source-icons";
-import { useMemo, useState } from "react";
-import { getAllTranscripts } from "../../../lib/server-functions";
+import { useCallback, useMemo, useState } from "react";
+import { getTranscriptsPaginated } from "../../../lib/server-functions";
+import { useInfiniteScroll } from "../../../hooks/use-infinite-scroll";
+import { ClientOnly } from "../../../components/client-only";
+
+const endOfListQuotes = [
+  { text: "That's all, folks!", author: "Porky Pig" },
+  { text: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
+  { text: "Simplicity is the ultimate sophistication.", author: "Leonardo da Vinci" },
+  { text: "First, solve the problem. Then, write the code.", author: "John Johnson" },
+  { text: "Code is like humor. When you have to explain it, it's bad.", author: "Cory House" },
+  { text: "Any fool can write code that a computer can understand.", author: "Martin Fowler" },
+  {
+    text: "Programming is the art of telling another human what one wants the computer to do.",
+    author: "Donald Knuth",
+  },
+  { text: "The best error message is the one that never shows up.", author: "Thomas Fuchs" },
+  { text: "Debugging is twice as hard as writing the code in the first place.", author: "Brian Kernighan" },
+  { text: "You have reached the end of the internet. Please go outside.", author: "Anonymous" },
+] as const;
+
+// Persist quote selection in module scope, only initialized on client
+let selectedQuoteIndex: number | null = null;
+function getQuoteIndex() {
+  if (selectedQuoteIndex === null) {
+    selectedQuoteIndex = Math.floor(Math.random() * endOfListQuotes.length);
+  }
+  return selectedQuoteIndex;
+}
+
+function EndOfListQuote() {
+  const quote = endOfListQuotes[getQuoteIndex()];
+  return (
+    <p className="py-4 text-center text-sm">
+      <span className="text-muted-foreground italic">{`\u201C${quote.text}\u201D`}</span>
+      <span className="ml-2 text-muted-foreground/60">— {quote.author}</span>
+    </p>
+  );
+}
 
 type DailyCount = { date: string; count: number };
 
@@ -73,8 +110,8 @@ function ActivityChart({ data }: { data: DailyCount[] }) {
 export const Route = createFileRoute("/_app/app/")({
   loader: async () => {
     try {
-      const transcripts = await getAllTranscripts();
-      return { transcripts };
+      const initialData = await getTranscriptsPaginated({ data: {} });
+      return { initialData };
     } catch (error) {
       console.error("Failed to load data:", error);
       throw error;
@@ -138,9 +175,32 @@ function getSourceIcon(source: string, className?: string) {
 }
 
 function HomeComponent() {
-  const { transcripts } = Route.useLoaderData();
+  const { initialData } = Route.useLoaderData();
+  const [transcripts, setTranscripts] = useState(initialData.items);
+  const [cursor, setCursor] = useState(initialData.nextCursor);
+  const [hasMore, setHasMore] = useState(initialData.hasMore);
+  const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRepo, setSelectedRepo] = useState<string>("all");
+
+  const fetchNextPage = useCallback(async () => {
+    if (!cursor || isLoading) return;
+    setIsLoading(true);
+    try {
+      const result = await getTranscriptsPaginated({ data: { cursor } });
+      setTranscripts((prev) => [...prev, ...result.items]);
+      setCursor(result.nextCursor);
+      setHasMore(result.hasMore);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [cursor, isLoading]);
+
+  const { sentinelRef } = useInfiniteScroll({
+    onLoadMore: fetchNextPage,
+    hasMore,
+    isLoading,
+  });
 
   // Calculate daily activity data
   const dailyCounts = useMemo(() => getDailyCounts(transcripts, 30), [transcripts]);
@@ -218,7 +278,7 @@ function HomeComponent() {
       </div>
 
       {/* Transcript List */}
-      {filteredTranscripts.length === 0 ? (
+      {filteredTranscripts.length === 0 && !isLoading ? (
         <p className="py-8 text-center text-muted-foreground">
           {transcripts.length === 0
             ? "No transcripts yet. Start capturing transcripts!"
@@ -229,13 +289,30 @@ function HomeComponent() {
           {filteredTranscripts.map((transcript) => (
             <TranscriptItem key={transcript.id} transcript={transcript} />
           ))}
+
+          {/* Loading indicator */}
+          {isLoading && (
+            <div className="flex justify-center py-4">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          )}
+
+          {/* Scroll sentinel */}
+          <div ref={sentinelRef} className="h-px" aria-hidden="true" />
+
+          {/* End of list indicator */}
+          {!hasMore && transcripts.length > 0 && (
+            <ClientOnly>
+              <EndOfListQuote />
+            </ClientOnly>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-type TranscriptData = Awaited<ReturnType<typeof getAllTranscripts>>[number];
+type TranscriptData = Awaited<ReturnType<typeof getTranscriptsPaginated>>["items"][number];
 
 function TranscriptItem({ transcript }: { transcript: TranscriptData }) {
   const timeAgo = formatTimeAgo(new Date(transcript.createdAt));
