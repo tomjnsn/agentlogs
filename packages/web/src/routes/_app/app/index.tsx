@@ -242,7 +242,7 @@ function TranscriptItem({ transcript }: { transcript: TranscriptData }) {
 
   return (
     <Link to="/app/logs/$id" params={{ id: transcript.id }} className="group block">
-      <div className="flex gap-4 rounded-lg px-2 py-3 transition-colors hover:bg-accent/25">
+      <div className="flex gap-4 rounded-lg px-2 py-3 transition-colors hover:bg-accent/15">
         {/* Avatar */}
         <Avatar className="h-10 w-10 shrink-0 self-center">
           <AvatarImage src={transcript.userImage || undefined} alt={transcript.userName || "User"} />
