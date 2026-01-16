@@ -1,4 +1,4 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { createFileRoute, Link, Outlet, redirect, useRouter } from "@tanstack/react-router";
-import { LogOutIcon, LogsIcon, UsersIcon } from "lucide-react";
+import { ChevronDownIcon, LogOutIcon, LogsIcon, UsersIcon } from "lucide-react";
 import React from "react";
 import { authClient } from "../lib/auth-client";
 import { getSession } from "../lib/server-functions";
@@ -106,11 +106,19 @@ function AppLayout() {
         {session && (
           <div className="flex items-center gap-2 px-4">
             <DropdownMenu>
-              <DropdownMenuTrigger className="cursor-pointer rounded-full ring-offset-background outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-                <Avatar>
-                  <AvatarImage src={session.user.image ?? undefined} alt={session.user.name ?? "User"} />
-                  <AvatarFallback>{userInitials}</AvatarFallback>
-                </Avatar>
+              <DropdownMenuTrigger className="flex cursor-pointer items-center gap-2 rounded-lg px-1.5 py-1 ring-offset-background transition-colors outline-none hover:bg-accent/15 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                {session.user.image ? (
+                  <img
+                    src={session.user.image}
+                    alt={session.user.name ?? "User"}
+                    className="size-6 rounded-full object-cover"
+                  />
+                ) : (
+                  <Avatar size="sm">
+                    <AvatarFallback>{userInitials}</AvatarFallback>
+                  </Avatar>
+                )}
+                <ChevronDownIcon className="size-4 text-white/50" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" sideOffset={8} className="min-w-48">
                 <div className="px-2 py-1.5 text-sm">
