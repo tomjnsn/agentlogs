@@ -34,3 +34,9 @@
 - Do atomic and small commits
 - Capitalize the first letter of the commit message
 - Prefix the commit with the package name or area if necessary, e.g. web,plugin,shared,ci
+
+## UI Components (shadcn)
+
+- NEVER manually create shadcn components. Always use the shadcn CLI to download them.
+- Run from packages/web: `bunx shadcn@latest add <component-name>`
+- Example: `bunx shadcn@latest add data-table`
