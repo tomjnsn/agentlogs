@@ -1,3 +1,33 @@
+## Autonomous Workflow
+
+### Session Start
+
+1. Read `.claude/progress.txt` for current state
+2. Read `features.json` for task list
+3. Find first feature with `"status": "pending"`
+
+### Implementation Loop
+
+For each feature:
+
+1. Mark status `"in_progress"`
+2. Implement the feature
+3. Run verification command from features.json
+4. Parallel review (3 agents check quality)
+5. Fix issues from review
+6. Re-verify
+7. If pass: commit, mark `"complete"`
+8. If fail: debug and retry (NEVER skip)
+
+### Rules
+
+- ONE feature at a time
+- NEVER skip verification
+- NEVER mark complete without passing
+- Commit after each feature
+
+---
+
 ## Setup & Tooling
 
 - Use Bun 1.3.x: install deps with `bun install` from the repo root.
