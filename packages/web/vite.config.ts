@@ -1,5 +1,6 @@
 import path from "path";
 import { cloudflare } from "@cloudflare/vite-plugin";
+import { sentryVitePlugin } from "@sentry/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
@@ -11,6 +12,9 @@ import { requestLogger } from "./src/vite-plugins/request-logger";
 import { websocketLogger } from "./src/vite-plugins/websocket-logger";
 
 export default defineConfig({
+  build: {
+    sourcemap: true,
+  },
   server: {
     port: 3000,
   },
@@ -36,6 +40,14 @@ export default defineConfig({
     }),
     tanstackStart(),
     viteReact(),
+    sentryVitePlugin({
+      org: "o4510717166682112",
+      project: "agentlogs",
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+      sourcemaps: {
+        filesToDeleteAfterUpload: ["**/*.map"],
+      },
+    }),
   ],
   resolve: {
     alias: {

@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/tanstackstart-react";
 import { useState } from "react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { Check, Loader2 } from "lucide-react";
@@ -81,9 +82,36 @@ function AdminPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Admin Dashboard</h1>
-        <p className="text-muted-foreground">Overview of all users and system statistics.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Admin Dashboard</h1>
+          <p className="text-muted-foreground">Overview of all users and system statistics.</p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            className="border border-border bg-card px-3 py-1.5 text-sm hover:bg-muted"
+            onClick={() => {
+              throw new Error("Sentry Test Error (Client)");
+            }}
+          >
+            Test Sentry (Client)
+          </button>
+          <button
+            type="button"
+            className="border border-border bg-card px-3 py-1.5 text-sm hover:bg-muted"
+            onClick={async () => {
+              await Sentry.startSpan({ name: "Test API Span", op: "test" }, async () => {
+                const res = await fetch("/api/sentry-test");
+                if (!res.ok) {
+                  throw new Error("Sentry Test Error (Frontend)");
+                }
+              });
+            }}
+          >
+            Test Sentry (API)
+          </button>
+        </div>
       </div>
 
       {/* Stats Grid */}
