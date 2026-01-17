@@ -684,9 +684,8 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError }: T
   const filePath = inputObj?.file_path ? String(inputObj.file_path) : "";
 
   // Common styles
-  const collapsibleClassName =
-    "group overflow-hidden rounded-lg border border-border bg-zinc-900/50 transition-colors hover:bg-zinc-900";
-  const triggerClassName = "flex w-full cursor-pointer items-center gap-3 px-3 py-2 text-left";
+  const collapsibleClassName = "group overflow-hidden rounded-lg border border-border bg-zinc-900/50";
+  const triggerClassName = "flex w-full items-center gap-3 px-3 py-2 text-left";
 
   // For Edit/Write tools, wrap DiffViewer/FileViewer in collapsible
   if (isEditWithDiff || isWriteWithContent) {

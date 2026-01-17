@@ -187,8 +187,8 @@ export function DiffViewer({ filePath, diff, lineOffset = 1, className, hideHead
               diffIndicators: "bars",
               lineDiffType: "word-alt",
               disableFileHeader: true,
-              disableBackground: true,
               overflow: "scroll",
+              unsafeCSS: ":host, [data-diffs] { background: transparent !important; }",
             }}
           />
         </DiffErrorBoundary>
@@ -257,6 +257,7 @@ export function FileViewer({ filePath, content, className, hideHeader }: FileVie
               theme: "vitesse-dark",
               overflow: "scroll",
               disableFileHeader: true,
+              unsafeCSS: ":host, [data-diffs] { background: transparent !important; }",
             }}
           />
         </DiffErrorBoundary>
