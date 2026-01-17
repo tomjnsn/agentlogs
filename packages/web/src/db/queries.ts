@@ -281,6 +281,7 @@ export async function getTranscriptsPaginated(
       relativeCwd: transcripts.relativeCwd,
       branch: transcripts.branch,
       cwd: transcripts.cwd,
+      previewBlobSha256: transcripts.previewBlobSha256,
       updatedAt: transcripts.updatedAt,
       visibility: transcripts.visibility,
       userName: user.name,
@@ -599,6 +600,29 @@ export async function getVisibleTranscripts(db: DrizzleDB, viewerId: string) {
     .leftJoin(repos, eq(transcripts.repoId, repos.id))
     .where(buildVisibilityCondition(viewerId))
     .orderBy(desc(transcripts.createdAt));
+}
+
+/**
+ * Get daily transcript counts for the past N days for activity chart.
+ * Uses visibility-based access control so viewer sees their own + public + team-shared.
+ */
+export async function getDailyActivityCounts(db: DrizzleDB, viewerId: string, days = 30) {
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days + 1);
+  startDate.setHours(0, 0, 0, 0);
+  const startTimestamp = Math.floor(startDate.getTime() / 1000);
+
+  const results = await db
+    .select({
+      date: sql<string>`DATE(${transcripts.createdAt}, 'unixepoch')`.as("date"),
+      count: sql<number>`CAST(COUNT(*) AS INTEGER)`.as("count"),
+    })
+    .from(transcripts)
+    .where(and(buildVisibilityCondition(viewerId), sql`${transcripts.createdAt} >= ${startTimestamp}`))
+    .groupBy(sql`DATE(${transcripts.createdAt}, 'unixepoch')`)
+    .orderBy(sql`DATE(${transcripts.createdAt}, 'unixepoch')`);
+
+  return results;
 }
 
 /**

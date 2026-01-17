@@ -290,6 +290,29 @@ export const getAllTranscripts = createServerFn().handler(async () => {
 const PAGE_SIZE = 20;
 
 /**
+ * Server function to fetch daily activity counts for the activity chart
+ */
+export const getDailyActivity = createServerFn({ method: "GET" }).handler(async () => {
+  const db = createDrizzle(env.DB);
+  const userId = await getAuthenticatedUserId();
+  const results = await queries.getDailyActivityCounts(db, userId, 30);
+
+  // Fill in missing days with 0 counts
+  const counts = new Map(results.map((r) => [r.date, r.count]));
+  const filledData: Array<{ date: string; count: number }> = [];
+  const today = new Date();
+
+  for (let i = 29; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    const key = date.toISOString().split("T")[0];
+    filledData.push({ date: key, count: counts.get(key) ?? 0 });
+  }
+
+  return filledData;
+});
+
+/**
  * Server function to fetch transcripts with cursor-based pagination
  */
 export const getTranscriptsPaginated = createServerFn({ method: "GET" })
@@ -327,6 +350,7 @@ export const getTranscriptsPaginated = createServerFn({ method: "GET" })
         branch: t.branch,
         cwd: t.cwd,
         visibility: t.visibility,
+        previewBlobSha256: (t as typeof t & { previewBlobSha256?: string | null }).previewBlobSha256 ?? null,
       })),
       nextCursor: result.nextCursor
         ? { createdAt: result.nextCursor.createdAt.toISOString(), id: result.nextCursor.id }

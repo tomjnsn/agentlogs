@@ -6,7 +6,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Globe, Loader2, Lock, MessageSquare, Search, Terminal, Users } from "lucide-react";
 import { ClaudeCodeIcon, CodexIcon, GitHubIcon, OpenCodeIcon } from "../../../components/icons/source-icons";
 import { useCallback, useMemo, useState } from "react";
-import { getTranscriptsPaginated } from "../../../lib/server-functions";
+import { getDailyActivity, getTranscriptsPaginated } from "../../../lib/server-functions";
 import { useInfiniteScroll } from "../../../hooks/use-infinite-scroll";
 import { ClientOnly } from "../../../components/client-only";
 
@@ -46,29 +46,6 @@ function EndOfListQuote() {
 }
 
 type DailyCount = { date: string; count: number };
-
-function getDailyCounts(transcripts: { createdAt: Date }[], days = 30): DailyCount[] {
-  const counts = new Map<string, number>();
-
-  // Initialize all days with 0
-  const today = new Date();
-  for (let i = days - 1; i >= 0; i--) {
-    const date = new Date(today);
-    date.setDate(date.getDate() - i);
-    const key = date.toISOString().split("T")[0];
-    counts.set(key, 0);
-  }
-
-  // Count transcripts per day
-  for (const t of transcripts) {
-    const key = new Date(t.createdAt).toISOString().split("T")[0];
-    if (counts.has(key)) {
-      counts.set(key, (counts.get(key) || 0) + 1);
-    }
-  }
-
-  return Array.from(counts.entries()).map(([date, count]) => ({ date, count }));
-}
 
 function formatDateShort(dateStr: string): string {
   const date = new Date(dateStr);
@@ -110,8 +87,11 @@ function ActivityChart({ data }: { data: DailyCount[] }) {
 export const Route = createFileRoute("/_app/app/")({
   loader: async () => {
     try {
-      const initialData = await getTranscriptsPaginated({ data: {} });
-      return { initialData };
+      const [initialData, dailyActivity] = await Promise.all([
+        getTranscriptsPaginated({ data: {} }),
+        getDailyActivity(),
+      ]);
+      return { initialData, dailyActivity };
     } catch (error) {
       console.error("Failed to load data:", error);
       throw error;
@@ -187,7 +167,7 @@ function getVisibilityIcon(visibility: string) {
 }
 
 function HomeComponent() {
-  const { initialData } = Route.useLoaderData();
+  const { initialData, dailyActivity } = Route.useLoaderData();
   const [transcripts, setTranscripts] = useState(initialData.items);
   const [cursor, setCursor] = useState(initialData.nextCursor);
   const [hasMore, setHasMore] = useState(initialData.hasMore);
@@ -213,9 +193,6 @@ function HomeComponent() {
     hasMore,
     isLoading,
   });
-
-  // Calculate daily activity data
-  const dailyCounts = useMemo(() => getDailyCounts(transcripts, 30), [transcripts]);
 
   // Get unique repos from transcripts for the filter
   const repoOptions = useMemo(() => {
@@ -302,7 +279,7 @@ function HomeComponent() {
 
         <div className="grow" />
 
-        <ActivityChart data={dailyCounts} />
+        <ActivityChart data={dailyActivity} />
       </div>
 
       {/* Transcript List */}
@@ -398,6 +375,16 @@ function TranscriptItem({ transcript }: { transcript: TranscriptData }) {
             )}
           </div>
         </div>
+
+        {/* Preview image thumbnail */}
+        {transcript.previewBlobSha256 && (
+          <img
+            src={`/api/blobs/${transcript.previewBlobSha256}`}
+            alt=""
+            className="h-14 w-14 shrink-0 self-center rounded-md border border-border object-cover"
+            loading="lazy"
+          />
+        )}
       </div>
     </Link>
   );
