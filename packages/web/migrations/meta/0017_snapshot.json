@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "873ce3c7-ebdd-4c0d-973f-4f3e35cf3c12",
-  "prevId": "c0de489e-8653-47fd-bc0e-3e3af855a01f",
+  "id": "e131741e-40a6-4d34-853c-9cf3ff5e72aa",
+  "prevId": "95c8abf1-33b5-4823-8abd-262b73902c53",
   "tables": {
     "account": {
       "name": "account",
@@ -700,6 +700,11 @@
         "idx_user_id": {
           "name": "idx_user_id",
           "columns": ["user_id"],
+          "isUnique": false
+        },
+        "idx_user_created_at": {
+          "name": "idx_user_created_at",
+          "columns": ["user_id", "created_at", "id"],
           "isUnique": false
         }
       },

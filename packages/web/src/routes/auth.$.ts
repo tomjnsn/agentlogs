@@ -13,7 +13,7 @@ export const Route = createFileRoute("/auth/$")({
 
         const auth = createAuth();
         const result = await auth.api.signInSocial({
-          body: { provider, callbackURL: "/" },
+          body: { provider, callbackURL: "/app" },
           headers: request.headers,
           returnHeaders: true,
         });

@@ -16,6 +16,9 @@ import * as schema from "../web/src/db/schema";
 import path from "path";
 import fs from "fs";
 
+// Log file for server output - read by globalTeardown on failure
+export const SERVER_LOG_FILE = path.join(import.meta.dirname!, ".server-output.log");
+
 const WEB_DIR = path.resolve(import.meta.dirname!, "../web");
 const TEST_STATE_DIR = path.join(WEB_DIR, ".wrangler-test/state");
 const TEST_DB_DIR = path.join(TEST_STATE_DIR, "v3/d1");
@@ -44,19 +47,16 @@ function findSqliteFile(dir: string): string | null {
 function deleteExistingDatabase() {
   const existingDb = findSqliteFile(TEST_DB_DIR);
   if (existingDb) {
-    console.log(`[test-server] Deleting existing test database: ${existingDb}`);
     fs.unlinkSync(existingDb);
   }
 }
 
 function applyMigrations() {
-  console.log("[test-server] Applying migrations...");
   execSync(`npx wrangler d1 migrations apply agentlogs --local --persist-to "${TEST_STATE_DIR}"`, {
     cwd: WEB_DIR,
-    stdio: "inherit",
+    stdio: "pipe",
     env: { ...process.env, CI: "true" },
   });
-  console.log("[test-server] Migrations applied");
 }
 
 function seedDatabase() {
@@ -65,18 +65,17 @@ function seedDatabase() {
     throw new Error("[test-server] Database not found after migrations");
   }
 
-  console.log(`[test-server] Seeding database: ${dbPath}`);
-
   const sqlite = new Database(dbPath);
   const db = drizzle(sqlite, { schema });
 
-  // Seed test user
+  // Seed test user with "user" role (not "waitlist") so they can access /app
   db.insert(schema.user)
     .values({
       id: "test-user-id",
       name: "Test User",
       email: "test@example.com",
       emailVerified: true,
+      role: "user",
       createdAt: new Date(),
       updatedAt: new Date(),
     })
@@ -94,35 +93,38 @@ function seedDatabase() {
     })
     .run();
 
-  // Verify seeding worked
-  const userCount = sqlite.prepare("SELECT COUNT(*) as count FROM user").get() as { count: number };
-  const sessionCount = sqlite.prepare("SELECT COUNT(*) as count FROM session").get() as {
-    count: number;
-  };
-  console.log(`[test-server] Seeded ${userCount.count} users, ${sessionCount.count} sessions`);
-
   sqlite.close();
 }
 
 function startViteServer() {
-  console.log("[test-server] Starting vite dev server...");
+  // Clear previous log file
+  fs.writeFileSync(SERVER_LOG_FILE, "");
 
   // Run cf-typegen first
   execSync("bun run cf-typegen", {
     cwd: WEB_DIR,
-    stdio: "inherit",
+    stdio: "pipe",
     env: { ...process.env, VITE_USE_TEST_DB: "true" },
   });
+
+  // Open log file for appending
+  const logStream = fs.createWriteStream(SERVER_LOG_FILE, { flags: "a" });
 
   // Start vite dev in the foreground on port 3009 (this will keep running)
   // Use --host to bind to all interfaces so subprocess fetch can connect
+  // Capture output to log file for debugging on test failure
   const vite = spawn("bun", ["run", "vite", "dev", "--port", "3009", "--host"], {
     cwd: WEB_DIR,
-    stdio: "inherit",
+    stdio: ["pipe", "pipe", "pipe"],
     env: { ...process.env, VITE_USE_TEST_DB: "true" },
   });
 
+  // Write stdout and stderr to log file
+  vite.stdout?.on("data", (data) => logStream.write(data));
+  vite.stderr?.on("data", (data) => logStream.write(data));
+
   vite.on("close", (code) => {
+    logStream.close();
     process.exit(code ?? 0);
   });
 }

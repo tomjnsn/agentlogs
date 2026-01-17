@@ -4,3 +4,4 @@
 # Test results and reports
 test-results/
 playwright-report/
+.server-output.log

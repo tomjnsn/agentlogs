@@ -10,7 +10,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: [["html", { open: "never" }]],
+  reporter: [["dot"], ["./server-log-reporter.ts"]],
 
   use: {
     baseURL: "http://localhost:3009",
@@ -47,5 +47,6 @@ export default defineConfig({
     url: "http://localhost:3009",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    stdout: "pipe",
   },
 });

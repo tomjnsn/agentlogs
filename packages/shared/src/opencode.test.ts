@@ -57,14 +57,15 @@ describe("convertOpenCodeTranscript", () => {
         "blendedTokens": 18924,
         "costUsd": 0.047218750000000004,
         "cwd": "~/dev/agentlogs",
-        "filesChanged": 0,
+        "filesChanged": 1,
         "git": {
           "branch": "main",
           "relativeCwd": null,
           "repo": "github.com/agentlogs/agentlogs",
         },
         "id": "ses_450b70e67ffeoaXH496F8i0fVA",
-        "linesAdded": 0,
+        "linesAdded": 7,
+        "linesModified": 1,
         "linesRemoved": 0,
         "messageCount": 6,
         "messages": [
@@ -87,7 +88,7 @@ describe("convertOpenCodeTranscript", () => {
       ---
       Just a random footer line."
       ,
-              "filePath": "./JOKE.md",
+              "file_path": "./JOKE.md",
             },
             "isError": false,
             "model": "openai/gpt-5.2-codex",
@@ -102,7 +103,7 @@ describe("convertOpenCodeTranscript", () => {
             "error": undefined,
             "id": "call_mO9J7UcA7rft4D8zUXSxS4nL",
             "input": {
-              "filePath": "./JOKE.md",
+              "file_path": "./JOKE.md",
             },
             "isError": false,
             "model": "openai/gpt-5.2-codex",
@@ -125,7 +126,7 @@ describe("convertOpenCodeTranscript", () => {
             "error": undefined,
             "id": "call_AzA1yNZKBASsQGiBlGCAJJdc",
             "input": {
-              "filePath": "./JOKE.md",
+              "file_path": "./JOKE.md",
               "newString": "Footer: totally unrelated text.",
               "oldString": "Just a random footer line.",
             },
@@ -194,7 +195,7 @@ describe("convertOpenCodeTranscript", () => {
             },
           },
         ],
-        "preview": "create a file JOKE.md with a random joke with a title and a footer with some ra…",
+        "preview": "create a file JOKE.md with a random joke with a title and a footer with some random text, then read this file, then make change to the file, then delete the file.",
         "source": "opencode",
         "summary": null,
         "timestamp": "2026-01-11T22:59:11.896Z",

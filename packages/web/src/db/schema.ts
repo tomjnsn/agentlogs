@@ -160,6 +160,7 @@ export const transcripts = sqliteTable(
     filesChanged: integer("files_changed").notNull().default(0),
     linesAdded: integer("lines_added").notNull().default(0),
     linesRemoved: integer("lines_removed").notNull().default(0),
+    linesModified: integer("lines_modified").notNull().default(0),
     inputTokens: integer("input_tokens").notNull(),
     cachedInputTokens: integer("cached_input_tokens").notNull(),
     outputTokens: integer("output_tokens").notNull(),
@@ -181,6 +182,7 @@ export const transcripts = sqliteTable(
     userTranscriptIdx: uniqueIndex("idx_user_transcript").on(table.userId, table.transcriptId),
     repoIdx: index("idx_repo_id").on(table.repoId),
     userIdx: index("idx_user_id").on(table.userId),
+    userCreatedAtIdx: index("idx_user_created_at").on(table.userId, table.createdAt, table.id),
   }),
 );
 

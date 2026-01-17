@@ -1,8 +1,13 @@
+import { useState } from "react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { Check, Loader2, TrendingUp, TrendingDown } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getAdminStats, getAdminUsers, getSession } from "../../../lib/server-functions";
+import { getAdminStats, getAdminUsers, getSession, updateUserRole } from "../../../lib/server-functions";
+import { userRoles, type UserRole } from "../../../db/schema";
 
 export const Route = createFileRoute("/_app/app/admin")({
   beforeLoad: async () => {
@@ -18,12 +23,82 @@ export const Route = createFileRoute("/_app/app/admin")({
   component: AdminPage,
 });
 
-function StatCard({ title, value, description }: { title: string; value: string | number; description?: string }) {
+interface StatCardProps {
+  title: string;
+  value: string | number;
+  description?: string;
+  trend?: { value: string; direction: "up" | "down" };
+  footer?: string;
+}
+
+function StatCard({ title, value, description, trend, footer }: StatCardProps) {
+  const TrendIcon = trend?.direction === "up" ? TrendingUp : TrendingDown;
   return (
-    <div className="border border-border bg-card p-6">
-      <p className="text-sm font-medium text-muted-foreground">{title}</p>
-      <p className="mt-2 text-3xl font-semibold tracking-tight">{value}</p>
-      {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+    <Card className="@container/card">
+      <CardHeader>
+        <CardDescription>{title}</CardDescription>
+        <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">{value}</CardTitle>
+        {trend && (
+          <CardAction>
+            <Badge variant="outline">
+              <TrendIcon className="size-3" />
+              {trend.value}
+            </Badge>
+          </CardAction>
+        )}
+      </CardHeader>
+      {(description || footer) && (
+        <CardFooter className="flex-col items-start gap-1.5 text-sm">
+          {description && (
+            <div className="line-clamp-1 flex gap-2 font-medium">
+              {description}
+              {trend && <TrendIcon className="size-4" />}
+            </div>
+          )}
+          {footer && <div className="text-muted-foreground">{footer}</div>}
+        </CardFooter>
+      )}
+    </Card>
+  );
+}
+
+function UserRoleSelect({ userId, initialRole }: { userId: string; initialRole: UserRole }) {
+  const [role, setRole] = useState(initialRole);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showCheck, setShowCheck] = useState(false);
+
+  async function handleRoleChange(newRole: string) {
+    if (newRole === role) return;
+
+    setIsLoading(true);
+    try {
+      await updateUserRole({ data: { userId, role: newRole } });
+      setRole(newRole as UserRole);
+      setShowCheck(true);
+      setTimeout(() => setShowCheck(false), 2000);
+    } catch (error) {
+      console.error("Failed to update role:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <Select value={role} onValueChange={handleRoleChange} disabled={isLoading}>
+        <SelectTrigger className="w-[100px]">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {userRoles.map((r) => (
+            <SelectItem key={r} value={r} className="text-xs">
+              {r}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {isLoading && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
+      {showCheck && !isLoading && <Check className="size-4 text-green-500" />}
     </div>
   );
 }
@@ -43,24 +118,49 @@ function AdminPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Total Users" value={formatNumber(stats.totalUsers ?? 0)} />
-        <StatCard title="Waitlist" value={formatNumber(stats.waitlistUsers ?? 0)} description="Pending approval" />
-        <StatCard title="Active Users" value={formatNumber(stats.activeUsers ?? 0)} description="With access" />
-        <StatCard title="Admins" value={formatNumber(stats.adminUsers ?? 0)} description="Full access" />
+      <div className="grid gap-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs md:grid-cols-2 lg:grid-cols-4 dark:*:data-[slot=card]:bg-card">
+        <StatCard title="Total Users" value={formatNumber(stats.totalUsers ?? 0)} footer="All registered users" />
+        <StatCard
+          title="Waitlist"
+          value={formatNumber(stats.waitlistUsers ?? 0)}
+          description="Pending approval"
+          footer="Awaiting access"
+        />
+        <StatCard
+          title="Active Users"
+          value={formatNumber(stats.activeUsers ?? 0)}
+          description="With access"
+          footer="Can use the platform"
+        />
+        <StatCard
+          title="Admins"
+          value={formatNumber(stats.adminUsers ?? 0)}
+          description="Full access"
+          footer="Platform administrators"
+        />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Total Transcripts" value={formatNumber(stats.totalTranscripts ?? 0)} />
-        <StatCard title="Total Repositories" value={formatNumber(stats.totalRepos ?? 0)} />
-        <StatCard title="Total Tokens" value={formatNumber(stats.totalTokens ?? 0)} description="All time usage" />
-        <StatCard title="Total Cost" value={formatCost(stats.totalCost ?? 0)} description="Estimated API cost" />
+      <div className="grid gap-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs md:grid-cols-2 lg:grid-cols-4 dark:*:data-[slot=card]:bg-card">
+        <StatCard title="Total Transcripts" value={formatNumber(stats.totalTranscripts ?? 0)} footer="All sessions" />
+        <StatCard title="Total Repositories" value={formatNumber(stats.totalRepos ?? 0)} footer="Connected repos" />
+        <StatCard
+          title="Total Tokens"
+          value={formatNumber(stats.totalTokens ?? 0)}
+          description="All time usage"
+          footer="Input + output tokens"
+        />
+        <StatCard
+          title="Total Cost"
+          value={formatCost(stats.totalCost ?? 0)}
+          description="Estimated API cost"
+          footer="Based on token usage"
+        />
       </div>
 
       {/* Users Table */}
       <div className="space-y-4">
         <h2 className="text-lg font-semibold">All Users</h2>
-        <div className="border border-border">
+        <div className="rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
@@ -86,9 +186,7 @@ function AdminPage() {
                   </TableCell>
                   <TableCell className="text-muted-foreground">{user.email}</TableCell>
                   <TableCell>
-                    <Badge variant={user.role === "admin" ? "default" : user.role === "user" ? "secondary" : "outline"}>
-                      {user.role}
-                    </Badge>
+                    <UserRoleSelect userId={user.id} initialRole={user.role as UserRole} />
                   </TableCell>
                   <TableCell className="text-right font-mono">{user.transcriptCount}</TableCell>
                   <TableCell className="text-right font-mono">{formatCost(user.totalCost ?? 0)}</TableCell>

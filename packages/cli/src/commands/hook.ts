@@ -2,6 +2,7 @@ import { createLogger } from "@agentlogs/shared/logger";
 import { getDevLogPath } from "@agentlogs/shared/paths";
 import { getAuthenticatedEnvironments } from "../config";
 import { performUploadToAllEnvs } from "../lib/perform-upload";
+import { getOrCreateTranscriptId } from "../local-store";
 
 // Create logger for CLI hook commands
 // Uses shared getDevLogPath() which finds the monorepo root by looking for package.json with workspaces
@@ -120,7 +121,9 @@ async function handlePreToolUse(hookInput: ClaudeHookInput): Promise<void> {
 
   if (isBashTool && command && containsGitCommit(command)) {
     shouldTrack = true;
-    const updatedCommand = appendTranscriptLink(command, sessionId);
+    // Use client-generated ID for stable commit links
+    const clientId = getOrCreateTranscriptId(sessionId);
+    const updatedCommand = appendTranscriptLink(command, clientId);
     if (updatedCommand !== command) {
       updateCommand(updatedCommand);
       modified = true;
@@ -317,8 +320,8 @@ export function containsGitCommit(command: string): boolean {
   return /\bgit\s+commit\b/.test(command);
 }
 
-export function appendTranscriptLink(command: string, sessionId: string): string {
-  const linkText = `🔮 View transcript: https://agentlogs.ai/s/${sessionId}`;
+export function appendTranscriptLink(command: string, id: string): string {
+  const linkText = `🔮 View transcript: https://agentlogs.ai/s/${id}`;
 
   if (command.includes(linkText)) {
     return command;

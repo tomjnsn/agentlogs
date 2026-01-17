@@ -62,17 +62,10 @@ describe("convertClaudeCodeFile", () => {
           },
           "id": "0e26ec2f-937e-482c-b889-bc126f996913",
           "linesAdded": 0,
+          "linesModified": 0,
           "linesRemoved": 0,
-          "messageCount": 11,
+          "messageCount": 5,
           "messages": [
-            {
-              "args": undefined,
-              "id": "8bab5784-63f2-437f-8b71-b20a85327b44",
-              "name": "/clear",
-              "output": undefined,
-              "timestamp": "2025-10-10T21:56:01.409Z",
-              "type": "command",
-            },
             {
               "id": "3648cc91-eee4-4a25-bad3-31104269d5b8",
               "text": "how are you doing",
@@ -99,7 +92,61 @@ describe("convertClaudeCodeFile", () => {
             },
             {
               "id": "cff5fe4f-d7c3-4631-8580-3176d62c0e62",
-              "text": "This session is being continued from a previous conversation that ran out of context. The conversation is summarized below: Analysis: Let me analyze the conversation chronologically: 1. **Message 1**: User ran \`/clear\` command (local command, should be ignored per instructions) 2. **Message 2**: User asked "how are you doing" 3. **Message 3**: I responded politely that I'm doing well and asked what they'd like to work on 4. **Message 4**: User is now requesting a detailed summary of the conversation This is a very brief conversation with minimal technical content. The user has: - Cleared the conversation history - Made a casual greeting - Requested a summary There have been NO: - Technical requests - File operations - Code changes - Errors - Problem solving - Pending tasks - Current work in progress The conversation literally just started after a clear command, so there is essentially nothing to summarize in terms of development work, technical decisions, or code patterns. Summary: 1. Primary Request and Intent: The user cleared the conversation history, made a casual greeting ("how are you doing"), and then requested a detailed summary of the conversation. There have been no explicit technical requests or development intents expressed in this conversation. 2. Key Technical Concepts: None discussed in this conversation. 3. Files and Code Sections: No files have been read, modified, or created in this conversation. 4. Errors and fixes: No errors encountered in this conversation. 5. Problem Solving: No problems have been addressed or troubleshooting efforts undertaken in this conversation. 6. All user messages: - "how are you doing" - [Current request for conversation summary] 7. Pending Tasks: No pending tasks have been identified or requested. 8. Current Work: No development work was being performed before this summary request. The conversation just began after a \`/clear\` command, with only a casual greeting exchange before the summary was requested. 9. Optional Next Step: None. There is no ongoing work to continue. Awaiting the user's next request or direction for what they would like to work on..",
+              "text": 
+      "This session is being continued from a previous conversation that ran out of context. The conversation is summarized below:
+      Analysis:
+      Let me analyze the conversation chronologically:
+
+      1. **Message 1**: User ran \`/clear\` command (local command, should be ignored per instructions)
+      2. **Message 2**: User asked "how are you doing"
+      3. **Message 3**: I responded politely that I'm doing well and asked what they'd like to work on
+      4. **Message 4**: User is now requesting a detailed summary of the conversation
+
+      This is a very brief conversation with minimal technical content. The user has:
+      - Cleared the conversation history
+      - Made a casual greeting
+      - Requested a summary
+
+      There have been NO:
+      - Technical requests
+      - File operations
+      - Code changes
+      - Errors
+      - Problem solving
+      - Pending tasks
+      - Current work in progress
+
+      The conversation literally just started after a clear command, so there is essentially nothing to summarize in terms of development work, technical decisions, or code patterns.
+
+      Summary:
+      1. Primary Request and Intent:
+         The user cleared the conversation history, made a casual greeting ("how are you doing"), and then requested a detailed summary of the conversation. There have been no explicit technical requests or development intents expressed in this conversation.
+
+      2. Key Technical Concepts:
+         None discussed in this conversation.
+
+      3. Files and Code Sections:
+         No files have been read, modified, or created in this conversation.
+
+      4. Errors and fixes:
+         No errors encountered in this conversation.
+
+      5. Problem Solving:
+         No problems have been addressed or troubleshooting efforts undertaken in this conversation.
+
+      6. All user messages:
+         - "how are you doing"
+         - [Current request for conversation summary]
+
+      7. Pending Tasks:
+         No pending tasks have been identified or requested.
+
+      8. Current Work:
+         No development work was being performed before this summary request. The conversation just began after a \`/clear\` command, with only a casual greeting exchange before the summary was requested.
+
+      9. Optional Next Step:
+         None. There is no ongoing work to continue. Awaiting the user's next request or direction for what they would like to work on.."
+      ,
               "timestamp": "2025-10-10T21:57:51.963Z",
               "type": "compaction-summary",
             },
@@ -164,9 +211,10 @@ describe("convertClaudeCodeFile", () => {
             "repo": "github.com/vibeinsights/vibeinsights",
           },
           "id": "8122657c-fe54-4dc9-89a3-20049e8a84f7",
-          "linesAdded": 3,
-          "linesRemoved": 1,
-          "messageCount": 25,
+          "linesAdded": 10,
+          "linesModified": 1,
+          "linesRemoved": 0,
+          "messageCount": 16,
           "messages": [
             {
               "id": "03ffd31e-6bc0-4899-9df7-9b484cfda8cf",
@@ -448,6 +496,7 @@ describe("convertClaudeCodeFile", () => {
       "
       ,
                 "file_path": "./JOKE.md",
+                "lineOffset": 1,
               },
               "model": "claude-sonnet-4-5-20250929",
               "output": {
@@ -642,7 +691,7 @@ describe("convertClaudeCodeFile", () => {
               },
             },
           ],
-          "preview": "create a file \`JOKE.md\` with a ranom joke with a title and a footer wiht some r…",
+          "preview": "create a file \`JOKE.md\` with a ranom joke with a title and a footer wiht some random text, then read this file, then make change to the file, then delete this file.",
           "source": "claude-code",
           "summary": null,
           "timestamp": "2025-10-12T21:36:39.886Z",
@@ -682,8 +731,9 @@ describe("convertClaudeCodeFile", () => {
           },
           "id": "609efeca-2f51-4118-b077-e91c9fe63f73",
           "linesAdded": 0,
+          "linesModified": 0,
           "linesRemoved": 0,
-          "messageCount": 7,
+          "messageCount": 6,
           "messages": [
             {
               "id": "d4051f12-b400-4141-b750-c5a6a0144cf2",
@@ -832,8 +882,9 @@ describe("convertClaudeCodeFile", () => {
           },
           "id": "0db46778-18a1-4d84-853f-d4dc72a07a1b",
           "linesAdded": 0,
+          "linesModified": 0,
           "linesRemoved": 0,
-          "messageCount": 17,
+          "messageCount": 12,
           "messages": [
             {
               "id": "a47984ff-069f-4c10-890c-d39fafb506c3",
@@ -1187,8 +1238,9 @@ describe("convertClaudeCodeFile", () => {
           "git": null,
           "id": "794b4c5f-6354-422a-9e6d-c9f18e89e427",
           "linesAdded": 0,
+          "linesModified": 0,
           "linesRemoved": 0,
-          "messageCount": 11,
+          "messageCount": 8,
           "messages": [
             {
               "id": "c3e4d9d7-4c50-4d9e-8a52-58d49da172c6",

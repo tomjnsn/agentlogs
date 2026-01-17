@@ -5,7 +5,16 @@ import { env } from "cloudflare:workers";
 import { and, eq, sql } from "drizzle-orm";
 import { createDrizzle } from "../db";
 import * as queries from "../db/queries";
-import { teamInvites, teamMembers, teams, transcripts, visibilityOptions, type VisibilityOption } from "../db/schema";
+import {
+  teamInvites,
+  teamMembers,
+  teams,
+  transcripts,
+  userRoles,
+  visibilityOptions,
+  type UserRole,
+  type VisibilityOption,
+} from "../db/schema";
 import { createAuth } from "./auth";
 import { logger } from "./logger";
 
@@ -204,6 +213,7 @@ export const getTranscript = createServerFn({ method: "GET" })
       transcriptId: transcript.transcriptId,
       source: transcript.source,
       preview: transcript.preview,
+      summary: transcript.summary,
       createdAt: transcript.createdAt,
       updatedAt: transcript.updatedAt,
       visibility: transcript.visibility,
@@ -215,14 +225,16 @@ export const getTranscript = createServerFn({ method: "GET" })
   });
 
 /**
- * Server function to fetch a transcript ID by session/transcript ID.
+ * Server function to fetch a transcript by ID or transcriptId.
+ * First tries to find by database ID (CUID2), then falls back to transcriptId lookup.
+ * This supports both old session IDs and new client-generated IDs.
  */
 export const getTranscriptBySessionId = createServerFn({ method: "GET" })
-  .inputValidator((sessionId: string) => sessionId)
-  .handler(async ({ data: sessionId }) => {
+  .inputValidator((param: string) => param)
+  .handler(async ({ data: param }) => {
     const db = createDrizzle(env.DB);
     const userId = await getAuthenticatedUserId();
-    const transcript = await queries.getTranscriptByTranscriptId(db, userId, sessionId);
+    const transcript = await queries.getTranscriptByIdOrTranscriptId(db, userId, param);
 
     if (!transcript) {
       throw new Error("Transcript not found");
@@ -257,6 +269,7 @@ export const getAllTranscripts = createServerFn().handler(async () => {
     filesChanged: t.filesChanged,
     linesAdded: t.linesAdded,
     linesRemoved: t.linesRemoved,
+    linesModified: t.linesModified,
     costUsd: t.costUsd,
     userName: t.userName,
     userImage: t.userImage,
@@ -267,6 +280,54 @@ export const getAllTranscripts = createServerFn().handler(async () => {
     isOwner: t.userId === viewerId,
   }));
 });
+
+const PAGE_SIZE = 20;
+
+/**
+ * Server function to fetch transcripts with cursor-based pagination
+ */
+export const getTranscriptsPaginated = createServerFn({ method: "GET" })
+  .inputValidator((data: { cursor?: { createdAt: string; id: string } | null; limit?: number }) => {
+    const cursor = data.cursor ? { createdAt: new Date(data.cursor.createdAt), id: data.cursor.id } : undefined;
+    const limit = Math.min(Math.max(data.limit ?? PAGE_SIZE, 1), 100);
+    return { cursor, limit };
+  })
+  .handler(async ({ data }) => {
+    const db = createDrizzle(env.DB);
+    const userId = await getAuthenticatedUserId();
+    const result = await queries.getTranscriptsPaginated(db, userId, data);
+
+    return {
+      items: result.items.map((t) => ({
+        id: t.id,
+        repoId: t.repoId,
+        transcriptId: t.transcriptId,
+        source: t.source,
+        preview: t.preview,
+        summary: t.summary,
+        createdAt: t.createdAt,
+        updatedAt: t.updatedAt,
+        messageCount: t.messageCount,
+        toolCount: t.toolCount,
+        userMessageCount: t.userMessageCount,
+        filesChanged: t.filesChanged,
+        linesAdded: t.linesAdded,
+        linesRemoved: t.linesRemoved,
+        linesModified: t.linesModified,
+        costUsd: t.costUsd,
+        userName: t.userName,
+        userImage: t.userImage,
+        repoName: t.repoName,
+        branch: t.branch,
+        cwd: t.cwd,
+        visibility: t.visibility,
+      })),
+      nextCursor: result.nextCursor
+        ? { createdAt: result.nextCursor.createdAt.toISOString(), id: result.nextCursor.id }
+        : null,
+      hasMore: result.hasMore,
+    };
+  });
 
 // =============================================================================
 // Admin Server Functions
@@ -311,6 +372,26 @@ export const getAdminUsers = createServerFn({ method: "GET" }).handler(async () 
   const db = createDrizzle(env.DB);
   return queries.getAdminUserStats(db);
 });
+
+/**
+ * Update a user's role (admin only)
+ */
+export const updateUserRole = createServerFn({ method: "POST" })
+  .inputValidator((data: { userId: string; role: string }) => {
+    if (!data.userId || typeof data.userId !== "string") {
+      throw new Error("Invalid userId");
+    }
+    if (!userRoles.includes(data.role as UserRole)) {
+      throw new Error(`Invalid role: ${data.role}`);
+    }
+    return data as { userId: string; role: UserRole };
+  })
+  .handler(async ({ data }) => {
+    await requireAdmin();
+    const db = createDrizzle(env.DB);
+    await queries.updateUserRole(db, data.userId, data.role);
+    return { success: true };
+  });
 
 // =============================================================================
 // Team Server Functions

@@ -8,6 +8,7 @@ import { LiteLLMPricingFetcher } from "@agentlogs/shared/pricing";
 import { uploadTranscript } from "@agentlogs/shared/upload";
 import type { UploadOptions } from "@agentlogs/shared/upload";
 import { getAuthenticatedEnvironments, type EnvName } from "../config";
+import { cacheTranscriptId, getOrCreateTranscriptId } from "../local-store";
 
 export interface PerformUploadParams {
   transcriptPath: string;
@@ -18,6 +19,8 @@ export interface PerformUploadParams {
 
 export interface PerformUploadResult {
   success: boolean;
+  /** The database ID (CUID2) for stable links */
+  id?: string;
   transcriptId?: string;
   eventCount: number;
   invalidLines: number;
@@ -118,6 +121,9 @@ export async function performUpload(
   const eventCount = records.length;
   const sha256 = createHash("sha256").update(rawContent).digest("hex");
 
+  // Generate stable client ID for this transcript
+  const clientId = getOrCreateTranscriptId(finalSessionId);
+
   // Convert Map<sha256, TranscriptBlob> to UploadBlob[]
   const uploadBlobs: UploadBlob[] = [];
   for (const [blobSha256, blob] of transcriptBlobs) {
@@ -129,6 +135,7 @@ export async function performUpload(
   }
 
   const payload: UploadPayload = {
+    id: clientId,
     sha256,
     rawTranscript: rawContent,
     unifiedTranscript,
@@ -136,6 +143,11 @@ export async function performUpload(
   };
 
   const result = await uploadTranscript(payload, options);
+
+  // Cache the server's returned ID (handles case where server returns existing ID)
+  if (result.success && result.id) {
+    cacheTranscriptId(finalSessionId, result.id);
+  }
 
   return {
     ...result,
@@ -226,6 +238,8 @@ export interface EnvUploadResult {
   envName: EnvName;
   baseURL: string;
   success: boolean;
+  /** The database ID (CUID2) for stable links */
+  id?: string;
   transcriptId?: string;
   error?: string;
 }
@@ -233,6 +247,8 @@ export interface EnvUploadResult {
 export interface MultiEnvUploadResult {
   results: EnvUploadResult[];
   eventCount: number;
+  /** The database ID (CUID2) for stable links */
+  id: string;
   sessionId: string;
   anySuccess: boolean;
   allSuccess: boolean;
@@ -251,6 +267,7 @@ export async function performUploadToAllEnvs(params: PerformUploadParams): Promi
 
   const results: EnvUploadResult[] = [];
   let eventCount = 0;
+  let id = "";
   let sessionId = "";
 
   for (const env of authenticatedEnvs) {
@@ -260,9 +277,10 @@ export async function performUploadToAllEnvs(params: PerformUploadParams): Promi
         authToken: env.token,
       });
 
-      // Capture event count and session ID from first successful upload
+      // Capture event count, id, and session ID from first successful upload
       if (result.success && eventCount === 0) {
         eventCount = result.eventCount;
+        id = result.id ?? "";
         sessionId = result.sessionId;
       }
 
@@ -270,6 +288,7 @@ export async function performUploadToAllEnvs(params: PerformUploadParams): Promi
         envName: env.name,
         baseURL: env.baseURL,
         success: result.success,
+        id: result.id,
         transcriptId: result.transcriptId,
       });
     } catch (error) {
@@ -285,6 +304,7 @@ export async function performUploadToAllEnvs(params: PerformUploadParams): Promi
   return {
     results,
     eventCount,
+    id,
     sessionId,
     anySuccess: results.some((r) => r.success),
     allSuccess: results.every((r) => r.success),

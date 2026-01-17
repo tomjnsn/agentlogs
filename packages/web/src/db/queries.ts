@@ -1,4 +1,4 @@
-import { and, count, desc, eq, exists, isNull, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, exists, isNull, lt, or, sql } from "drizzle-orm";
 import type { DrizzleDB } from ".";
 import { repos, teamInvites, teamMembers, teams, transcripts, user, type UserRole } from "./schema";
 
@@ -38,6 +38,10 @@ export async function getTranscriptsByRepo(db: DrizzleDB, userId: string, repoId
       costUsd: transcripts.costUsd,
       blendedTokens: transcripts.blendedTokens,
       messageCount: transcripts.messageCount,
+      userMessageCount: transcripts.userMessageCount,
+      linesAdded: transcripts.linesAdded,
+      linesRemoved: transcripts.linesRemoved,
+      linesModified: transcripts.linesModified,
       inputTokens: transcripts.inputTokens,
       cachedInputTokens: transcripts.cachedInputTokens,
       outputTokens: transcripts.outputTokens,
@@ -83,6 +87,34 @@ export async function getTranscriptByTranscriptId(db: DrizzleDB, userId: string,
 }
 
 /**
+ * Get a transcript by its database ID or transcriptId.
+ * First tries to find by ID (CUID2), then falls back to transcriptId lookup.
+ */
+export async function getTranscriptByIdOrTranscriptId(db: DrizzleDB, userId: string, param: string) {
+  // First try lookup by id (CUID2)
+  const byId = await db.query.transcripts.findFirst({
+    columns: {
+      id: true,
+      transcriptId: true,
+    },
+    where: and(eq(transcripts.id, param), eq(transcripts.userId, userId)),
+  });
+
+  if (byId) {
+    return byId;
+  }
+
+  // Fall back to lookup by transcriptId
+  return await db.query.transcripts.findFirst({
+    columns: {
+      id: true,
+      transcriptId: true,
+    },
+    where: and(eq(transcripts.transcriptId, param), eq(transcripts.userId, userId)),
+  });
+}
+
+/**
  * Get private transcripts (no repo) grouped by cwd
  */
 export async function getPrivateTranscriptsByCwd(db: DrizzleDB, userId: string) {
@@ -117,6 +149,10 @@ export async function getTranscriptsByCwd(db: DrizzleDB, userId: string, cwd: st
       costUsd: transcripts.costUsd,
       blendedTokens: transcripts.blendedTokens,
       messageCount: transcripts.messageCount,
+      userMessageCount: transcripts.userMessageCount,
+      linesAdded: transcripts.linesAdded,
+      linesRemoved: transcripts.linesRemoved,
+      linesModified: transcripts.linesModified,
       inputTokens: transcripts.inputTokens,
       cachedInputTokens: transcripts.cachedInputTokens,
       outputTokens: transcripts.outputTokens,
@@ -159,6 +195,7 @@ export async function getAllTranscripts(db: DrizzleDB, userId: string) {
       filesChanged: transcripts.filesChanged,
       linesAdded: transcripts.linesAdded,
       linesRemoved: transcripts.linesRemoved,
+      linesModified: transcripts.linesModified,
       inputTokens: transcripts.inputTokens,
       cachedInputTokens: transcripts.cachedInputTokens,
       outputTokens: transcripts.outputTokens,
@@ -168,6 +205,7 @@ export async function getAllTranscripts(db: DrizzleDB, userId: string) {
       branch: transcripts.branch,
       cwd: transcripts.cwd,
       updatedAt: transcripts.updatedAt,
+      visibility: transcripts.visibility,
       userName: user.name,
       userImage: user.image,
       repoName: repos.repo,
@@ -177,6 +215,92 @@ export async function getAllTranscripts(db: DrizzleDB, userId: string) {
     .leftJoin(repos, eq(transcripts.repoId, repos.id))
     .where(eq(transcripts.userId, userId))
     .orderBy(desc(transcripts.createdAt));
+}
+
+export interface PaginatedTranscriptsParams {
+  cursor?: { createdAt: Date; id: string };
+  limit: number;
+}
+
+export interface PaginatedTranscriptsResult {
+  items: Awaited<ReturnType<typeof getAllTranscripts>>;
+  nextCursor: { createdAt: Date; id: string } | null;
+  hasMore: boolean;
+}
+
+/**
+ * Get transcripts for a user with cursor-based pagination
+ */
+export async function getTranscriptsPaginated(
+  db: DrizzleDB,
+  userId: string,
+  params: PaginatedTranscriptsParams,
+): Promise<PaginatedTranscriptsResult> {
+  const { cursor, limit } = params;
+
+  // Build conditions - use visibility-based access control
+  const conditions = [buildVisibilityCondition(userId)];
+
+  if (cursor) {
+    // Cursor comparison: (createdAt, id) < (cursor.createdAt, cursor.id)
+    // This means: createdAt < cursor.createdAt OR (createdAt = cursor.createdAt AND id < cursor.id)
+    conditions.push(
+      or(
+        lt(transcripts.createdAt, cursor.createdAt),
+        and(eq(transcripts.createdAt, cursor.createdAt), lt(transcripts.id, cursor.id)),
+      )!,
+    );
+  }
+
+  const items = await db
+    .select({
+      id: transcripts.id,
+      repoId: transcripts.repoId,
+      userId: transcripts.userId,
+      sha256: transcripts.sha256,
+      transcriptId: transcripts.transcriptId,
+      source: transcripts.source,
+      createdAt: transcripts.createdAt,
+      preview: transcripts.preview,
+      summary: transcripts.summary,
+      model: transcripts.model,
+      costUsd: transcripts.costUsd,
+      blendedTokens: transcripts.blendedTokens,
+      messageCount: transcripts.messageCount,
+      toolCount: transcripts.toolCount,
+      userMessageCount: transcripts.userMessageCount,
+      filesChanged: transcripts.filesChanged,
+      linesAdded: transcripts.linesAdded,
+      linesRemoved: transcripts.linesRemoved,
+      linesModified: transcripts.linesModified,
+      inputTokens: transcripts.inputTokens,
+      cachedInputTokens: transcripts.cachedInputTokens,
+      outputTokens: transcripts.outputTokens,
+      reasoningOutputTokens: transcripts.reasoningOutputTokens,
+      totalTokens: transcripts.totalTokens,
+      relativeCwd: transcripts.relativeCwd,
+      branch: transcripts.branch,
+      cwd: transcripts.cwd,
+      updatedAt: transcripts.updatedAt,
+      visibility: transcripts.visibility,
+      userName: user.name,
+      userImage: user.image,
+      repoName: repos.repo,
+    })
+    .from(transcripts)
+    .leftJoin(user, eq(transcripts.userId, user.id))
+    .leftJoin(repos, eq(transcripts.repoId, repos.id))
+    .where(and(...conditions))
+    .orderBy(desc(transcripts.createdAt), desc(transcripts.id))
+    .limit(limit + 1);
+
+  const hasMore = items.length > limit;
+  const returnItems = hasMore ? items.slice(0, limit) : items;
+
+  const lastItem = returnItems[returnItems.length - 1];
+  const nextCursor = hasMore && lastItem ? { createdAt: lastItem.createdAt, id: lastItem.id } : null;
+
+  return { items: returnItems, nextCursor, hasMore };
 }
 
 /**
@@ -194,6 +318,13 @@ export async function getUserById(db: DrizzleDB, userId: string) {
 export async function getUserRole(db: DrizzleDB, userId: string): Promise<UserRole | null> {
   const result = await db.select({ role: user.role }).from(user).where(eq(user.id, userId)).limit(1);
   return (result[0]?.role as UserRole) ?? null;
+}
+
+/**
+ * Update user role by ID (admin only)
+ */
+export async function updateUserRole(db: DrizzleDB, userId: string, newRole: UserRole): Promise<void> {
+  await db.update(user).set({ role: newRole }).where(eq(user.id, userId));
 }
 
 // =============================================================================
@@ -393,6 +524,7 @@ export async function getTranscriptWithAccess(db: DrizzleDB, viewerId: string, i
       source: transcripts.source,
       createdAt: transcripts.createdAt,
       preview: transcripts.preview,
+      summary: transcripts.summary,
       model: transcripts.model,
       costUsd: transcripts.costUsd,
       blendedTokens: transcripts.blendedTokens,
@@ -446,6 +578,7 @@ export async function getVisibleTranscripts(db: DrizzleDB, viewerId: string) {
       filesChanged: transcripts.filesChanged,
       linesAdded: transcripts.linesAdded,
       linesRemoved: transcripts.linesRemoved,
+      linesModified: transcripts.linesModified,
       inputTokens: transcripts.inputTokens,
       cachedInputTokens: transcripts.cachedInputTokens,
       outputTokens: transcripts.outputTokens,

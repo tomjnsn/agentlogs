@@ -14,6 +14,8 @@ export interface UploadBlob {
 }
 
 export interface UploadPayload {
+  /** Client-generated CUID2 ID for stable links */
+  id?: string;
   sha256: string;
   rawTranscript: string;
   unifiedTranscript: UnifiedTranscript;
@@ -23,6 +25,8 @@ export interface UploadPayload {
 
 export interface UploadResponse {
   success: boolean;
+  /** The database ID (CUID2) for stable links */
+  id: string;
   transcriptId: string;
   eventsReceived: number;
 }

@@ -93,6 +93,9 @@ const IGNORE_STATUS_MESSAGES = new Set([
   "[request cancelled by user]",
 ]);
 
+// Commands to ignore when converting transcripts (no value in keeping them)
+const IGNORED_COMMANDS = new Set(["/clear"]);
+
 const COMMAND_ENVELOPE_PATTERN = /^<\/?(?:command|local)-[a-z-]+>/i;
 const SHELL_PROMPT_PATTERN = /^[α-ωΑ-Ω]\s/i;
 
@@ -163,13 +166,15 @@ export type TranscriptStats = {
   filesChanged: number;
   linesAdded: number;
   linesRemoved: number;
+  linesModified: number;
 };
 
 export function calculateTranscriptStats(messages: UnifiedTranscriptMessage[]): TranscriptStats {
   let toolCount = 0;
   let userMessageCount = 0;
-  let linesAdded = 0;
-  let linesRemoved = 0;
+  let totalAdded = 0;
+  let totalRemoved = 0;
+  let totalModified = 0;
   const changedFiles = new Set<string>();
 
   for (const msg of messages) {
@@ -181,23 +186,40 @@ export function calculateTranscriptStats(messages: UnifiedTranscriptMessage[]): 
       // Track file changes from Edit and Write tools
       const toolName = msg.toolName;
       const input = msg.input as Record<string, unknown> | undefined;
+      const output = msg.output as Record<string, unknown> | undefined;
 
+      // Unified format uses file_path (snake_case)
       if (input && typeof input.file_path === "string") {
         if (toolName === "Edit" || toolName === "Write") {
           changedFiles.add(input.file_path);
         }
       }
 
-      // Parse diff to count additions/removals
-      if (toolName === "Edit" && input && typeof input.diff === "string") {
-        const diffLines = input.diff.split("\n");
+      // Count lines from Write tool (new file creation)
+      if (toolName === "Write" && input && typeof input.content === "string") {
+        const lineCount = input.content.split("\n").length;
+        totalAdded += lineCount;
+      }
+
+      // Parse diff to count additions/removals/modifications
+      // Diff can be in input (Claude Code) or output (OpenCode)
+      const diff = input?.diff ?? output?.diff;
+      if (toolName === "Edit" && typeof diff === "string") {
+        let diffAdded = 0;
+        let diffRemoved = 0;
+        const diffLines = diff.split("\n");
         for (const line of diffLines) {
           if (line.startsWith("+") && !line.startsWith("+++")) {
-            linesAdded++;
+            diffAdded++;
           } else if (line.startsWith("-") && !line.startsWith("---")) {
-            linesRemoved++;
+            diffRemoved++;
           }
         }
+        // Modifications are paired additions/removals
+        const modified = Math.min(diffAdded, diffRemoved);
+        totalAdded += diffAdded - modified;
+        totalRemoved += diffRemoved - modified;
+        totalModified += modified;
       }
     }
   }
@@ -206,8 +228,9 @@ export function calculateTranscriptStats(messages: UnifiedTranscriptMessage[]): 
     toolCount,
     userMessageCount,
     filesChanged: changedFiles.size,
-    linesAdded,
-    linesRemoved,
+    linesAdded: totalAdded,
+    linesRemoved: totalRemoved,
+    linesModified: totalModified,
   };
 }
 
@@ -273,7 +296,7 @@ export function convertClaudeCodeTranscript(
     model: primaryModel,
     blendedTokens,
     costUsd,
-    messageCount: flatTranscript.length,
+    messageCount: messages.length,
     ...stats,
     tokenUsage,
     modelUsage: Array.from(modelUsageMap.entries()).map(([model, usage]) => ({ model, usage })),
@@ -345,7 +368,7 @@ export async function convertClaudeCodeFile(
     model: primaryModel,
     blendedTokens,
     costUsd,
-    messageCount: flatTranscript.length,
+    messageCount: messages.length,
     ...stats,
     tokenUsage,
     modelUsage: Array.from(modelUsageMap.entries()).map(([model, usage]) => ({ model, usage })),
@@ -745,23 +768,12 @@ function isCommandEnvelope(value: string): boolean {
   return COMMAND_ENVELOPE_PATTERN.test(value);
 }
 
-function summarizeMessage(message: ClaudeMessageRecord, maxLength = 80): string | null {
+function summarizeMessage(message: ClaudeMessageRecord): string | null {
   const normalized = getNormalizedMessageText(message);
   if (!normalized) {
     return null;
   }
-  return truncate(normalized, maxLength);
-}
-
-function truncate(value: string, maxLength: number): string {
-  const normalized = collapseWhitespace(value);
-  if (normalized.length <= maxLength) {
-    return normalized;
-  }
-  if (maxLength <= 1) {
-    return normalized.slice(0, maxLength);
-  }
-  return `${normalized.slice(0, maxLength - 1)}…`;
+  return collapseWhitespace(normalized);
 }
 
 function deriveWorkingDirectory(transcript: ClaudeMessageRecord[]): string | undefined {
@@ -1403,6 +1415,9 @@ function convertTranscriptToMessages(transcript: ClaudeMessageRecord[]): Convert
     timestamp: string | undefined;
   } | null = null;
 
+  // Track if we should skip the next stdout (from an ignored command like /clear)
+  let skipNextStdout = false;
+
   // Get cwd for path relativization
   const cwd = deriveWorkingDirectory(transcript);
 
@@ -1425,6 +1440,11 @@ function convertTranscriptToMessages(transcript: ClaudeMessageRecord[]): Convert
         // Check if this is a local-command-stdout message
         const stdout = parseLocalCommandStdout(text);
         if (stdout !== null) {
+          // Skip stdout from ignored commands (like /clear)
+          if (skipNextStdout) {
+            skipNextStdout = false;
+            continue;
+          }
           // If we have a pending command, merge stdout into it and emit
           if (pendingCommand) {
             const cleanedOutput = stripAnsiCodes(stdout).trim();
@@ -1447,6 +1467,11 @@ function convertTranscriptToMessages(transcript: ClaudeMessageRecord[]): Convert
         // Check if this is a command-name message
         const parsedCommand = parseCommandMessage(text);
         if (parsedCommand) {
+          // Skip ignored commands (like /clear) - they add no value to the transcript
+          if (IGNORED_COMMANDS.has(parsedCommand.name)) {
+            skipNextStdout = true;
+            continue;
+          }
           // If we had a pending command without stdout, emit it first
           if (pendingCommand) {
             messages.push(
@@ -1609,8 +1634,7 @@ function extractUserContent(record: ClaudeMessageRecord): ExtractedUserContent {
 
   const content = payload.content;
   if (typeof content === "string") {
-    const normalized = collapseWhitespace(content);
-    return normalized ? { texts: [normalized], toolResults: [] } : { texts: [], toolResults: [] };
+    return content ? { texts: [content], toolResults: [] } : { texts: [], toolResults: [] };
   }
 
   if (!Array.isArray(content)) {
@@ -1626,9 +1650,8 @@ function extractUserContent(record: ClaudeMessageRecord): ExtractedUserContent {
     }
 
     if (typeof part === "string") {
-      const normalized = collapseWhitespace(part);
-      if (normalized) {
-        texts.push(normalized);
+      if (part) {
+        texts.push(part);
       }
       continue;
     }
@@ -1669,20 +1692,16 @@ function extractUserContent(record: ClaudeMessageRecord): ExtractedUserContent {
     }
 
     if (type === "text" && typeof recordPart.text === "string") {
-      const normalized = collapseWhitespace(recordPart.text);
-      if (normalized) {
-        texts.push(normalized);
+      if (recordPart.text) {
+        texts.push(recordPart.text);
       }
       continue;
     }
 
     for (const key of ["content", "text"]) {
       const value = recordPart[key];
-      if (typeof value === "string") {
-        const normalized = collapseWhitespace(value);
-        if (normalized) {
-          texts.push(normalized);
-        }
+      if (typeof value === "string" && value) {
+        texts.push(value);
       }
     }
   }
@@ -1838,19 +1857,37 @@ function sanitizeToolCall(
       const outputObj = cloneObject(output);
 
       let diffString: string | undefined;
+      let lineOffset: number | undefined;
+
+      // Extract line offset from structuredPatch if available
       if (outputObj && Array.isArray(outputObj.structuredPatch)) {
         const diffLines: string[] = [];
         for (const hunk of outputObj.structuredPatch as unknown[]) {
-          if (isPlainObject(hunk) && Array.isArray(hunk.lines)) {
-            for (const line of hunk.lines as unknown[]) {
-              if (typeof line === "string") {
-                diffLines.push(line);
+          if (isPlainObject(hunk)) {
+            // Extract line offset from first hunk
+            if (lineOffset === undefined && typeof hunk.oldStart === "number") {
+              lineOffset = hunk.oldStart;
+            }
+            if (Array.isArray(hunk.lines)) {
+              for (const line of hunk.lines as unknown[]) {
+                if (typeof line === "string") {
+                  diffLines.push(line);
+                }
               }
             }
           }
         }
         if (diffLines.length > 0) {
           diffString = `${diffLines.join("\n")}\n`;
+        }
+      }
+
+      // Extract line offset from string output containing cat -n format
+      // Format: "The file ... has been updated. Here's the result of running `cat -n`...\n    94→content"
+      if (lineOffset === undefined && typeof output === "string") {
+        const catNLineMatch = output.match(/^\s*(\d+)[→\t]/m);
+        if (catNLineMatch) {
+          lineOffset = parseInt(catNLineMatch[1], 10);
         }
       }
 
@@ -1872,7 +1909,7 @@ function sanitizeToolCall(
         const isErrorLike =
           isErrorValue === true ||
           isErrorValue === "true" ||
-          typeof output === "string" ||
+          (typeof output === "string" && !output.includes("has been updated")) ||
           (outputObj && typeof outputObj.type === "string" && outputObj.type === "error");
 
         if (!diffString && !isErrorLike && legacyOld !== undefined && legacyNew !== undefined) {
@@ -1895,6 +1932,10 @@ function sanitizeToolCall(
 
         if (diffString) {
           inputObj.diff = diffString;
+        }
+
+        if (lineOffset !== undefined && lineOffset > 0) {
+          inputObj.lineOffset = lineOffset;
         }
 
         sanitizedInput = inputObj;

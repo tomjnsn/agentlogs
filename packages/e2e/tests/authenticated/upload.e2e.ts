@@ -18,6 +18,8 @@ type FixtureCase = {
 interface UploadResult {
   output: string;
   transcriptId: string | null;
+  /** The database ID (CUID2) from the upload response */
+  id: string | null;
 }
 
 /**
@@ -30,34 +32,47 @@ function uploadFixtureTranscript(fixture: FixtureCase): UploadResult {
   const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), "agentlogs-test-"));
 
   try {
-    const output = execSync(`bun agentlogs ${fixture.uploadCommand} upload ${fixture.fixturePath}`, {
-      cwd: ROOT_DIR,
-      env: {
-        // Use temp HOME so CLI doesn't find existing config
-        HOME: tempHome,
-        PATH: process.env.PATH,
-        // These env vars tell the CLI to use our test server
-        SERVER_URL,
-        AGENTLOGS_AUTH_TOKEN: TEST_AUTH_TOKEN,
-      },
-      encoding: "utf-8",
-      timeout: 60000,
-    });
-
-    // Extract transcript ID from output
-    const transcriptIdMatch = output.match(/Transcript ID: ([^\s\n]+)/);
-    const transcriptId = transcriptIdMatch ? transcriptIdMatch[1] : null;
-
-    return { output, transcriptId };
+    return uploadWithHome(fixture, tempHome);
   } finally {
     // Cleanup temp directory
     fs.rmSync(tempHome, { recursive: true, force: true });
   }
 }
 
+/**
+ * Upload transcript with a specific HOME directory.
+ * This allows testing ID persistence across uploads.
+ */
+function uploadWithHome(fixture: FixtureCase, homeDir: string): UploadResult {
+  const output = execSync(`bun --silent agentlogs ${fixture.uploadCommand} upload ${fixture.fixturePath}`, {
+    cwd: ROOT_DIR,
+    env: {
+      // Use specified HOME so CLI uses its local.db for ID storage
+      HOME: homeDir,
+      PATH: process.env.PATH,
+      // These env vars tell the CLI to use our test server
+      SERVER_URL,
+      AGENTLOGS_AUTH_TOKEN: TEST_AUTH_TOKEN,
+    },
+    encoding: "utf-8",
+    timeout: 60000,
+  });
+
+  // Extract transcript ID from output
+  const transcriptIdMatch = output.match(/Transcript ID: ([^\s\n]+)/);
+  const transcriptId = transcriptIdMatch ? transcriptIdMatch[1] : null;
+
+  // Extract database ID from output (if present)
+  const idMatch = output.match(/ID: ([a-z0-9]{10})/);
+  const id = idMatch ? idMatch[1] : null;
+
+  return { output, transcriptId, id };
+}
+
 async function assertTranscriptInUi(page: Page, transcriptId: string) {
-  // Navigate directly to the transcript detail page
-  await page.goto(`/app/logs/${transcriptId}`);
+  // Navigate via the /s/ redirect route which looks up by transcriptId
+  // and redirects to the correct /app/logs/{id} URL
+  await page.goto(`/s/${transcriptId}`);
 
   // Wait for the page to load - verify we're on a valid transcript page
   // by checking for the presence of transcript content
@@ -147,5 +162,70 @@ test.describe("CLI Upload", () => {
     expect(result.transcriptId).toBeTruthy();
 
     await assertTranscriptInUi(page, result.transcriptId!);
+  });
+});
+
+test.describe("Client-Generated ID Behavior", () => {
+  const fixture = {
+    cwd: "/Users/philipp/dev/vibeinsights/fixtures/claudecode",
+    expectedSnippet: "create a file",
+    fixturePath: path.join(ROOT_DIR, "fixtures/claudecode/crud.jsonl"),
+    uploadCommand: "claudecode",
+  } satisfies FixtureCase;
+
+  test("re-uploading same transcript uses same ID (idempotency)", async () => {
+    // Create a persistent HOME directory for this test
+    const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), "agentlogs-idempotency-"));
+
+    try {
+      // Upload fixture once
+      const result1 = uploadWithHome(fixture, tempHome);
+      expect(result1.output).toContain("Upload complete");
+      expect(result1.id).toBeTruthy();
+
+      // Upload same fixture again with same HOME dir (same local.db)
+      const result2 = uploadWithHome(fixture, tempHome);
+      expect(result2.output).toContain("Upload complete");
+      expect(result2.id).toBeTruthy();
+
+      // Same ID should be returned
+      expect(result2.id).toBe(result1.id);
+    } finally {
+      fs.rmSync(tempHome, { recursive: true, force: true });
+    }
+  });
+
+  test("server returns existing ID when local DB is missing", async () => {
+    // Create two separate HOME directories
+    const tempHome1 = fs.mkdtempSync(path.join(os.tmpdir(), "agentlogs-home1-"));
+    const tempHome2 = fs.mkdtempSync(path.join(os.tmpdir(), "agentlogs-home2-"));
+
+    try {
+      // Upload with HOME1
+      const result1 = uploadWithHome(fixture, tempHome1);
+      expect(result1.output).toContain("Upload complete");
+      expect(result1.id).toBeTruthy();
+
+      // Upload same transcript with HOME2 (different local.db)
+      const result2 = uploadWithHome(fixture, tempHome2);
+      expect(result2.output).toContain("Upload complete");
+      expect(result2.id).toBeTruthy();
+
+      // Server should return the existing ID for this transcriptId
+      expect(result2.id).toBe(result1.id);
+    } finally {
+      fs.rmSync(tempHome1, { recursive: true, force: true });
+      fs.rmSync(tempHome2, { recursive: true, force: true });
+    }
+  });
+
+  test("client-generated ID works directly in /s/ route", async ({ page }) => {
+    const result = uploadFixtureTranscript(fixture);
+    expect(result.output).toContain("Upload complete");
+    expect(result.id).toBeTruthy();
+
+    // Navigate using the client-generated ID directly
+    await page.goto(`/s/${result.id}`);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 10000 });
   });
 });

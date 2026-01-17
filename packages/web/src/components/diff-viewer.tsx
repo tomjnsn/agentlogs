@@ -24,7 +24,9 @@ class DiffErrorBoundary extends Component<{ children: ReactNode; fallback: React
 interface DiffViewerProps {
   filePath: string;
   diff: string;
+  lineOffset?: number;
   className?: string;
+  hideHeader?: boolean;
 }
 
 /**
@@ -65,7 +67,7 @@ function isNewFile(diff: string): boolean {
 /**
  * Convert a simple diff string (lines starting with +/-/space) to a proper unified diff patch format
  */
-function convertToPatchFormat(filePath: string, diff: string): string {
+function convertToPatchFormat(filePath: string, diff: string, lineOffset: number = 1): string {
   const lines = diff.split("\n");
 
   // Filter to valid diff lines: +, -, or space (context)
@@ -112,15 +114,15 @@ function convertToPatchFormat(filePath: string, diff: string): string {
   if (isNew) {
     patchLines.push("--- /dev/null");
     patchLines.push(`+++ b/${filePath}`);
-    patchLines.push(`@@ -0,0 +1,${newCount} @@`);
+    patchLines.push(`@@ -0,0 +${lineOffset},${newCount} @@`);
   } else if (isDelete) {
     patchLines.push(`--- a/${filePath}`);
     patchLines.push("+++ /dev/null");
-    patchLines.push(`@@ -1,${oldCount} +0,0 @@`);
+    patchLines.push(`@@ -${lineOffset},${oldCount} +0,0 @@`);
   } else {
     patchLines.push(`--- a/${filePath}`);
     patchLines.push(`+++ b/${filePath}`);
-    patchLines.push(`@@ -1,${oldCount} +1,${newCount} @@`);
+    patchLines.push(`@@ -${lineOffset},${oldCount} +${lineOffset},${newCount} @@`);
   }
 
   // Add diff lines
@@ -139,10 +141,10 @@ function getFileName(filePath: string): string {
   return filePath.split("/").pop() || filePath;
 }
 
-export function DiffViewer({ filePath, diff, className }: DiffViewerProps) {
+export function DiffViewer({ filePath, diff, lineOffset = 1, className, hideHeader }: DiffViewerProps) {
   const stats = computeDiffStats(diff);
   const isNew = isNewFile(diff);
-  const patch = convertToPatchFormat(filePath, diff);
+  const patch = convertToPatchFormat(filePath, diff, lineOffset);
 
   // If no patch content, show a simple message
   if (!patch) {
@@ -160,29 +162,33 @@ export function DiffViewer({ filePath, diff, className }: DiffViewerProps) {
   return (
     <div className={className}>
       {/* File header */}
-      <div className="flex items-center gap-2 rounded-t-lg bg-zinc-800 px-3 py-2">
-        {isNew ? (
-          <FilePlus className="h-4 w-4 shrink-0 text-green-500" />
-        ) : (
-          <Pencil className="h-4 w-4 shrink-0 text-muted-foreground" />
-        )}
-        <span className="min-w-0 flex-1 truncate text-sm font-medium">{getFileName(filePath)}</span>
-        <DiffStats added={stats.added} removed={stats.removed} modified={stats.modified} isNew={isNew} />
-      </div>
+      {!hideHeader && (
+        <div className="flex items-center gap-2 rounded-t-lg bg-zinc-800 px-3 py-2">
+          {isNew ? (
+            <FilePlus className="h-4 w-4 shrink-0 text-green-500" />
+          ) : (
+            <Pencil className="h-4 w-4 shrink-0 text-muted-foreground" />
+          )}
+          <span className="min-w-0 flex-1 truncate text-sm font-medium">{getFileName(filePath)}</span>
+          <DiffStats added={stats.added} removed={stats.removed} modified={stats.modified} isNew={isNew} />
+        </div>
+      )}
 
       {/* Diff content */}
-      <div className="diff-viewer-container overflow-hidden rounded-b-lg">
+      <div className={`diff-viewer-container overflow-hidden ${hideHeader ? "rounded-lg" : "rounded-b-lg"}`}>
         <DiffErrorBoundary
           fallback={<pre className="overflow-x-auto bg-zinc-900 p-3 text-xs text-muted-foreground">{diff}</pre>}
         >
           <PatchDiff
             patch={patch}
             options={{
-              theme: "github-dark",
+              theme: "vitesse-dark",
               diffStyle: "unified",
-              diffIndicators: "classic",
+              diffIndicators: "bars",
+              lineDiffType: "word-alt",
               disableFileHeader: true,
               overflow: "scroll",
+              unsafeCSS: ":host, [data-diffs] { background: transparent !important; }",
             }}
           />
         </DiffErrorBoundary>
@@ -220,22 +226,25 @@ interface FileViewerProps {
   filePath: string;
   content: string;
   className?: string;
+  hideHeader?: boolean;
 }
 
-export function FileViewer({ filePath, content, className }: FileViewerProps) {
+export function FileViewer({ filePath, content, className, hideHeader }: FileViewerProps) {
   const lineCount = content.split("\n").length;
 
   return (
     <div className={className}>
       {/* File header */}
-      <div className="flex items-center gap-2 rounded-t-lg bg-zinc-800 px-3 py-2">
-        <FilePlus className="h-4 w-4 shrink-0 text-green-500" />
-        <span className="min-w-0 flex-1 truncate text-sm font-medium">{getFileName(filePath)}</span>
-        <span className="text-xs font-medium text-green-500">+{lineCount}</span>
-      </div>
+      {!hideHeader && (
+        <div className="flex items-center gap-2 rounded-t-lg bg-zinc-800 px-3 py-2">
+          <FilePlus className="h-4 w-4 shrink-0 text-green-500" />
+          <span className="min-w-0 flex-1 truncate text-sm font-medium">{getFileName(filePath)}</span>
+          <span className="text-xs font-medium text-green-500">+{lineCount}</span>
+        </div>
+      )}
 
       {/* File content */}
-      <div className="file-viewer-container overflow-hidden rounded-b-lg">
+      <div className={`file-viewer-container overflow-hidden ${hideHeader ? "rounded-lg" : "rounded-b-lg"}`}>
         <DiffErrorBoundary
           fallback={<pre className="overflow-x-auto bg-zinc-900 p-3 text-xs text-muted-foreground">{content}</pre>}
         >
@@ -245,9 +254,10 @@ export function FileViewer({ filePath, content, className }: FileViewerProps) {
               contents: content,
             }}
             options={{
-              theme: "github-dark",
+              theme: "vitesse-dark",
               overflow: "scroll",
               disableFileHeader: true,
+              unsafeCSS: ":host, [data-diffs] { background: transparent !important; }",
             }}
           />
         </DiffErrorBoundary>

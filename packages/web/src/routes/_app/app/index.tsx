@@ -1,28 +1,117 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-  ChevronDown,
-  FileCode,
-  Folder,
-  Globe,
-  Lock,
-  MessageSquare,
-  Search,
-  Terminal,
-  Users,
-  Wrench,
-} from "lucide-react";
-import { ClaudeCodeIcon, CodexIcon, OpenCodeIcon } from "../../../components/icons/source-icons";
-import { useMemo, useState } from "react";
-import { getAllTranscripts } from "../../../lib/server-functions";
+import { Globe, Loader2, Lock, MessageSquare, Search, Terminal, Users } from "lucide-react";
+import { ClaudeCodeIcon, CodexIcon, GitHubIcon, OpenCodeIcon } from "../../../components/icons/source-icons";
+import { useCallback, useMemo, useState } from "react";
+import { getTranscriptsPaginated } from "../../../lib/server-functions";
+import { useInfiniteScroll } from "../../../hooks/use-infinite-scroll";
+import { ClientOnly } from "../../../components/client-only";
+
+const endOfListQuotes = [
+  { text: "That's all, folks!", author: "Porky Pig" },
+  { text: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
+  { text: "Simplicity is the ultimate sophistication.", author: "Leonardo da Vinci" },
+  { text: "First, solve the problem. Then, write the code.", author: "John Johnson" },
+  { text: "Code is like humor. When you have to explain it, it's bad.", author: "Cory House" },
+  { text: "Any fool can write code that a computer can understand.", author: "Martin Fowler" },
+  {
+    text: "Programming is the art of telling another human what one wants the computer to do.",
+    author: "Donald Knuth",
+  },
+  { text: "The best error message is the one that never shows up.", author: "Thomas Fuchs" },
+  { text: "Debugging is twice as hard as writing the code in the first place.", author: "Brian Kernighan" },
+  { text: "You have reached the end of the internet. Please go outside.", author: "Anonymous" },
+] as const;
+
+// Persist quote selection in module scope, only initialized on client
+let selectedQuoteIndex: number | null = null;
+function getQuoteIndex() {
+  if (selectedQuoteIndex === null) {
+    selectedQuoteIndex = Math.floor(Math.random() * endOfListQuotes.length);
+  }
+  return selectedQuoteIndex;
+}
+
+function EndOfListQuote() {
+  const quote = endOfListQuotes[getQuoteIndex()];
+  return (
+    <p className="py-4 text-center text-sm">
+      <span className="text-muted-foreground italic">{`\u201C${quote.text}\u201D`}</span>
+      <span className="ml-2 text-muted-foreground/60">— {quote.author}</span>
+    </p>
+  );
+}
+
+type DailyCount = { date: string; count: number };
+
+function getDailyCounts(transcripts: { createdAt: Date }[], days = 30): DailyCount[] {
+  const counts = new Map<string, number>();
+
+  // Initialize all days with 0
+  const today = new Date();
+  for (let i = days - 1; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    const key = date.toISOString().split("T")[0];
+    counts.set(key, 0);
+  }
+
+  // Count transcripts per day
+  for (const t of transcripts) {
+    const key = new Date(t.createdAt).toISOString().split("T")[0];
+    if (counts.has(key)) {
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+  }
+
+  return Array.from(counts.entries()).map(([date, count]) => ({ date, count }));
+}
+
+function formatDateShort(dateStr: string): string {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function ActivityChart({ data }: { data: DailyCount[] }) {
+  const maxCount = Math.max(...data.map((d) => d.count), 1);
+
+  return (
+    <TooltipProvider delayDuration={0}>
+      <div className="flex h-6 items-end gap-0.5">
+        {data.map((d) => {
+          const height = d.count > 0 ? Math.max((d.count / maxCount) * 100, 15) : 0;
+          return (
+            <Tooltip key={d.date}>
+              <TooltipTrigger asChild>
+                <div
+                  className="w-1.5 bg-primary/50 transition-all hover:bg-primary"
+                  style={{
+                    height: d.count > 0 ? `${height}%` : "2px",
+                    opacity: d.count > 0 ? 1 : 0.15,
+                  }}
+                />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>
+                  {formatDateShort(d.date)}: {d.count} {d.count === 1 ? "log" : "logs"}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          );
+        })}
+      </div>
+    </TooltipProvider>
+  );
+}
 
 export const Route = createFileRoute("/_app/app/")({
   loader: async () => {
     try {
-      const transcripts = await getAllTranscripts();
-      return { transcripts };
+      const initialData = await getTranscriptsPaginated({ data: {} });
+      return { initialData };
     } catch (error) {
       console.error("Failed to load data:", error);
       throw error;
@@ -85,34 +174,48 @@ function getSourceIcon(source: string, className?: string) {
   }
 }
 
-function VisibilityBadge({ visibility }: { visibility: string }) {
+function getVisibilityIcon(visibility: string) {
   switch (visibility) {
     case "public":
-      return (
-        <span className="inline-flex items-center gap-1 text-emerald-500/60" title="Public - visible to everyone">
-          <Globe className="h-3 w-3" />
-        </span>
-      );
+      return <Globe className="h-3.5 w-3.5 text-emerald-500/60" />;
     case "team":
-      return (
-        <span className="inline-flex items-center gap-1 text-sky-400/60" title="Team - visible to team members">
-          <Users className="h-3 w-3" />
-        </span>
-      );
+      return <Users className="h-3.5 w-3.5 text-sky-400/60" />;
     case "private":
     default:
-      return (
-        <span className="inline-flex items-center gap-1 text-muted-foreground" title="Private - only you">
-          <Lock className="h-3 w-3" />
-        </span>
-      );
+      return <Lock className="h-3.5 w-3.5 text-muted-foreground/60" />;
   }
 }
 
 function HomeComponent() {
-  const { transcripts } = Route.useLoaderData();
+  const { initialData } = Route.useLoaderData();
+  const [transcripts, setTranscripts] = useState(initialData.items);
+  const [cursor, setCursor] = useState(initialData.nextCursor);
+  const [hasMore, setHasMore] = useState(initialData.hasMore);
+  const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRepo, setSelectedRepo] = useState<string>("all");
+
+  const fetchNextPage = useCallback(async () => {
+    if (!cursor || isLoading) return;
+    setIsLoading(true);
+    try {
+      const result = await getTranscriptsPaginated({ data: { cursor } });
+      setTranscripts((prev) => [...prev, ...result.items]);
+      setCursor(result.nextCursor);
+      setHasMore(result.hasMore);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [cursor, isLoading]);
+
+  const { sentinelRef } = useInfiniteScroll({
+    onLoadMore: fetchNextPage,
+    hasMore,
+    isLoading,
+  });
+
+  // Calculate daily activity data
+  const dailyCounts = useMemo(() => getDailyCounts(transcripts, 30), [transcripts]);
 
   // Get unique repos from transcripts for the filter
   const repoOptions = useMemo(() => {
@@ -151,12 +254,12 @@ function HomeComponent() {
 
   return (
     <div className="space-y-6">
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[200px] max-w-[300px]">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      {/* Filters + Activity Chart */}
+      <div className="flex items-center gap-4 pl-15">
+        <div className="relative min-w-[300px]">
+          <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search threads..."
+            placeholder="Search logs..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
@@ -165,23 +268,46 @@ function HomeComponent() {
 
         <Select value={selectedRepo} onValueChange={setSelectedRepo}>
           <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="All repositories" />
+            <SelectValue>
+              {selectedRepo === "all"
+                ? "All repositories"
+                : selectedRepo === "private"
+                  ? "Private only"
+                  : (() => {
+                      const repo = repoOptions.find((r) => r.id === selectedRepo);
+                      return repo ? (
+                        <span className="flex items-center gap-1.5">
+                          <GitHubIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                          {repo.name.replace(/^github\.com\//, "")}
+                        </span>
+                      ) : (
+                        "All repositories"
+                      );
+                    })()}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All repositories</SelectItem>
             <SelectItem value="private">Private only</SelectItem>
             {repoOptions.map((repo) => (
               <SelectItem key={repo.id} value={repo.id}>
-                {repo.name}
+                <span className="flex items-center gap-1.5">
+                  <GitHubIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                  {repo.name.replace(/^github\.com\//, "")}
+                </span>
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
+
+        <div className="grow" />
+
+        <ActivityChart data={dailyCounts} />
       </div>
 
       {/* Transcript List */}
-      {filteredTranscripts.length === 0 ? (
-        <p className="text-muted-foreground py-8 text-center">
+      {filteredTranscripts.length === 0 && !isLoading ? (
+        <p className="py-8 text-center text-muted-foreground">
           {transcripts.length === 0
             ? "No transcripts yet. Start capturing transcripts!"
             : "No transcripts match your filters."}
@@ -191,21 +317,37 @@ function HomeComponent() {
           {filteredTranscripts.map((transcript) => (
             <TranscriptItem key={transcript.id} transcript={transcript} />
           ))}
+
+          {/* Loading indicator */}
+          {isLoading && (
+            <div className="flex justify-center py-4">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          )}
+
+          {/* Scroll sentinel */}
+          <div ref={sentinelRef} className="h-px" aria-hidden="true" />
+
+          {/* End of list indicator */}
+          {!hasMore && transcripts.length > 0 && (
+            <ClientOnly>
+              <EndOfListQuote />
+            </ClientOnly>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-type TranscriptData = Awaited<ReturnType<typeof getAllTranscripts>>[number];
+type TranscriptData = Awaited<ReturnType<typeof getTranscriptsPaginated>>["items"][number];
 
 function TranscriptItem({ transcript }: { transcript: TranscriptData }) {
-  const [expanded, setExpanded] = useState(false);
   const timeAgo = formatTimeAgo(new Date(transcript.createdAt));
 
   return (
-    <Link to="/app/logs/$id" params={{ id: transcript.id }} className="block group">
-      <div className="flex gap-4 py-3 px-2 rounded-lg hover:bg-accent/50 transition-colors">
+    <Link to="/app/logs/$id" params={{ id: transcript.id }} className="group block">
+      <div className="flex gap-4 rounded-lg px-2 py-3 transition-colors hover:bg-accent/15">
         {/* Avatar */}
         <Avatar className="h-10 w-10 shrink-0 self-center">
           <AvatarImage src={transcript.userImage || undefined} alt={transcript.userName || "User"} />
@@ -213,25 +355,21 @@ function TranscriptItem({ transcript }: { transcript: TranscriptData }) {
         </Avatar>
 
         {/* Content */}
-        <div className="flex-1 min-w-0 space-y-1.5">
+        <div className="min-w-0 flex-1 space-y-1.5">
           {/* Summary */}
-          {transcript.summary && <p className="text-sm">{transcript.summary}</p>}
+          {transcript.summary && <p className="text-sm font-medium">{transcript.summary}</p>}
 
           {/* Preview */}
           {transcript.preview && (
-            <div
-              className={`bg-secondary/50 rounded-md px-3 py-2 text-sm text-muted-foreground ${
-                !expanded ? "line-clamp-2" : ""
-              }`}
-            >
+            <div className="truncate rounded-md bg-secondary/50 px-3 py-2 text-sm text-muted-foreground">
               {transcript.preview}
             </div>
           )}
 
           {/* Meta row */}
-          <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             {getSourceIcon(transcript.source, "h-3.5 w-3.5")}
-            <VisibilityBadge visibility={transcript.visibility} />
+            {getVisibilityIcon(transcript.visibility)}
             <span className="font-medium text-foreground/80">{transcript.userName || "Unknown"}</span>
             <span>{timeAgo}</span>
             <span>•</span>
@@ -239,54 +377,27 @@ function TranscriptItem({ transcript }: { transcript: TranscriptData }) {
               <MessageSquare className="h-3 w-3" />
               {transcript.userMessageCount}
             </span>
-            <span className="flex items-center gap-1">
-              <Wrench className="h-3 w-3" />
-              {transcript.toolCount}
-            </span>
-            {transcript.filesChanged > 0 && (
+            {(transcript.linesAdded > 0 || transcript.linesRemoved > 0 || transcript.linesModified > 0) && (
               <span className="flex items-center gap-1">
-                <FileCode className="h-3 w-3" />
-                {transcript.filesChanged}
-              </span>
-            )}
-            {(transcript.linesAdded > 0 || transcript.linesRemoved > 0) && (
-              <span>
-                <span className="text-green-500">+{transcript.linesAdded}</span>
-                <span className="mx-0.5">/</span>
-                <span className="text-red-500">-{transcript.linesRemoved}</span>
+                {transcript.linesAdded > 0 && <span className="text-green-500">+{transcript.linesAdded}</span>}
+                {transcript.linesModified > 0 && <span className="text-yellow-500">~{transcript.linesModified}</span>}
+                {transcript.linesRemoved > 0 && <span className="text-red-500">-{transcript.linesRemoved}</span>}
               </span>
             )}
             {transcript.repoName && (
-              <span className="flex items-center gap-1">
-                <Folder className="h-3.5 w-3.5" />
-                <span>
-                  {transcript.repoName}
-                  {transcript.branch && `:${transcript.branch}`}
-                </span>
-              </span>
-            )}
-            {transcript.costUsd > 0 && (
               <>
                 <span>•</span>
-                <span>${transcript.costUsd.toFixed(2)}</span>
+                <span className="flex items-center gap-1">
+                  <GitHubIcon className="h-3.5 w-3.5" />
+                  <span>
+                    <span className="text-foreground/80">{transcript.repoName.replace(/^github\.com\//, "")}</span>
+                    {transcript.branch && `@${transcript.branch}`}
+                  </span>
+                </span>
               </>
             )}
           </div>
         </div>
-
-        {/* Expand button */}
-        {transcript.preview && transcript.preview.length > 150 && (
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setExpanded(!expanded);
-            }}
-            className="self-start p-1 hover:bg-accent rounded shrink-0"
-          >
-            <ChevronDown className={`h-4 w-4 transition-transform ${expanded ? "rotate-180" : ""}`} />
-          </button>
-        )}
       </div>
     </Link>
   );

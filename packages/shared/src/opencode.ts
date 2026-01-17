@@ -421,21 +421,15 @@ function extractRelativeCwd(messages: OpenCodeMessage[]): string | null {
 
 function derivePreview(userTexts: string[]): string | null {
   for (const text of userTexts) {
-    const trimmed = text.trim();
+    const trimmed = text.trim().replace(/\s+/g, " ");
     if (!trimmed) continue;
     // Skip system-like messages
     if (trimmed.startsWith("<") && trimmed.includes(">")) continue;
     // Remove surrounding quotes if present
     const unquoted = trimmed.replace(/^["']|["']$/g, "");
-    return truncate(unquoted, 80);
+    return unquoted;
   }
-  return userTexts.length > 0 ? truncate(userTexts[0], 80) : null;
-}
-
-function truncate(value: string, maxLength: number): string {
-  if (value.length <= maxLength) return value;
-  if (maxLength <= 1) return value.slice(0, maxLength);
-  return `${value.slice(0, maxLength - 1)}…`;
+  return userTexts.length > 0 ? userTexts[0].trim().replace(/\s+/g, " ") : null;
 }
 
 // ============================================================================
@@ -447,13 +441,15 @@ function sanitizeToolInput(toolName: string, input: unknown, cwd: string | null)
 
   const record = { ...(input as Record<string, unknown>) };
 
-  // Relativize file paths
-  if (typeof record.filePath === "string" && cwd) {
-    record.filePath = relativizePath(record.filePath, cwd);
-  }
-  if (typeof record.file_path === "string" && cwd) {
+  // Normalize filePath → file_path (OpenCode uses camelCase, unified format uses snake_case)
+  if (typeof record.filePath === "string") {
+    record.file_path = cwd ? relativizePath(record.filePath, cwd) : record.filePath;
+    delete record.filePath;
+  } else if (typeof record.file_path === "string" && cwd) {
     record.file_path = relativizePath(record.file_path, cwd);
   }
+
+  // Relativize other path fields
   if (typeof record.path === "string" && cwd) {
     record.path = relativizePath(record.path, cwd);
   }

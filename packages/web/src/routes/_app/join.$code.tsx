@@ -38,7 +38,7 @@ function JoinPage() {
   if (!session) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
-        <div className="text-center space-y-4 max-w-md">
+        <div className="max-w-md space-y-4 text-center">
           <h1 className="text-2xl font-semibold tracking-tight">Sign in to Join</h1>
           <p className="text-muted-foreground">You need to be signed in to accept this team invite.</p>
           <Button asChild size="lg">
@@ -53,7 +53,7 @@ function JoinPage() {
   if (!invite) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
-        <div className="text-center space-y-4 max-w-md">
+        <div className="max-w-md space-y-4 text-center">
           <h1 className="text-2xl font-semibold tracking-tight">Invite Not Found</h1>
           <p className="text-muted-foreground">
             This invite link is invalid or has been revoked. Please ask for a new invite.
@@ -70,7 +70,7 @@ function JoinPage() {
   if (invite.expired) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
-        <div className="text-center space-y-4 max-w-md">
+        <div className="max-w-md space-y-4 text-center">
           <h1 className="text-2xl font-semibold tracking-tight">Invite Expired</h1>
           <p className="text-muted-foreground">
             This invite link has expired. Please ask the team owner for a new one.
@@ -87,7 +87,7 @@ function JoinPage() {
   if (currentTeam) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
-        <div className="text-center space-y-4 max-w-md">
+        <div className="max-w-md space-y-4 text-center">
           <h1 className="text-2xl font-semibold tracking-tight">Already in a Team</h1>
           <p className="text-muted-foreground">
             You're currently a member of <span className="font-medium text-foreground">{currentTeam.name}</span>. You
@@ -107,7 +107,7 @@ function JoinPage() {
   // Valid invite - show join UI
   return (
     <div className="flex flex-col items-center justify-center py-16">
-      <div className="text-center space-y-6 max-w-md">
+      <div className="max-w-md space-y-6 text-center">
         <div className="space-y-2">
           <h1 className="text-2xl font-semibold tracking-tight">Join {invite.teamName}</h1>
           <p className="text-muted-foreground">

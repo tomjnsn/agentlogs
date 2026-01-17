@@ -1,6 +1,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import type { UnifiedTranscriptMessage } from "@agentlogs/shared/claudecode";
 import { unifiedTranscriptSchema } from "@agentlogs/shared/schemas";
@@ -17,17 +18,37 @@ import {
   MessageSquare,
   Pencil,
   Search,
+  Brain,
   Sparkles,
   SquareTerminal,
-  Tag,
   Terminal,
   Users,
   Zap,
 } from "lucide-react";
-import { ClaudeCodeIcon, CodexIcon, OpenCodeIcon } from "../../../components/icons/source-icons";
+import { ClaudeCodeIcon, CodexIcon, GitHubIcon, OpenCodeIcon } from "../../../components/icons/source-icons";
 import { DiffViewer, FileViewer } from "../../../components/diff-viewer";
-import { useEffect, useState } from "react";
-import { Streamdown } from "streamdown";
+import { lazy, Suspense, useEffect, useState } from "react";
+
+// Lazy load Streamdown to prevent SSR issues
+// (Streamdown uses new Function() which is blocked in Cloudflare Workers SSR)
+const Streamdown = lazy(() => import("streamdown").then((mod) => ({ default: mod.Streamdown })));
+
+// Client-only markdown renderer that only loads Streamdown on the client
+function ClientMarkdown({ children }: { children: string }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted) {
+    return <div className="text-sm whitespace-pre-wrap">{children}</div>;
+  }
+
+  return (
+    <Suspense fallback={<div className="text-sm whitespace-pre-wrap">{children}</div>}>
+      <Streamdown className="text-sm">{children}</Streamdown>
+    </Suspense>
+  );
+}
+
 import {
   extractImageReferences,
   replaceImageReferencesForDisplay,
@@ -86,10 +107,28 @@ function getSourceIcon(source: string, className?: string) {
 
 function getModelDisplayName(model: string | null): string {
   if (!model) return "Unknown";
-  if (model.includes("opus")) return "Opus 4.5";
-  if (model.includes("sonnet")) return "Sonnet 4";
-  if (model.includes("haiku")) return "Haiku 3.5";
-  return model;
+
+  // Parse model strings like:
+  // - claude-opus-4-5-20251101 → Claude Opus 4.5
+  // - claude-sonnet-4-20250514 → Claude Sonnet 4
+  // - claude-3-5-haiku-20241022 → Claude Haiku 3.5
+  const match = model.match(/^claude-(?:(\d+)-(\d+)-)?(opus|sonnet|haiku)(?:-(\d+)(?:-(\d+))?)?-\d{8}$/);
+  if (!match) return model;
+
+  const [, oldMajor, oldMinor, family, newMajor, newMinor] = match;
+  const major = newMajor ?? oldMajor;
+  const minor = newMinor ?? oldMinor;
+  const version = minor ? `${major}.${minor}` : major;
+  const familyName = family.charAt(0).toUpperCase() + family.slice(1);
+
+  return `Claude ${familyName} ${version}`;
+}
+
+function formatRepoName(repo: string): { label: string; isGitHub: boolean } {
+  if (repo.startsWith("github.com/")) {
+    return { label: repo.replace("github.com/", ""), isGitHub: true };
+  }
+  return { label: repo, isGitHub: false };
 }
 
 function getInitials(name: string | null): string {
@@ -154,6 +193,7 @@ function TranscriptDetailComponent() {
   // Calculate token usage percentage (approximate context limit)
   const contextLimit = 200000; // Claude's context limit
   const tokenPercentage = Math.round((unifiedTranscript.tokenUsage.totalTokens / contextLimit) * 100);
+  const repoInfo = unifiedTranscript.git?.repo ? formatRepoName(unifiedTranscript.git.repo) : null;
 
   // Auto-scroll to message if hash is present in URL
   useEffect(() => {
@@ -175,19 +215,9 @@ function TranscriptDetailComponent() {
       <div className="min-w-0 flex-1">
         {/* Header */}
         <header className="mb-8">
-          <h1 className="mb-3 text-2xl font-semibold tracking-tight">
-            {unifiedTranscript.preview || "Untitled Thread"}
+          <h1 className="truncate text-2xl font-semibold tracking-tight">
+            {data.summary || unifiedTranscript.preview || "Untitled Thread"}
           </h1>
-          <div className="flex items-center gap-2">
-            <Avatar className="h-6 w-6">
-              <AvatarImage src={data.userImage || undefined} alt={data.userName || "User"} />
-              <AvatarFallback className="text-xs">{getInitials(data.userName)}</AvatarFallback>
-            </Avatar>
-            <span className="font-medium">{data.userName || "Unknown"}</span>
-            {data.userName && (
-              <span className="text-muted-foreground">@{data.userName.toLowerCase().replace(/\s/g, "")}</span>
-            )}
-          </div>
         </header>
 
         {/* Messages */}
@@ -203,13 +233,22 @@ function TranscriptDetailComponent() {
         <div className="space-y-6">
           {/* Thread Metadata */}
           <section>
-            <h2 className="mb-3 text-sm font-medium text-muted-foreground">Thread</h2>
+            <h2 className="mb-3 text-sm font-medium text-muted-foreground">Log</h2>
             <div className="space-y-2.5 text-sm">
+              <SidebarItem
+                icon={
+                  <Avatar className="h-4 w-4">
+                    <AvatarImage src={data.userImage || undefined} alt={data.userName || "User"} />
+                    <AvatarFallback className="text-[10px]">{getInitials(data.userName)}</AvatarFallback>
+                  </Avatar>
+                }
+                label={data.userName || "Unknown"}
+              />
               <SidebarItem icon={<Calendar className="h-4 w-4" />} label={timeAgo} />
-              {unifiedTranscript.git?.repo && (
+              {repoInfo && (
                 <SidebarItem
-                  icon={<Folder className="h-4 w-4" />}
-                  label={unifiedTranscript.git.repo}
+                  icon={repoInfo.isGitHub ? <GitHubIcon className="h-4 w-4" /> : <Folder className="h-4 w-4" />}
+                  label={repoInfo.label}
                   link={`/repos/${data.repoId}`}
                 />
               )}
@@ -217,8 +256,9 @@ function TranscriptDetailComponent() {
                 <SidebarItem icon={<GitBranch className="h-4 w-4" />} label={unifiedTranscript.git.branch} />
               )}
               <SidebarItem
-                icon={<Sparkles className="h-4 w-4" />}
+                icon={<Brain className="h-4 w-4" />}
                 label={getModelDisplayName(unifiedTranscript.model)}
+                tooltip={unifiedTranscript.model ?? undefined}
               />
               <SidebarItem
                 icon={<CircleDollarSign className="h-4 w-4" />}
@@ -254,22 +294,23 @@ function TranscriptDetailComponent() {
 
           {/* Visibility */}
           <VisibilitySection transcriptId={data.id} visibility={data.visibility} isOwner={data.isOwner} />
-
-          {/* Labels */}
-          <section>
-            <h2 className="mb-3 text-sm font-medium text-muted-foreground">Labels</h2>
-            <button className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
-              <Tag className="h-4 w-4" />
-              <span>Add label</span>
-            </button>
-          </section>
         </div>
       </aside>
     </div>
   );
 }
 
-function SidebarItem({ icon, label, link }: { icon: React.ReactNode; label: string; link?: string }) {
+function SidebarItem({
+  icon,
+  label,
+  link,
+  tooltip,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  link?: string;
+  tooltip?: string;
+}) {
   const content = (
     <div className="flex items-center gap-2 text-muted-foreground">
       {icon}
@@ -277,15 +318,26 @@ function SidebarItem({ icon, label, link }: { icon: React.ReactNode; label: stri
     </div>
   );
 
-  if (link) {
+  const wrapped = link ? (
+    <Link to={link} className="block transition-colors hover:text-foreground">
+      {content}
+    </Link>
+  ) : (
+    content
+  );
+
+  if (tooltip) {
     return (
-      <Link to={link} className="block transition-colors hover:text-foreground">
-        {content}
-      </Link>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="cursor-default">{wrapped}</div>
+        </TooltipTrigger>
+        <TooltipContent side="left">{tooltip}</TooltipContent>
+      </Tooltip>
     );
   }
 
-  return content;
+  return wrapped;
 }
 
 function getVisibilityIcon(visibility: string) {
@@ -472,7 +524,7 @@ function MessageNavigator({ userMessages }: MessageNavigatorProps) {
   if (userMessages.length === 0) return null;
 
   return (
-    <div className="fixed left-4 top-1/2 z-50 hidden -translate-y-1/2 lg:block">
+    <div className="fixed top-1/2 left-4 z-50 hidden -translate-y-1/2 lg:block">
       <div className="relative">
         {/* Dynamic lines indicator */}
         <button
@@ -491,7 +543,7 @@ function MessageNavigator({ userMessages }: MessageNavigatorProps) {
         </button>
 
         {isOpen && (
-          <div className="absolute left-12 top-0 w-72 rounded-lg border border-border bg-background/95 p-3 shadow-xl backdrop-blur">
+          <div className="absolute top-0 left-12 w-72 rounded-lg border border-border bg-background/95 p-3 shadow-xl backdrop-blur">
             <ol className="space-y-2">
               {userMessages.map((msg, i) => (
                 <li key={msg.index}>
@@ -613,13 +665,13 @@ function MessageBlock({ message, index, userImage, userName }: MessageBlockProps
     }
 
     return (
-      <div id={messageId} className="flex items-start gap-3">
+      <div id={messageId} className="flex min-w-0 items-start gap-3">
         <Avatar className="mt-1 h-8 w-8 shrink-0">
           <AvatarImage src={userImage || undefined} alt={userName || "User"} />
           <AvatarFallback className="text-xs">{getInitials(userName)}</AvatarFallback>
         </Avatar>
-        <div className="rounded-2xl bg-secondary/60 px-4 py-2.5">
-          <p className="text-sm whitespace-pre-wrap">{message.text}</p>
+        <div className="min-w-0 rounded-lg bg-secondary/60 px-4 py-2.5">
+          <p className="text-sm break-all whitespace-pre-wrap">{message.text}</p>
         </div>
       </div>
     );
@@ -648,7 +700,7 @@ function MessageBlock({ message, index, userImage, userName }: MessageBlockProps
   if (message.type === "agent") {
     return (
       <div id={messageId} className="prose prose-invert prose-sm max-w-none">
-        <Streamdown>{message.text}</Streamdown>
+        <ClientMarkdown>{message.text}</ClientMarkdown>
       </div>
     );
   }
@@ -669,13 +721,13 @@ function MessageBlock({ message, index, userImage, userName }: MessageBlockProps
         <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary/60">
           <Terminal className="h-4 w-4 text-muted-foreground" />
         </div>
-        <div className="rounded-2xl bg-secondary/60 px-4 py-2.5">
-          <code className="text-sm font-mono">
+        <div className="rounded-lg bg-secondary/60 px-4 py-2.5">
+          <code className="font-mono text-sm">
             {message.name}
             {message.args && <span className="text-muted-foreground"> {message.args}</span>}
           </code>
           {message.output && (
-            <pre className="mt-2 text-xs text-muted-foreground whitespace-pre-wrap">{message.output}</pre>
+            <pre className="mt-2 text-xs whitespace-pre-wrap text-muted-foreground">{message.output}</pre>
           )}
         </div>
       </div>
@@ -710,67 +762,201 @@ interface ToolCallBlockProps {
   isError?: boolean | string;
 }
 
+// Parse diff to count additions, deletions, and modifications
+function parseDiffStats(diff: string): { added: number; removed: number; modified: number } {
+  const lines = diff.split("\n");
+  let added = 0;
+  let removed = 0;
+  for (const line of lines) {
+    if (line.startsWith("+") && !line.startsWith("+++")) added++;
+    else if (line.startsWith("-") && !line.startsWith("---")) removed++;
+  }
+  // If there are both additions and removals, some are likely modifications
+  const modified = Math.min(added, removed);
+  return { added, removed, modified };
+}
+
+// Get display name for tool (some tools have different display names)
+function getToolDisplayName(toolName: string | null): string {
+  if (toolName === "Bash") return "Shell";
+  return toolName || "Tool";
+}
+
 function ToolCallBlock({ messageId, toolName, input, output, error, isError }: ToolCallBlockProps) {
   const Icon = getToolIcon(toolName);
   const description = getToolDescription(toolName, input);
+  const displayName = getToolDisplayName(toolName);
 
   // Extract images from input/output
   const inputImages = extractImageReferences(input);
   const outputImages = extractImageReferences(output);
 
-  // Check if this is an Edit tool with a diff
   const inputObj = input as Record<string, unknown> | undefined;
+  const outputObj = output as Record<string, unknown> | undefined;
+  const fileObj = outputObj?.file as Record<string, unknown> | undefined;
   const isEditWithDiff = toolName === "Edit" && !!inputObj?.file_path && !!inputObj?.diff;
   const isWriteWithContent = toolName === "Write" && !!inputObj?.file_path && !!inputObj?.content;
+  const isReadWithContent = toolName === "Read" && !!inputObj?.file_path && !!fileObj?.content;
   const isBashWithCommand = toolName === "Bash" && !!inputObj?.command;
+  const isGrepWithFilenames = toolName === "Grep" && Array.isArray(outputObj?.filenames);
 
-  // For Edit/Write tools, show a file-based view
+  // Calculate diff stats for Edit tool
+  const diffStats = isEditWithDiff ? parseDiffStats(String(inputObj!.diff)) : null;
+
+  // For Bash, use description if available, otherwise truncated command
+  const bashDescription = isBashWithCommand
+    ? inputObj?.description
+      ? String(inputObj.description)
+      : String(inputObj!.command)
+    : "";
+
+  // Determine file path for file-based tools
+  const filePath = inputObj?.file_path ? String(inputObj.file_path) : "";
+
+  // Common styles
+  const collapsibleClassName = "group overflow-hidden rounded-lg border border-border bg-zinc-900/50";
+  const triggerClassName = "flex w-full items-center gap-3 px-3 py-2 text-left";
+
+  // For Edit/Write tools, wrap DiffViewer/FileViewer in collapsible
   if (isEditWithDiff || isWriteWithContent) {
-    const filePath = String(inputObj!.file_path);
-
     return (
-      <div id={messageId} className="space-y-2">
-        {isEditWithDiff && <DiffViewer filePath={filePath} diff={String(inputObj!.diff)} />}
-        {isWriteWithContent && <FileViewer filePath={filePath} content={String(inputObj!.content)} />}
-        {(error || isError) && (
-          <div className="rounded-lg bg-destructive/10 p-3">
-            <div className="mb-1.5 text-xs font-medium text-destructive">Error</div>
-            <pre className="text-xs text-destructive">{error || "Operation failed"}</pre>
+      <Collapsible id={messageId} defaultOpen={false} className={collapsibleClassName}>
+        <CollapsibleTrigger className={triggerClassName}>
+          <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="text-sm font-medium">{displayName}</span>
+          <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{filePath}</span>
+          {diffStats && (
+            <span className="flex shrink-0 items-center gap-1 text-sm">
+              {diffStats.added - diffStats.modified > 0 && (
+                <span className="text-green-500">+{diffStats.added - diffStats.modified}</span>
+              )}
+              {diffStats.removed - diffStats.modified > 0 && (
+                <span className="text-red-400">-{diffStats.removed - diffStats.modified}</span>
+              )}
+              {diffStats.modified > 0 && <span className="text-yellow-500">~{diffStats.modified}</span>}
+            </span>
+          )}
+          {(error || isError) && (
+            <span className="shrink-0 rounded bg-destructive/20 px-1.5 py-0.5 text-xs text-destructive">Error</span>
+          )}
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[open]:rotate-180" />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div>
+            {isEditWithDiff && (
+              <DiffViewer
+                filePath={filePath}
+                diff={String(inputObj!.diff)}
+                lineOffset={typeof inputObj!.lineOffset === "number" ? inputObj!.lineOffset : undefined}
+                hideHeader
+              />
+            )}
+            {isWriteWithContent && <FileViewer filePath={filePath} content={String(inputObj!.content)} hideHeader />}
+            {(error || isError) && (
+              <div className="m-3 rounded-lg bg-destructive/10 p-3">
+                <div className="mb-1.5 text-xs font-medium text-destructive">Error</div>
+                <pre className="text-xs text-destructive">{error || "Operation failed"}</pre>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </CollapsibleContent>
+      </Collapsible>
     );
   }
 
-  // For Bash commands, show expandable view with status
-  if (isBashWithCommand) {
-    const outputObj = output as Record<string, unknown> | undefined;
-    const hasError = !!error || !!isError;
-    const hasStderr = outputObj?.stderr;
-    const isInterrupted = outputObj?.interrupted === true;
-    const isSuccess = !hasError && !hasStderr && !isInterrupted;
-
-    // Determine status text
-    let statusText = "Completed";
-    if (hasError) statusText = "Failed";
-    else if (isInterrupted) statusText = "Interrupted";
-    else if (hasStderr) statusText = "Completed with errors";
-
-    // Icon color: green for success, red for errors
-    const iconColorClass = isSuccess ? "text-green-500" : "text-red-500";
+  // For Read tool with file content
+  if (isReadWithContent) {
+    const fileContent = String(fileObj!.content);
+    const lineCount = fileObj?.numLines ? Number(fileObj.numLines) : fileContent.split("\n").length;
 
     return (
-      <Collapsible id={messageId} defaultOpen={false}>
-        <CollapsibleTrigger className="flex w-full cursor-pointer items-center gap-2 rounded-lg bg-zinc-800 px-3 py-2 text-left transition-colors hover:bg-zinc-700">
-          <SquareTerminal className={`h-4 w-4 shrink-0 ${iconColorClass}`} />
-          <code className="min-w-0 flex-1 truncate font-mono text-sm text-muted-foreground">
-            {String(inputObj!.command)}
-          </code>
-          <span className={`shrink-0 text-xs ${isSuccess ? "text-green-500" : "text-red-500"}`}>{statusText}</span>
-          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform [[data-state=open]>&]:rotate-180" />
+      <Collapsible id={messageId} defaultOpen={false} className={collapsibleClassName}>
+        <CollapsibleTrigger className={triggerClassName}>
+          <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="text-sm font-medium">{displayName}</span>
+          <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{filePath}</span>
+          <span className="shrink-0 text-sm text-muted-foreground">{lineCount} lines</span>
+          {(error || isError) && (
+            <span className="shrink-0 rounded bg-destructive/20 px-1.5 py-0.5 text-xs text-destructive">Error</span>
+          )}
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[open]:rotate-180" />
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="mt-2 space-y-3 rounded-lg bg-zinc-900/50 p-4">
+          <div>
+            <FileViewer filePath={filePath} content={fileContent} hideHeader />
+            {(error || isError) && (
+              <div className="m-3 rounded-lg bg-destructive/10 p-3">
+                <div className="mb-1.5 text-xs font-medium text-destructive">Error</div>
+                <pre className="text-xs text-destructive">{error || "Operation failed"}</pre>
+              </div>
+            )}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    );
+  }
+
+  // For Grep results with filenames
+  if (isGrepWithFilenames) {
+    const filenames = outputObj!.filenames as string[];
+
+    return (
+      <Collapsible id={messageId} defaultOpen={false} className={collapsibleClassName}>
+        <CollapsibleTrigger className={triggerClassName}>
+          <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="text-sm font-medium">{displayName}</span>
+          <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{description}</span>
+          <span className="shrink-0 text-sm text-muted-foreground">{filenames.length} files</span>
+          {(error || isError) && (
+            <span className="shrink-0 rounded bg-destructive/20 px-1.5 py-0.5 text-xs text-destructive">Error</span>
+          )}
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[open]:rotate-180" />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="px-3 py-2">
+            <ul className="space-y-1 text-sm">
+              {filenames.map((filename, i) => (
+                <li key={i} className="flex items-center gap-2 text-muted-foreground">
+                  <FileText className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{filename}</span>
+                </li>
+              ))}
+            </ul>
+            {error && (
+              <div className="mt-3">
+                <div className="mb-1.5 text-xs font-medium text-destructive">Error</div>
+                <pre className="overflow-x-auto rounded-md bg-destructive/10 p-3 font-mono text-xs whitespace-pre-wrap text-destructive">
+                  {error}
+                </pre>
+              </div>
+            )}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    );
+  }
+
+  // For Bash commands
+  if (isBashWithCommand) {
+    return (
+      <Collapsible id={messageId} defaultOpen={false} className={collapsibleClassName}>
+        <CollapsibleTrigger className={triggerClassName}>
+          <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="text-sm font-medium">{displayName}</span>
+          <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{bashDescription}</span>
+          {(error || isError) && (
+            <span className="shrink-0 rounded bg-destructive/20 px-1.5 py-0.5 text-xs text-destructive">Error</span>
+          )}
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[open]:rotate-180" />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="space-y-3 p-3">
+            <div>
+              <div className="mb-1.5 text-xs font-medium text-muted-foreground">Command</div>
+              <pre className="overflow-x-auto rounded-md bg-black/30 p-3 font-mono text-xs whitespace-pre-wrap">
+                {String(inputObj!.command)}
+              </pre>
+            </div>
             {outputObj?.stdout ? (
               <div>
                 <div className="mb-1.5 text-xs font-medium text-muted-foreground">Output</div>
@@ -782,7 +968,7 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError }: T
             {outputObj?.stderr ? (
               <div>
                 <div className="mb-1.5 text-xs font-medium text-red-400">Stderr</div>
-                <pre className="overflow-x-auto rounded-md bg-red-950/30 p-3 font-mono text-xs text-red-300 whitespace-pre-wrap">
+                <pre className="overflow-x-auto rounded-md bg-red-950/30 p-3 font-mono text-xs whitespace-pre-wrap text-red-300">
                   {String(outputObj.stderr)}
                 </pre>
               </div>
@@ -790,7 +976,7 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError }: T
             {error && (
               <div>
                 <div className="mb-1.5 text-xs font-medium text-destructive">Error</div>
-                <pre className="overflow-x-auto rounded-md bg-destructive/10 p-3 font-mono text-xs text-destructive whitespace-pre-wrap">
+                <pre className="overflow-x-auto rounded-md bg-destructive/10 p-3 font-mono text-xs whitespace-pre-wrap text-destructive">
                   {error}
                 </pre>
               </div>
@@ -806,19 +992,18 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError }: T
 
   // Default collapsible view for other tools
   return (
-    <Collapsible id={messageId} defaultOpen={false}>
-      <CollapsibleTrigger className="flex w-full cursor-pointer items-center gap-3 rounded-lg bg-zinc-900 px-4 py-3 text-left transition-colors hover:bg-zinc-800">
-        <Icon className="h-5 w-5 shrink-0 text-muted-foreground" />
-        <code className="min-w-0 flex-1 text-sm text-muted-foreground">
-          {description || toolName || "Unknown Tool"}
-        </code>
+    <Collapsible id={messageId} defaultOpen={false} className={collapsibleClassName}>
+      <CollapsibleTrigger className={triggerClassName}>
+        <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <span className="text-sm font-medium">{displayName}</span>
+        <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{description}</span>
         {(error || isError) && (
           <span className="shrink-0 rounded bg-destructive/20 px-1.5 py-0.5 text-xs text-destructive">Error</span>
         )}
-        <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform [[data-state=open]>&]:rotate-180" />
+        <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[open]:rotate-180" />
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="mt-2 space-y-3 rounded-lg bg-zinc-900/50 p-4">
+        <div className="space-y-3 p-3">
           {input != null ? (
             <div>
               <div className="mb-1.5 text-xs font-medium text-muted-foreground">Input</div>

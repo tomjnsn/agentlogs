@@ -13,6 +13,7 @@ import { Route as WaitlistRouteImport } from './routes/waitlist'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthSplatRouteImport } from './routes/auth.$'
+import { Route as ApiTunnelRouteImport } from './routes/api/tunnel'
 import { Route as ApiTranscriptsRouteImport } from './routes/api/transcripts'
 import { Route as ApiIngestRouteImport } from './routes/api/ingest'
 import { Route as ApiCommitTrackRouteImport } from './routes/api/commit-track'
@@ -46,6 +47,11 @@ const IndexRoute = IndexRouteImport.update({
 const AuthSplatRoute = AuthSplatRouteImport.update({
   id: '/auth/$',
   path: '/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTunnelRoute = ApiTunnelRouteImport.update({
+  id: '/api/tunnel',
+  path: '/api/tunnel',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiTranscriptsRoute = ApiTranscriptsRouteImport.update({
@@ -130,6 +136,7 @@ export interface FileRoutesByFullPath {
   '/api/commit-track': typeof ApiCommitTrackRoute
   '/api/ingest': typeof ApiIngestRoute
   '/api/transcripts': typeof ApiTranscriptsRouteWithChildren
+  '/api/tunnel': typeof ApiTunnelRoute
   '/auth/$': typeof AuthSplatRoute
   '/app/admin': typeof AppAppAdminRoute
   '/app/device': typeof AppAppDeviceRoute
@@ -150,6 +157,7 @@ export interface FileRoutesByTo {
   '/api/commit-track': typeof ApiCommitTrackRoute
   '/api/ingest': typeof ApiIngestRoute
   '/api/transcripts': typeof ApiTranscriptsRouteWithChildren
+  '/api/tunnel': typeof ApiTunnelRoute
   '/auth/$': typeof AuthSplatRoute
   '/app/admin': typeof AppAppAdminRoute
   '/app/device': typeof AppAppDeviceRoute
@@ -172,6 +180,7 @@ export interface FileRoutesById {
   '/api/commit-track': typeof ApiCommitTrackRoute
   '/api/ingest': typeof ApiIngestRoute
   '/api/transcripts': typeof ApiTranscriptsRouteWithChildren
+  '/api/tunnel': typeof ApiTunnelRoute
   '/auth/$': typeof AuthSplatRoute
   '/_app/app/admin': typeof AppAppAdminRoute
   '/_app/app/device': typeof AppAppDeviceRoute
@@ -194,6 +203,7 @@ export interface FileRouteTypes {
     | '/api/commit-track'
     | '/api/ingest'
     | '/api/transcripts'
+    | '/api/tunnel'
     | '/auth/$'
     | '/app/admin'
     | '/app/device'
@@ -214,6 +224,7 @@ export interface FileRouteTypes {
     | '/api/commit-track'
     | '/api/ingest'
     | '/api/transcripts'
+    | '/api/tunnel'
     | '/auth/$'
     | '/app/admin'
     | '/app/device'
@@ -235,6 +246,7 @@ export interface FileRouteTypes {
     | '/api/commit-track'
     | '/api/ingest'
     | '/api/transcripts'
+    | '/api/tunnel'
     | '/auth/$'
     | '/_app/app/admin'
     | '/_app/app/device'
@@ -257,6 +269,7 @@ export interface RootRouteChildren {
   ApiCommitTrackRoute: typeof ApiCommitTrackRoute
   ApiIngestRoute: typeof ApiIngestRoute
   ApiTranscriptsRoute: typeof ApiTranscriptsRouteWithChildren
+  ApiTunnelRoute: typeof ApiTunnelRoute
   AuthSplatRoute: typeof AuthSplatRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiBlobsSha256Route: typeof ApiBlobsSha256Route
@@ -290,6 +303,13 @@ declare module '@tanstack/react-router' {
       path: '/auth/$'
       fullPath: '/auth/$'
       preLoaderRoute: typeof AuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/tunnel': {
+      id: '/api/tunnel'
+      path: '/api/tunnel'
+      fullPath: '/api/tunnel'
+      preLoaderRoute: typeof ApiTunnelRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/transcripts': {
@@ -445,6 +465,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCommitTrackRoute: ApiCommitTrackRoute,
   ApiIngestRoute: ApiIngestRoute,
   ApiTranscriptsRoute: ApiTranscriptsRouteWithChildren,
+  ApiTunnelRoute: ApiTunnelRoute,
   AuthSplatRoute: AuthSplatRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiBlobsSha256Route: ApiBlobsSha256Route,
@@ -454,11 +475,10 @@ export const routeTree = rootRouteImport
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
+import type { createStart } from '@tanstack/react-start'
 declare module '@tanstack/react-start' {
   interface Register {
     ssr: true
     router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }
 }
