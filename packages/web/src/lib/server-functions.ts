@@ -226,6 +226,7 @@ export const getTranscript = createServerFn({ method: "GET" })
       userName: transcript.userName,
       userImage: transcript.userImage,
       isOwner: transcript.userId === viewerId,
+      isAdmin,
     };
   });
 
