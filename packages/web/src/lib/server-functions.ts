@@ -2,7 +2,7 @@ import { init } from "@paralleldrive/cuid2";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { createDrizzle } from "../db";
 import * as queries from "../db/queries";
 import { teamInvites, teamMembers, teams, transcripts, visibilityOptions, type VisibilityOption } from "../db/schema";
@@ -326,48 +326,55 @@ export const getTeam = createServerFn({ method: "GET" }).handler(async () => {
 });
 
 /**
- * Create a new team (auto-generated name)
+ * Create a new team with a user-provided name
  */
-export const createTeam = createServerFn({ method: "POST" }).handler(async () => {
-  const db = createDrizzle(env.DB);
-  const auth = createAuth();
-  const headers = getRequestHeaders();
+export const createTeam = createServerFn({ method: "POST" })
+  .inputValidator((input: { name: string }) => input)
+  .handler(async ({ data: { name } }) => {
+    const db = createDrizzle(env.DB);
+    const auth = createAuth();
+    const headers = getRequestHeaders();
 
-  const session = await auth.api.getSession({ headers });
-  if (!session?.user) {
-    throw new Error("Unauthorized");
-  }
+    const session = await auth.api.getSession({ headers });
+    if (!session?.user) {
+      throw new Error("Unauthorized");
+    }
 
-  const userId = session.user.id;
-  const teamName = `${session.user.name}'s Team`;
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      throw new Error("Team name is required");
+    }
 
-  // Check if user is already in a team (app-level enforcement)
-  const existingMembership = await db.query.teamMembers.findFirst({
-    where: eq(teamMembers.userId, userId),
+    const userId = session.user.id;
+    const teamName = trimmedName;
+
+    // Check if user is already in a team (app-level enforcement)
+    const existingMembership = await db.query.teamMembers.findFirst({
+      where: eq(teamMembers.userId, userId),
+    });
+    if (existingMembership) {
+      throw new Error("Already in a team. Leave current team first.");
+    }
+
+    // Batch: create team + add owner as member atomically
+    // Pre-generate ID since batch can't reference results between statements
+    const teamId = generateId();
+
+    await db.batch([
+      db.insert(teams).values({
+        id: teamId,
+        name: teamName,
+        ownerId: userId,
+      }),
+      db.insert(teamMembers).values({
+        teamId: teamId,
+        userId: userId,
+      }),
+    ]);
+
+    logger.info("Team created", { teamId, ownerId: userId });
+    return { id: teamId, name: teamName };
   });
-  if (existingMembership) {
-    throw new Error("Already in a team. Leave current team first.");
-  }
-
-  // Batch: create team + add owner as member atomically
-  // Pre-generate ID since batch can't reference results between statements
-  const teamId = generateId();
-
-  await db.batch([
-    db.insert(teams).values({
-      id: teamId,
-      name: teamName,
-      ownerId: userId,
-    }),
-    db.insert(teamMembers).values({
-      teamId: teamId,
-      userId: userId,
-    }),
-  ]);
-
-  logger.info("Team created", { teamId, ownerId: userId });
-  return { id: teamId, name: teamName };
-});
 
 /**
  * Delete team (owner only)
@@ -391,7 +398,9 @@ export const deleteTeam = createServerFn({ method: "POST" })
       throw new Error("Only the owner can delete the team");
     }
 
-    // Delete team (CASCADE deletes members/invites, SET NULL on transcripts.sharedWithTeamId)
+    // Enable foreign keys for local D1 (remote D1 has them enabled by default)
+    // This ensures CASCADE deletes work correctly
+    await db.run(sql`PRAGMA foreign_keys = ON`);
     await db.delete(teams).where(eq(teams.id, teamId));
 
     logger.info("Team deleted", { teamId, deletedBy: userId });

@@ -1,6 +1,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import type { UnifiedTranscriptMessage } from "@agentlogs/shared/claudecode";
 import { unifiedTranscriptSchema } from "@agentlogs/shared/schemas";
 import {
@@ -12,6 +13,7 @@ import {
   Folder,
   GitBranch,
   Globe,
+  Lock,
   MessageSquare,
   Pencil,
   Search,
@@ -19,6 +21,7 @@ import {
   SquareTerminal,
   Tag,
   Terminal,
+  Users,
   Zap,
 } from "lucide-react";
 import { ClaudeCodeIcon, CodexIcon, OpenCodeIcon } from "../../../components/icons/source-icons";
@@ -30,7 +33,7 @@ import {
   replaceImageReferencesForDisplay,
   type ImageReference,
 } from "../../../lib/message-utils";
-import { getTranscript } from "../../../lib/server-functions";
+import { getTranscript, updateVisibility } from "../../../lib/server-functions";
 
 export const Route = createFileRoute("/_app/app/logs/$id")({
   loader: ({ params }) => getTranscript({ data: params.id }),
@@ -249,6 +252,9 @@ function TranscriptDetailComponent() {
             </section>
           )}
 
+          {/* Visibility */}
+          <VisibilitySection transcriptId={data.id} visibility={data.visibility} isOwner={data.isOwner} />
+
           {/* Labels */}
           <section>
             <h2 className="mb-3 text-sm font-medium text-muted-foreground">Labels</h2>
@@ -280,6 +286,130 @@ function SidebarItem({ icon, label, link }: { icon: React.ReactNode; label: stri
   }
 
   return content;
+}
+
+function getVisibilityIcon(visibility: string) {
+  switch (visibility) {
+    case "public":
+      return <Globe className="h-4 w-4 text-emerald-500/60" />;
+    case "team":
+      return <Users className="h-4 w-4 text-sky-400/60" />;
+    case "private":
+    default:
+      return <Lock className="h-4 w-4" />;
+  }
+}
+
+function getVisibilityLabel(visibility: string) {
+  switch (visibility) {
+    case "public":
+      return "Public";
+    case "team":
+      return "Team";
+    case "private":
+    default:
+      return "Private";
+  }
+}
+
+function getVisibilityDescription(visibility: string) {
+  switch (visibility) {
+    case "public":
+      return "Visible to everyone";
+    case "team":
+      return "Visible to team members";
+    case "private":
+    default:
+      return "Only you can see this";
+  }
+}
+
+interface VisibilitySectionProps {
+  transcriptId: string;
+  visibility: string;
+  isOwner: boolean;
+}
+
+function VisibilitySection({ transcriptId, visibility, isOwner }: VisibilitySectionProps) {
+  const router = useRouter();
+  const [currentVisibility, setCurrentVisibility] = useState(visibility);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleVisibilityChange = async (newVisibility: string) => {
+    if (newVisibility === currentVisibility) return;
+
+    setIsUpdating(true);
+    setError(null);
+
+    try {
+      await updateVisibility({ data: { transcriptId, visibility: newVisibility } });
+      setCurrentVisibility(newVisibility);
+      router.invalidate();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update visibility");
+      // Revert to previous value on error
+      setCurrentVisibility(currentVisibility);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  return (
+    <section>
+      <h2 className="mb-3 text-sm font-medium text-muted-foreground">Visibility</h2>
+      {isOwner ? (
+        <div className="space-y-2">
+          <Select value={currentVisibility} onValueChange={handleVisibilityChange} disabled={isUpdating}>
+            <SelectTrigger className="w-full">
+              <SelectValue>
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  {getVisibilityIcon(currentVisibility)}
+                  <span>{getVisibilityLabel(currentVisibility)}</span>
+                </div>
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="private">
+                <div className="flex items-start gap-2.5">
+                  <Lock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                  <div className="space-y-0.5">
+                    <div className="text-sm text-muted-foreground">Private</div>
+                    <div className="text-xs text-muted-foreground/60">Only you can see this</div>
+                  </div>
+                </div>
+              </SelectItem>
+              <SelectItem value="team">
+                <div className="flex items-start gap-2.5">
+                  <Users className="mt-0.5 h-4 w-4 shrink-0 text-sky-400/60" />
+                  <div className="space-y-0.5">
+                    <div className="text-sm text-muted-foreground">Team</div>
+                    <div className="text-xs text-muted-foreground/60">Visible to team members</div>
+                  </div>
+                </div>
+              </SelectItem>
+              <SelectItem value="public">
+                <div className="flex items-start gap-2.5">
+                  <Globe className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500/60" />
+                  <div className="space-y-0.5">
+                    <div className="text-sm text-muted-foreground">Public</div>
+                    <div className="text-xs text-muted-foreground/60">Visible to everyone</div>
+                  </div>
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          {error && <p className="text-xs text-destructive">{error}</p>}
+          <p className="text-xs text-muted-foreground">{getVisibilityDescription(currentVisibility)}</p>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          {getVisibilityIcon(visibility)}
+          <span>{getVisibilityLabel(visibility)}</span>
+        </div>
+      )}
+    </section>
+  );
 }
 
 interface MessageNavigatorProps {

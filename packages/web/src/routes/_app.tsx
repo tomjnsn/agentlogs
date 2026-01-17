@@ -1,5 +1,15 @@
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { createFileRoute, Link, Outlet, redirect, useRouter } from "@tanstack/react-router";
+import { LogOut, Shield, Users } from "lucide-react";
 import React from "react";
 import { authClient } from "../lib/auth-client";
 import { getSession } from "../lib/server-functions";
@@ -57,20 +67,46 @@ function AppLayout() {
                 <span>Redirecting to GitHub...</span>
               </div>
             ) : session ? (
-              <>
-                {session.user.role === "admin" && (
-                  <Link
-                    to="/app/admin"
-                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    Admin
-                  </Link>
-                )}
-                <span className="text-sm text-foreground">{session.user.name || session.user.email}</span>
-                <Button onClick={handleSignOut} variant="outline" size="sm">
-                  Sign Out
-                </Button>
-              </>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="rounded-full">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={session.user.image || undefined} alt={session.user.name || "User"} />
+                      <AvatarFallback className="text-xs">
+                        {(session.user.name || session.user.email || "U").slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-44">
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{session.user.name}</p>
+                      <p className="text-xs leading-none text-muted-foreground">{session.user.email}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/app/team" className="flex cursor-pointer items-center">
+                      <Users className="h-4 w-4" />
+                      Your Team
+                    </Link>
+                  </DropdownMenuItem>
+                  {session.user.role === "admin" && (
+                    <DropdownMenuItem asChild>
+                      <Link to="/app/admin" className="flex cursor-pointer items-center">
+                        <Shield className="h-4 w-4" />
+                        Admin
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-destructive">
+                    <LogOut className="h-4 w-4" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : (
               <Button onClick={handleSignIn} size="sm" disabled={isSigningIn}>
                 Sign in with GitHub

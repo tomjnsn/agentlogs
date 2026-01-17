@@ -2,7 +2,18 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ChevronDown, FileCode, Folder, MessageSquare, Search, Terminal, Wrench } from "lucide-react";
+import {
+  ChevronDown,
+  FileCode,
+  Folder,
+  Globe,
+  Lock,
+  MessageSquare,
+  Search,
+  Terminal,
+  Users,
+  Wrench,
+} from "lucide-react";
 import { ClaudeCodeIcon, CodexIcon, OpenCodeIcon } from "../../../components/icons/source-icons";
 import { useMemo, useState } from "react";
 import { getAllTranscripts } from "../../../lib/server-functions";
@@ -71,6 +82,30 @@ function getSourceIcon(source: string, className?: string) {
       return <OpenCodeIcon className={className} />;
     default:
       return <Terminal className={className} />;
+  }
+}
+
+function VisibilityBadge({ visibility }: { visibility: string }) {
+  switch (visibility) {
+    case "public":
+      return (
+        <span className="inline-flex items-center gap-1 text-emerald-500/60" title="Public - visible to everyone">
+          <Globe className="h-3 w-3" />
+        </span>
+      );
+    case "team":
+      return (
+        <span className="inline-flex items-center gap-1 text-sky-400/60" title="Team - visible to team members">
+          <Users className="h-3 w-3" />
+        </span>
+      );
+    case "private":
+    default:
+      return (
+        <span className="inline-flex items-center gap-1 text-muted-foreground" title="Private - only you">
+          <Lock className="h-3 w-3" />
+        </span>
+      );
   }
 }
 
@@ -196,6 +231,7 @@ function TranscriptItem({ transcript }: { transcript: TranscriptData }) {
           {/* Meta row */}
           <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
             {getSourceIcon(transcript.source, "h-3.5 w-3.5")}
+            <VisibilityBadge visibility={transcript.visibility} />
             <span className="font-medium text-foreground/80">{transcript.userName || "Unknown"}</span>
             <span>{timeAgo}</span>
             <span>•</span>
