@@ -1,4 +1,3 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -133,16 +132,6 @@ function formatRepoName(repo: string): { label: string; isGitHub: boolean } {
   return { label: repo, isGitHub: false };
 }
 
-function getInitials(name: string | null): string {
-  if (!name) return "?";
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
-
 // Count user prompts in messages
 function countUserPrompts(messages: UnifiedTranscriptMessage[]): number {
   return messages.filter((m) => m.type === "user").length;
@@ -225,7 +214,7 @@ function TranscriptDetailComponent() {
         {/* Messages */}
         <div className="space-y-4">
           {unifiedTranscript.messages.map((message, i) => (
-            <MessageBlock key={i} message={message} index={i} userImage={data.userImage} userName={data.userName} />
+            <MessageBlock key={i} message={message} index={i} />
           ))}
         </div>
       </div>
@@ -242,10 +231,11 @@ function TranscriptDetailComponent() {
             <div className="space-y-2.5 text-sm">
               <SidebarItem
                 icon={
-                  <Avatar className="h-4 w-4">
-                    <AvatarImage src={data.userImage || undefined} alt={data.userName || "User"} />
-                    <AvatarFallback className="text-[10px]">{getInitials(data.userName)}</AvatarFallback>
-                  </Avatar>
+                  <img
+                    src={data.userImage || undefined}
+                    alt={data.userName || "User"}
+                    className="h-4 w-4 rounded-full"
+                  />
                 }
                 label={data.userName || "Unknown"}
               />
@@ -645,11 +635,9 @@ function getToolDescription(toolName: string | null, input: unknown): string {
 interface MessageBlockProps {
   message: UnifiedTranscriptMessage;
   index: number;
-  userImage: string | null;
-  userName: string | null;
 }
 
-function MessageBlock({ message, index, userImage, userName }: MessageBlockProps) {
+function MessageBlock({ message, index }: MessageBlockProps) {
   const messageId = `msg-${index + 1}`;
 
   // User message - dark pill with avatar
@@ -663,10 +651,6 @@ function MessageBlock({ message, index, userImage, userName }: MessageBlockProps
 
     return (
       <div id={messageId} className="flex min-w-0 items-start gap-3">
-        <Avatar className="mt-1 h-8 w-8 shrink-0">
-          <AvatarImage src={userImage || undefined} alt={userName || "User"} />
-          <AvatarFallback className="text-xs">{getInitials(userName)}</AvatarFallback>
-        </Avatar>
         <div className="min-w-0 rounded-lg bg-secondary/60 px-4 py-2.5">
           <p className="text-sm break-all whitespace-pre-wrap">{message.text}</p>
           <ImageGallery images={userImages} />
