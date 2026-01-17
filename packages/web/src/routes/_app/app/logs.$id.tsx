@@ -248,6 +248,20 @@ function TranscriptDetailComponent() {
                 icon={<Zap className="h-4 w-4" />}
                 label={`${tokenPercentage}% of ${Math.round(contextLimit / 1000)}k`}
               />
+              {(data.linesAdded > 0 || data.linesRemoved > 0) && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Pencil className="h-4 w-4" />
+                  <span className="flex items-center gap-1.5">
+                    {data.linesAdded - data.linesModified > 0 && (
+                      <span className="text-green-500">+{data.linesAdded - data.linesModified}</span>
+                    )}
+                    {data.linesRemoved - data.linesModified > 0 && (
+                      <span className="text-red-400">-{data.linesRemoved - data.linesModified}</span>
+                    )}
+                    {data.linesModified > 0 && <span className="text-yellow-500">~{data.linesModified}</span>}
+                  </span>
+                </div>
+              )}
             </div>
           </section>
 
@@ -741,6 +755,14 @@ function parseDiffStats(diff: string): { added: number; removed: number; modifie
   return { added, removed, modified };
 }
 
+// Convert file content to diff format (all lines as additions for new files)
+function contentToDiff(content: string): string {
+  return content
+    .split("\n")
+    .map((line) => `+${line}`)
+    .join("\n");
+}
+
 // Get display name for tool (some tools have different display names)
 function getToolDisplayName(toolName: string | null): string {
   if (toolName === "Bash") return "Shell";
@@ -810,6 +832,9 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, isA
   // Calculate diff stats for Edit tool
   const diffStats = isEditWithDiff ? parseDiffStats(String(inputObj!.diff)) : null;
 
+  // Calculate line count for Write tool
+  const writeLineCount = isWriteWithContent ? String(inputObj!.content).split("\n").length : 0;
+
   // For Bash, use description if available, otherwise truncated command
   const bashDescription = isBashWithCommand
     ? inputObj?.description
@@ -828,12 +853,12 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, isA
   // For Edit/Write tools, wrap DiffViewer/FileViewer in collapsible
   if (isEditWithDiff || isWriteWithContent) {
     return (
-      <Collapsible id={messageId} defaultOpen={false} className={collapsibleClassName}>
+      <Collapsible id={messageId} defaultOpen={!(error || isError)} className={collapsibleClassName}>
         <CollapsibleTrigger className={triggerClassName}>
           <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
           <span className="text-sm font-medium">{displayName}</span>
           <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{filePath}</span>
-          {diffStats && (
+          {diffStats && !error && !isError && (
             <span className="flex shrink-0 items-center gap-1 text-sm">
               {diffStats.added - diffStats.modified > 0 && (
                 <span className="text-green-500">+{diffStats.added - diffStats.modified}</span>
@@ -843,6 +868,9 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, isA
               )}
               {diffStats.modified > 0 && <span className="text-yellow-500">~{diffStats.modified}</span>}
             </span>
+          )}
+          {isWriteWithContent && !error && !isError && (
+            <span className="shrink-0 text-sm text-green-500">+{writeLineCount}</span>
           )}
           {(error || isError) && (
             <span className="shrink-0 rounded bg-destructive/20 px-1.5 py-0.5 text-xs text-destructive">Error</span>
@@ -859,7 +887,9 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, isA
                 hideHeader
               />
             )}
-            {isWriteWithContent && <FileViewer filePath={filePath} content={String(inputObj!.content)} hideHeader />}
+            {isWriteWithContent && (
+              <DiffViewer filePath={filePath} diff={contentToDiff(String(inputObj!.content))} hideHeader />
+            )}
             {(error || isError) && (
               <div className="m-3 rounded-lg bg-destructive/10 p-3">
                 <div className="mb-1.5 text-xs font-medium text-destructive">Error</div>
