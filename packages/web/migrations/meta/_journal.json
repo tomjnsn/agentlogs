@@ -134,6 +134,20 @@
       "when": 1768700000000,
       "tag": "0018_teams_visibility",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1768674760743,
+      "tag": "0019_salty_vertigo",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1768674863608,
+      "tag": "0020_known_human_fly",
+      "breakpoints": true
     }
   ]
 }

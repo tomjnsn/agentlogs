@@ -1,0 +1,1 @@
+ALTER TABLE `transcripts` ADD `preview_blob_sha256` text;

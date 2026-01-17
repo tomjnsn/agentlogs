@@ -357,8 +357,16 @@ export const Route = createFileRoute("/api/ingest")({
           // (only set on creation, not on update - user may have changed it)
           const defaultVisibility = await getDefaultVisibility(db, repoDbId, repoId, userId);
 
+          // Extract first user message's first image for preview thumbnail
+          const firstUserWithImage = unifiedTranscript.messages.find(
+            (m) => m.type === "user" && m.images && m.images.length > 0,
+          );
+          const previewBlobSha256 =
+            firstUserWithImage?.type === "user" ? (firstUserWithImage.images?.[0]?.sha256 ?? null) : null;
+
           const metadata = {
             preview: unifiedTranscript.preview,
+            previewBlobSha256,
             summary,
             model: unifiedTranscript.model,
             costUsd: unifiedTranscript.costUsd,
@@ -370,6 +378,7 @@ export const Route = createFileRoute("/api/ingest")({
             linesAdded: unifiedTranscript.linesAdded,
             linesRemoved: unifiedTranscript.linesRemoved,
             linesModified: unifiedTranscript.linesModified,
+            transcriptVersion: unifiedTranscript.v,
             inputTokens: unifiedTranscript.tokenUsage.inputTokens,
             cachedInputTokens: unifiedTranscript.tokenUsage.cachedInputTokens,
             outputTokens: unifiedTranscript.tokenUsage.outputTokens,

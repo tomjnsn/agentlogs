@@ -161,6 +161,7 @@ export const transcripts = sqliteTable(
     linesAdded: integer("lines_added").notNull().default(0),
     linesRemoved: integer("lines_removed").notNull().default(0),
     linesModified: integer("lines_modified").notNull().default(0),
+    transcriptVersion: integer("transcript_version").notNull().default(1),
     inputTokens: integer("input_tokens").notNull(),
     cachedInputTokens: integer("cached_input_tokens").notNull(),
     outputTokens: integer("output_tokens").notNull(),
@@ -169,6 +170,7 @@ export const transcripts = sqliteTable(
     relativeCwd: text("relative_cwd"),
     branch: text("branch"),
     cwd: text("cwd"),
+    previewBlobSha256: text("preview_blob_sha256"),
 
     updatedAt: integer("updated_at", { mode: "timestamp_ms" })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)

@@ -1,0 +1,1 @@
+ALTER TABLE `transcripts` ADD `transcript_version` integer DEFAULT 1 NOT NULL;
