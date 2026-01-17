@@ -15,6 +15,7 @@ import {
   GitBranch,
   Globe,
   Hash,
+  Loader2,
   Lock,
   MessageSquare,
   Pencil,
@@ -232,6 +233,9 @@ function TranscriptDetailComponent() {
       {/* Sidebar */}
       <aside className="sticky top-8 hidden h-fit w-72 shrink-0 lg:block">
         <div className="space-y-6">
+          {/* Visibility */}
+          <VisibilitySection transcriptId={data.id} visibility={data.visibility} isOwner={data.isOwner} />
+
           {/* Thread Metadata */}
           <section>
             <h2 className="mb-3 text-sm font-medium text-muted-foreground">Log</h2>
@@ -295,9 +299,6 @@ function TranscriptDetailComponent() {
               </div>
             </section>
           )}
-
-          {/* Visibility */}
-          <VisibilitySection transcriptId={data.id} visibility={data.visibility} isOwner={data.isOwner} />
         </div>
       </aside>
     </div>
@@ -347,9 +348,9 @@ function SidebarItem({
 function getVisibilityIcon(visibility: string) {
   switch (visibility) {
     case "public":
-      return <Globe className="h-4 w-4 text-emerald-500/60" />;
+      return <Globe className="h-4 w-4" />;
     case "team":
-      return <Users className="h-4 w-4 text-sky-400/60" />;
+      return <Users className="h-4 w-4" />;
     case "private":
     default:
       return <Lock className="h-4 w-4" />;
@@ -368,18 +369,6 @@ function getVisibilityLabel(visibility: string) {
   }
 }
 
-function getVisibilityDescription(visibility: string) {
-  switch (visibility) {
-    case "public":
-      return "Visible to everyone";
-    case "team":
-      return "Visible to team members";
-    case "private":
-    default:
-      return "Only you can see this";
-  }
-}
-
 interface VisibilitySectionProps {
   transcriptId: string;
   visibility: string;
@@ -390,37 +379,40 @@ function VisibilitySection({ transcriptId, visibility, isOwner }: VisibilitySect
   const router = useRouter();
   const [currentVisibility, setCurrentVisibility] = useState(visibility);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [showLoading, setShowLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleVisibilityChange = async (newVisibility: string) => {
     if (newVisibility === currentVisibility) return;
 
     setIsUpdating(true);
+    setShowLoading(true);
     setError(null);
 
+    const minDisplayPromise = new Promise((resolve) => setTimeout(resolve, 200));
+
     try {
-      await updateVisibility({ data: { transcriptId, visibility: newVisibility } });
+      await Promise.all([updateVisibility({ data: { transcriptId, visibility: newVisibility } }), minDisplayPromise]);
       setCurrentVisibility(newVisibility);
       router.invalidate();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update visibility");
-      // Revert to previous value on error
       setCurrentVisibility(currentVisibility);
     } finally {
       setIsUpdating(false);
+      setShowLoading(false);
     }
   };
 
   return (
     <section>
-      <h2 className="mb-3 text-sm font-medium text-muted-foreground">Visibility</h2>
       {isOwner ? (
-        <div className="space-y-2">
+        <div>
           <Select value={currentVisibility} onValueChange={handleVisibilityChange} disabled={isUpdating}>
             <SelectTrigger className="w-full">
               <SelectValue>
                 <div className="flex items-center gap-2 text-muted-foreground">
-                  {getVisibilityIcon(currentVisibility)}
+                  {showLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : getVisibilityIcon(currentVisibility)}
                   <span>{getVisibilityLabel(currentVisibility)}</span>
                 </div>
               </SelectValue>
@@ -437,7 +429,7 @@ function VisibilitySection({ transcriptId, visibility, isOwner }: VisibilitySect
               </SelectItem>
               <SelectItem value="team">
                 <div className="flex items-start gap-2.5">
-                  <Users className="mt-0.5 h-4 w-4 shrink-0 text-sky-400/60" />
+                  <Users className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                   <div className="space-y-0.5">
                     <div className="text-sm text-muted-foreground">Team</div>
                     <div className="text-xs text-muted-foreground/60">Visible to team members</div>
@@ -446,7 +438,7 @@ function VisibilitySection({ transcriptId, visibility, isOwner }: VisibilitySect
               </SelectItem>
               <SelectItem value="public">
                 <div className="flex items-start gap-2.5">
-                  <Globe className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500/60" />
+                  <Globe className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                   <div className="space-y-0.5">
                     <div className="text-sm text-muted-foreground">Public</div>
                     <div className="text-xs text-muted-foreground/60">Visible to everyone</div>
@@ -455,8 +447,7 @@ function VisibilitySection({ transcriptId, visibility, isOwner }: VisibilitySect
               </SelectItem>
             </SelectContent>
           </Select>
-          {error && <p className="text-xs text-destructive">{error}</p>}
-          <p className="text-xs text-muted-foreground">{getVisibilityDescription(currentVisibility)}</p>
+          {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
         </div>
       ) : (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
