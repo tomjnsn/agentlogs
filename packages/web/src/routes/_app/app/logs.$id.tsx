@@ -709,8 +709,8 @@ function ThinkingBlock({ messageId, text }: { messageId: string; text: string })
         <ChevronDown className="h-4 w-4 transition-transform group-data-[open]:rotate-180" />
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="mt-2 rounded-lg border border-border/50 bg-muted/30 p-4 text-sm text-muted-foreground">
-          <pre className="font-sans whitespace-pre-wrap">{text}</pre>
+        <div className="mt-2 rounded-lg border border-border/50 bg-muted/30 p-4 text-muted-foreground">
+          <MarkdownRenderer className="prose prose-invert prose-sm max-w-none">{text}</MarkdownRenderer>
         </div>
       </CollapsibleContent>
     </Collapsible>
