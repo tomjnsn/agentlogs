@@ -632,16 +632,18 @@ interface ToolCallBlockProps {
   isError?: boolean | string;
 }
 
-// Parse diff to count additions and deletions
-function parseDiffStats(diff: string): { additions: number; deletions: number } {
+// Parse diff to count additions, deletions, and modifications
+function parseDiffStats(diff: string): { added: number; removed: number; modified: number } {
   const lines = diff.split("\n");
-  let additions = 0;
-  let deletions = 0;
+  let added = 0;
+  let removed = 0;
   for (const line of lines) {
-    if (line.startsWith("+") && !line.startsWith("+++")) additions++;
-    else if (line.startsWith("-") && !line.startsWith("---")) deletions++;
+    if (line.startsWith("+") && !line.startsWith("+++")) added++;
+    else if (line.startsWith("-") && !line.startsWith("---")) removed++;
   }
-  return { additions, deletions };
+  // If there are both additions and removals, some are likely modifications
+  const modified = Math.min(added, removed);
+  return { added, removed, modified };
 }
 
 // Get display name for tool (some tools have different display names)
@@ -690,9 +692,14 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError }: T
           <span className="text-sm font-medium">{displayName}</span>
           <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{filePath}</span>
           {diffStats && (
-            <span className="shrink-0 text-sm">
-              <span className="text-green-500">+{diffStats.additions}</span>{" "}
-              <span className="text-red-500">-{diffStats.deletions}</span>
+            <span className="flex shrink-0 items-center gap-1 text-sm">
+              {diffStats.added - diffStats.modified > 0 && (
+                <span className="text-green-500">+{diffStats.added - diffStats.modified}</span>
+              )}
+              {diffStats.removed - diffStats.modified > 0 && (
+                <span className="text-red-400">-{diffStats.removed - diffStats.modified}</span>
+              )}
+              {diffStats.modified > 0 && <span className="text-yellow-500">~{diffStats.modified}</span>}
             </span>
           )}
           {(error || isError) && (
