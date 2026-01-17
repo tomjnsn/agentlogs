@@ -256,7 +256,23 @@ function HomeComponent() {
 
         <Select value={selectedRepo} onValueChange={setSelectedRepo}>
           <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="All repositories" />
+            <SelectValue>
+              {selectedRepo === "all"
+                ? "All repositories"
+                : selectedRepo === "private"
+                  ? "Private only"
+                  : (() => {
+                      const repo = repoOptions.find((r) => r.id === selectedRepo);
+                      return repo ? (
+                        <span className="flex items-center gap-1.5">
+                          <GitHubIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                          {repo.name.replace(/^github\.com\//, "")}
+                        </span>
+                      ) : (
+                        "All repositories"
+                      );
+                    })()}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All repositories</SelectItem>
