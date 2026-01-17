@@ -791,8 +791,8 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError }: T
       : String(inputObj!.command)
     : "";
 
-  // Determine file path for file-based tools
-  const filePath = inputObj?.file_path ? String(inputObj.file_path) : "";
+  // Determine file path for file-based tools (strip ./ prefix for cleaner display)
+  const filePath = inputObj?.file_path ? String(inputObj.file_path).replace(/^\.\//, "") : "";
 
   // Common styles
   const collapsibleClassName =
