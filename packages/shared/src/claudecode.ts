@@ -1418,6 +1418,14 @@ function convertTranscriptToMessages(transcript: ClaudeMessageRecord[]): Convert
   // Track if we should skip the next stdout (from an ignored command like /clear)
   let skipNextStdout = false;
 
+  // Track seen user messages by (timestamp, text) to deduplicate
+  // Claude Code sometimes logs the same message twice (once with images, once without)
+  const seenUserMessages = new Map<string, { index: number; hasImages: boolean }>();
+
+  // Track seen assistant messages by (id, timestamp, text) to deduplicate
+  // Claude Code sometimes logs thinking/agent messages multiple times
+  const seenAssistantMessages = new Set<string>();
+
   // Get cwd for path relativization
   const cwd = deriveWorkingDirectory(transcript);
 
@@ -1432,7 +1440,6 @@ function convertTranscriptToMessages(transcript: ClaudeMessageRecord[]): Convert
     if (type === "user") {
       const { texts, images, toolResults } = extractUserContent(record, blobs);
 
-      let imagesAttached = false;
       for (const text of texts) {
         if (!text.trim()) {
           continue;
@@ -1502,20 +1509,50 @@ function convertTranscriptToMessages(transcript: ClaudeMessageRecord[]): Convert
         }
 
         const messageType = record.isCompactSummary ? "compaction-summary" : "user";
-        const messageData: Record<string, unknown> = {
-          type: messageType,
-          text: cleanedText,
-          id: record.uuid,
-          timestamp: metadata.timestamp,
-        };
 
-        // Attach images to the first user message only
-        if (messageType === "user" && !imagesAttached && images.length > 0) {
-          messageData.images = images;
-          imagesAttached = true;
+        // Deduplicate user messages with same timestamp and text
+        // Claude Code sometimes logs the same message twice (once with images, once without)
+        if (messageType === "user") {
+          const dedupeKey = `${metadata.timestamp}:${cleanedText}`;
+          const existing = seenUserMessages.get(dedupeKey);
+
+          if (existing) {
+            // If this version has images and the existing one doesn't, update it
+            if (!existing.hasImages && images.length > 0) {
+              const existingMsg = messages[existing.index] as Record<string, unknown>;
+              existingMsg.images = images;
+              existing.hasImages = true;
+            }
+            // Skip adding duplicate
+            continue;
+          }
+
+          const messageData: Record<string, unknown> = {
+            type: messageType,
+            text: cleanedText,
+            id: record.uuid,
+            timestamp: metadata.timestamp,
+          };
+
+          // Attach images to this user message
+          if (images.length > 0) {
+            messageData.images = images;
+          }
+
+          const msgIndex = messages.length;
+          messages.push(unifiedTranscriptMessageSchema.parse(messageData));
+          seenUserMessages.set(dedupeKey, { index: msgIndex, hasImages: images.length > 0 });
+        } else {
+          // Non-user message (compaction-summary)
+          const messageData: Record<string, unknown> = {
+            type: messageType,
+            text: cleanedText,
+            id: record.uuid,
+            timestamp: metadata.timestamp,
+          };
+
+          messages.push(unifiedTranscriptMessageSchema.parse(messageData));
         }
-
-        messages.push(unifiedTranscriptMessageSchema.parse(messageData));
       }
 
       // Merge tool results back into tool calls
@@ -1556,6 +1593,13 @@ function convertTranscriptToMessages(transcript: ClaudeMessageRecord[]): Convert
 
         const partObj = part as Record<string, unknown>;
         if (partObj.type === "thinking" && typeof partObj.thinking === "string") {
+          // Deduplicate thinking messages
+          const dedupeKey = `thinking:${metadata.id}:${metadata.timestamp}:${partObj.thinking}`;
+          if (seenAssistantMessages.has(dedupeKey)) {
+            continue;
+          }
+          seenAssistantMessages.add(dedupeKey);
+
           messages.push(
             unifiedTranscriptMessageSchema.parse({
               type: "thinking",
@@ -1567,6 +1611,13 @@ function convertTranscriptToMessages(transcript: ClaudeMessageRecord[]): Convert
         }
 
         if (partObj.type === "text" && typeof partObj.text === "string") {
+          // Deduplicate agent messages
+          const dedupeKey = `agent:${metadata.id}:${metadata.timestamp}:${partObj.text}`;
+          if (seenAssistantMessages.has(dedupeKey)) {
+            continue;
+          }
+          seenAssistantMessages.add(dedupeKey);
+
           messages.push(
             unifiedTranscriptMessageSchema.parse({
               type: "agent",
