@@ -664,6 +664,8 @@ function MessageBlock({ message, index, userImage, userName }: MessageBlockProps
       return null;
     }
 
+    const userImages = message.images ?? [];
+
     return (
       <div id={messageId} className="flex min-w-0 items-start gap-3">
         <Avatar className="mt-1 h-8 w-8 shrink-0">
@@ -672,6 +674,7 @@ function MessageBlock({ message, index, userImage, userName }: MessageBlockProps
         </Avatar>
         <div className="min-w-0 rounded-lg bg-secondary/60 px-4 py-2.5">
           <p className="text-sm break-all whitespace-pre-wrap">{message.text}</p>
+          <ImageGallery images={userImages} />
         </div>
       </div>
     );

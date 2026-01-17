@@ -2,9 +2,15 @@ import { z } from "zod";
 
 // Unified Transcript Schemas
 
+const imageReferenceSchema = z.object({
+  sha256: z.string(),
+  mediaType: z.string(),
+});
+
 const userMessageSchema = z.object({
   type: z.literal("user"),
   text: z.string(),
+  images: z.array(imageReferenceSchema).optional(),
   id: z.string().optional(),
   timestamp: z.string().optional(),
 });

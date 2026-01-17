@@ -1430,8 +1430,10 @@ function convertTranscriptToMessages(transcript: ClaudeMessageRecord[]): Convert
     const type = record.type;
 
     if (type === "user") {
-      const { texts, toolResults } = extractUserContent(record);
+      const { texts, images, toolResults } = extractUserContent(record, blobs);
 
+      let imagesAttached = false;
+      let userMessageEmitted = false;
       for (const text of texts) {
         if (!text.trim()) {
           continue;
@@ -1500,10 +1502,33 @@ function convertTranscriptToMessages(transcript: ClaudeMessageRecord[]): Convert
           continue;
         }
 
+        const messageType = record.isCompactSummary ? "compaction-summary" : "user";
+        const messageData: Record<string, unknown> = {
+          type: messageType,
+          text: cleanedText,
+          id: record.uuid,
+          timestamp: metadata.timestamp,
+        };
+
+        // Attach images to the first user message only
+        if (messageType === "user" && !imagesAttached && images.length > 0) {
+          messageData.images = images;
+          imagesAttached = true;
+        }
+
+        const parsed = unifiedTranscriptMessageSchema.parse(messageData);
+        if (parsed.type === "user") {
+          userMessageEmitted = true;
+        }
+        messages.push(parsed);
+      }
+
+      if (!userMessageEmitted && !imagesAttached && images.length > 0) {
         messages.push(
           unifiedTranscriptMessageSchema.parse({
-            type: record.isCompactSummary ? "compaction-summary" : "user",
-            text: cleanedText,
+            type: "user",
+            text: "[image]",
+            images,
             id: record.uuid,
             timestamp: metadata.timestamp,
           }),
@@ -1617,6 +1642,7 @@ function convertTranscriptToMessages(transcript: ClaudeMessageRecord[]): Convert
 
 type ExtractedUserContent = {
   texts: string[];
+  images: Array<{ sha256: string; mediaType: string }>;
   toolResults: Array<{
     callId?: string;
     toolName?: string | null;
@@ -1626,22 +1652,23 @@ type ExtractedUserContent = {
   }>;
 };
 
-function extractUserContent(record: ClaudeMessageRecord): ExtractedUserContent {
+function extractUserContent(record: ClaudeMessageRecord, blobs: Map<string, TranscriptBlob>): ExtractedUserContent {
   const payload = record.message;
   if (!payload) {
-    return { texts: [], toolResults: [] };
+    return { texts: [], images: [], toolResults: [] };
   }
 
   const content = payload.content;
   if (typeof content === "string") {
-    return content ? { texts: [content], toolResults: [] } : { texts: [], toolResults: [] };
+    return content ? { texts: [content], images: [], toolResults: [] } : { texts: [], images: [], toolResults: [] };
   }
 
   if (!Array.isArray(content)) {
-    return { texts: [], toolResults: [] };
+    return { texts: [], images: [], toolResults: [] };
   }
 
   const texts: string[] = [];
+  const images: ExtractedUserContent["images"] = [];
   const toolResults: ExtractedUserContent["toolResults"] = [];
 
   for (const part of content) {
@@ -1698,6 +1725,20 @@ function extractUserContent(record: ClaudeMessageRecord): ExtractedUserContent {
       continue;
     }
 
+    if (type === "image") {
+      const sanitized = sanitizeImagesInValue(recordPart, blobs);
+      if (sanitized && typeof sanitized === "object" && (sanitized as Record<string, unknown>).type === "image") {
+        const source = (sanitized as Record<string, unknown>).source as Record<string, unknown> | undefined;
+        if (source?.type === "sha256" && typeof source.sha256 === "string") {
+          images.push({
+            sha256: source.sha256,
+            mediaType: typeof source.mediaType === "string" ? source.mediaType : "image/unknown",
+          });
+        }
+      }
+      continue;
+    }
+
     for (const key of ["content", "text"]) {
       const value = recordPart[key];
       if (typeof value === "string" && value) {
@@ -1706,7 +1747,7 @@ function extractUserContent(record: ClaudeMessageRecord): ExtractedUserContent {
     }
   }
 
-  return { texts, toolResults };
+  return { texts, images, toolResults };
 }
 
 function buildMessageMetadata(record: ClaudeMessageRecord): {
