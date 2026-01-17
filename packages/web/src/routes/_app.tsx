@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { createFileRoute, Link, Outlet, redirect, useRouter } from "@tanstack/react-router";
-import { ChevronDownIcon, LogOutIcon, LogsIcon, UsersIcon } from "lucide-react";
+import { ChevronDownIcon, LogOutIcon, LogsIcon, ShieldIcon, UsersIcon } from "lucide-react";
 import React from "react";
 import { authClient } from "../lib/auth-client";
 import { getSession } from "../lib/server-functions";
@@ -97,7 +97,7 @@ function AppLayout() {
                   to="/app/admin"
                   className="flex items-center gap-2 text-sm text-white/50 transition-colors hover:text-white data-[status=active]:text-white"
                 >
-                  <UsersIcon className="size-4" />
+                  <ShieldIcon className="size-4" />
                   Admin
                 </Link>
               )}

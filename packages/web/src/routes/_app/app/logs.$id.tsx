@@ -14,6 +14,7 @@ import {
   Folder,
   GitBranch,
   Globe,
+  Hash,
   Lock,
   MessageSquare,
   Pencil,
@@ -265,6 +266,9 @@ function TranscriptDetailComponent() {
                 label={`$${unifiedTranscript.costUsd.toFixed(2)}`}
               />
               <SidebarItem icon={getSourceIcon(data.source, "h-4 w-4")} label={getSourceLabel(data.source)} />
+              {data.transcriptId && (
+                <SidebarItem icon={<Hash className="h-4 w-4" />} label={data.transcriptId} tooltip="Transcript ID" />
+              )}
               <SidebarItem icon={<MessageSquare className="h-4 w-4" />} label={`${userPrompts} prompts`} />
               <SidebarItem
                 icon={<Zap className="h-4 w-4" />}

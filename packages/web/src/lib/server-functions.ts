@@ -182,6 +182,10 @@ export const getTranscript = createServerFn({ method: "GET" })
     const db = createDrizzle(env.DB);
     const viewerId = await getAuthenticatedUserId();
 
+    // Check if viewer is admin
+    const viewerRole = await queries.getUserRole(db, viewerId);
+    const isAdmin = viewerRole === "admin";
+
     // Use access-controlled query
     const transcript = await queries.getTranscriptWithAccess(db, viewerId, id);
 
@@ -210,7 +214,8 @@ export const getTranscript = createServerFn({ method: "GET" })
     return {
       id: transcript.id,
       repoId: transcript.repoId,
-      transcriptId: transcript.transcriptId,
+      // Only expose transcriptId to admins
+      transcriptId: isAdmin ? transcript.transcriptId : undefined,
       source: transcript.source,
       preview: transcript.preview,
       summary: transcript.summary,
