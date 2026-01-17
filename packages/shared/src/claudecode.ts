@@ -183,6 +183,11 @@ export function calculateTranscriptStats(messages: UnifiedTranscriptMessage[]): 
     } else if (msg.type === "tool-call") {
       toolCount++;
 
+      // Skip counting modifications for tool calls with errors
+      if (msg.isError || msg.error) {
+        continue;
+      }
+
       // Track file changes from Edit and Write tools
       const toolName = msg.toolName;
       const input = msg.input as Record<string, unknown> | undefined;
