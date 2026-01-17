@@ -1433,7 +1433,6 @@ function convertTranscriptToMessages(transcript: ClaudeMessageRecord[]): Convert
       const { texts, images, toolResults } = extractUserContent(record, blobs);
 
       let imagesAttached = false;
-      let userMessageEmitted = false;
       for (const text of texts) {
         if (!text.trim()) {
           continue;
@@ -1516,23 +1515,7 @@ function convertTranscriptToMessages(transcript: ClaudeMessageRecord[]): Convert
           imagesAttached = true;
         }
 
-        const parsed = unifiedTranscriptMessageSchema.parse(messageData);
-        if (parsed.type === "user") {
-          userMessageEmitted = true;
-        }
-        messages.push(parsed);
-      }
-
-      if (!userMessageEmitted && !imagesAttached && images.length > 0) {
-        messages.push(
-          unifiedTranscriptMessageSchema.parse({
-            type: "user",
-            text: "[image]",
-            images,
-            id: record.uuid,
-            timestamp: metadata.timestamp,
-          }),
-        );
+        messages.push(unifiedTranscriptMessageSchema.parse(messageData));
       }
 
       // Merge tool results back into tool calls
