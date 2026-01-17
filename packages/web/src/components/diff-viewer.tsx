@@ -188,7 +188,8 @@ export function DiffViewer({ filePath, diff, lineOffset = 1, className, hideHead
               lineDiffType: "word-alt",
               disableFileHeader: true,
               overflow: "scroll",
-              unsafeCSS: ":host, [data-diffs] { background: transparent !important; }",
+              unsafeCSS:
+                ":host, [data-diffs], [data-line], [data-column-number] { --diffs-bg: transparent; } [data-column-number] { border-right: none !important; } pre { background: transparent !important; }",
             }}
           />
         </DiffErrorBoundary>
@@ -257,7 +258,8 @@ export function FileViewer({ filePath, content, className, hideHeader }: FileVie
               theme: "vitesse-dark",
               overflow: "scroll",
               disableFileHeader: true,
-              unsafeCSS: ":host, [data-diffs] { background: transparent !important; }",
+              unsafeCSS:
+                ":host, [data-diffs], [data-line], [data-column-number] { --diffs-bg: transparent; } [data-column-number] { border-right: none !important; } pre { background: transparent !important; }",
             }}
           />
         </DiffErrorBoundary>
