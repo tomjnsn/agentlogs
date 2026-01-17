@@ -73,7 +73,9 @@ function TeamPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold">{team.name}</h1>
+          <h1 className="text-xl font-semibold">
+            {team.name} <span className="font-normal text-muted-foreground">team</span>
+          </h1>
           <p className="text-sm text-muted-foreground">
             {team.members.length} member{team.members.length !== 1 ? "s" : ""}
           </p>
