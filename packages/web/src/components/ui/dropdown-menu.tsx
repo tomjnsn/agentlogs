@@ -13,8 +13,6 @@ function DropdownMenuPortal({ ...props }: MenuPrimitive.Portal.Props) {
 }
 
 function DropdownMenuTrigger({ asChild, children, ...props }: MenuPrimitive.Trigger.Props & { asChild?: boolean }) {
-  // Base UI uses `render` prop instead of Radix's `asChild`
-  // When asChild is true, use the child element as the trigger
   if (asChild && React.isValidElement(children)) {
     return <MenuPrimitive.Trigger data-slot="dropdown-menu-trigger" render={children} {...props} />;
   }
