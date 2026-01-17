@@ -7,7 +7,6 @@ import { unifiedTranscriptSchema } from "@agentlogs/shared/schemas";
 import {
   Calendar,
   ChevronDown,
-  ChevronRight,
   CircleDollarSign,
   FileText,
   Folder,
@@ -721,10 +720,10 @@ function MessageBlock({ message, index }: MessageBlockProps) {
 
 function ThinkingBlock({ messageId, text }: { messageId: string; text: string }) {
   return (
-    <Collapsible id={messageId} defaultOpen={false}>
-      <CollapsibleTrigger className="flex w-full cursor-pointer items-center gap-2 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground">
-        <ChevronRight className="h-4 w-4 transition-transform [[data-state=open]>&]:rotate-90" />
+    <Collapsible id={messageId} defaultOpen={false} className="group">
+      <CollapsibleTrigger className="flex w-full items-center gap-2 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground">
         <span>Thinking</span>
+        <ChevronDown className="h-4 w-4 transition-transform group-data-[open]:rotate-180" />
       </CollapsibleTrigger>
       <CollapsibleContent>
         <div className="mt-2 rounded-lg border border-border/50 bg-muted/30 p-4 text-sm text-muted-foreground">
@@ -796,7 +795,8 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError }: T
   const filePath = inputObj?.file_path ? String(inputObj.file_path) : "";
 
   // Common styles
-  const collapsibleClassName = "group overflow-hidden rounded-lg border border-border bg-zinc-900/50";
+  const collapsibleClassName =
+    "group overflow-hidden rounded-lg border border-border bg-zinc-900/50 transition-colors hover:border-muted-foreground/30";
   const triggerClassName = "flex w-full items-center gap-3 px-3 py-2 text-left";
 
   // For Edit/Write tools, wrap DiffViewer/FileViewer in collapsible
