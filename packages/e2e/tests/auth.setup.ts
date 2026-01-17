@@ -40,13 +40,10 @@ setup("authenticate", async ({ page }) => {
   // Verify auth works by navigating to /app
   await page.goto("/app");
 
-  // Wait for authenticated content - must see user email or Sign Out button
-  const authSuccess = await page
-    .getByText("test@example.com")
-    .or(page.getByRole("button", { name: "Sign Out" }))
-    .first()
-    .isVisible({ timeout: 5000 })
-    .catch(() => false);
+  // Wait for authenticated content - the user avatar dropdown trigger indicates we're logged in
+  // It contains the user's initials and a chevron icon
+  const userMenuTrigger = page.locator('[data-slot="dropdown-menu-trigger"]');
+  const authSuccess = await userMenuTrigger.isVisible({ timeout: 5000 }).catch(() => false);
 
   if (!authSuccess) {
     throw new Error("Authentication setup failed - session cookie not accepted");
