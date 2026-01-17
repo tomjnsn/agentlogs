@@ -194,7 +194,7 @@ function TranscriptDetailComponent() {
         {/* Messages */}
         <div className="space-y-4">
           {unifiedTranscript.messages.map((message, i) => (
-            <MessageBlock key={i} message={message} index={i} />
+            <MessageBlock key={i} message={message} index={i} isAdmin={data.isAdmin} />
           ))}
         </div>
       </div>
@@ -615,9 +615,10 @@ function getToolDescription(toolName: string | null, input: unknown): string {
 interface MessageBlockProps {
   message: UnifiedTranscriptMessage;
   index: number;
+  isAdmin?: boolean;
 }
 
-function MessageBlock({ message, index }: MessageBlockProps) {
+function MessageBlock({ message, index, isAdmin }: MessageBlockProps) {
   const messageId = `msg-${index + 1}`;
 
   // User message - dark pill with avatar
@@ -654,6 +655,7 @@ function MessageBlock({ message, index }: MessageBlockProps) {
         output={message.output}
         error={message.error}
         isError={message.isError}
+        isAdmin={isAdmin}
       />
     );
   }
@@ -722,6 +724,7 @@ interface ToolCallBlockProps {
   output: unknown;
   error?: string;
   isError?: boolean | string;
+  isAdmin?: boolean;
 }
 
 // Parse diff to count additions, deletions, and modifications
@@ -744,7 +747,49 @@ function getToolDisplayName(toolName: string | null): string {
   return toolName || "Tool";
 }
 
-function ToolCallBlock({ messageId, toolName, input, output, error, isError }: ToolCallBlockProps) {
+// Debug section for admins - shows raw JSON data
+function AdminDebugSection({ input, output, error }: { input: unknown; output: unknown; error?: string }) {
+  return (
+    <Collapsible
+      defaultOpen={false}
+      className="m-3 rounded-lg border border-dashed border-yellow-500/30 bg-yellow-950/10"
+    >
+      <CollapsibleTrigger className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs">
+        <span className="font-medium text-yellow-500">🔧 Debug</span>
+        <span className="text-yellow-500/60">(admin only)</span>
+        <ChevronDown className="ml-auto h-3 w-3 text-yellow-500/60 transition-transform group-data-[open]:rotate-180" />
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="space-y-3 px-3 pb-3">
+          {input != null && (
+            <div>
+              <div className="mb-1 text-xs font-medium text-yellow-500/80">Input</div>
+              <pre className="overflow-x-auto rounded bg-black/40 p-2 font-mono text-xs text-yellow-100/70">
+                {JSON.stringify(input, null, 2)}
+              </pre>
+            </div>
+          )}
+          {output != null && (
+            <div>
+              <div className="mb-1 text-xs font-medium text-yellow-500/80">Output</div>
+              <pre className="overflow-x-auto rounded bg-black/40 p-2 font-mono text-xs text-yellow-100/70">
+                {JSON.stringify(output, null, 2)}
+              </pre>
+            </div>
+          )}
+          {error && (
+            <div>
+              <div className="mb-1 text-xs font-medium text-yellow-500/80">Error</div>
+              <pre className="overflow-x-auto rounded bg-black/40 p-2 font-mono text-xs text-red-300">{error}</pre>
+            </div>
+          )}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+function ToolCallBlock({ messageId, toolName, input, output, error, isError, isAdmin }: ToolCallBlockProps) {
   const Icon = getToolIcon(toolName);
   const description = getToolDescription(toolName, input);
   const displayName = getToolDisplayName(toolName);
@@ -821,6 +866,7 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError }: T
                 <pre className="text-xs text-destructive">{error || "Operation failed"}</pre>
               </div>
             )}
+            {isAdmin && <AdminDebugSection input={input} output={output} error={error} />}
           </div>
         </CollapsibleContent>
       </Collapsible>
@@ -853,6 +899,7 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError }: T
                 <pre className="text-xs text-destructive">{error || "Operation failed"}</pre>
               </div>
             )}
+            {isAdmin && <AdminDebugSection input={input} output={output} error={error} />}
           </div>
         </CollapsibleContent>
       </Collapsible>
@@ -893,6 +940,7 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError }: T
                 </pre>
               </div>
             )}
+            {isAdmin && <AdminDebugSection input={input} output={output} error={error} />}
           </div>
         </CollapsibleContent>
       </Collapsible>
@@ -947,6 +995,7 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError }: T
             {!outputObj?.stdout && !outputObj?.stderr && !error && (
               <div className="text-xs text-muted-foreground">No output</div>
             )}
+            {isAdmin && <AdminDebugSection input={input} output={output} error={error} />}
           </div>
         </CollapsibleContent>
       </Collapsible>
@@ -991,6 +1040,7 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError }: T
               <pre className="overflow-x-auto rounded-md bg-destructive/10 p-3 text-xs text-destructive">{error}</pre>
             </div>
           )}
+          {isAdmin && <AdminDebugSection input={input} output={output} error={error} />}
         </div>
       </CollapsibleContent>
     </Collapsible>
