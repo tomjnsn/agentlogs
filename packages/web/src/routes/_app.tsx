@@ -60,9 +60,9 @@ function AppLayout() {
 
   return (
     <div className="dark min-h-screen bg-background scheme-dark">
-      <header className="flex h-16 items-center border-b border-white/10">
+      <header className="flex h-12 items-center border-b border-white/10">
         {/* Logo */}
-        <div className="flex items-center gap-2 p-4">
+        <div className="flex items-center gap-2 px-4">
           <Link to="/app" className="text-lg font-semibold text-white/90 transition-colors hover:text-white">
             🔮
           </Link>
