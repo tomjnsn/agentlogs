@@ -1,29 +1,24 @@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import type { UnifiedTranscriptMessage } from "@agentlogs/shared/claudecode";
 import { unifiedTranscriptSchema } from "@agentlogs/shared/schemas";
 import {
-  Calendar,
   ChevronDown,
-  CircleDollarSign,
+  Clock,
   FileText,
   Folder,
   GitBranch,
   Globe,
-  Hash,
   Loader2,
   Lock,
-  MessageSquare,
   Pencil,
   Search,
-  Brain,
   Sparkles,
   SquareTerminal,
   Terminal,
   Users,
-  Zap,
 } from "lucide-react";
 import { ClaudeCodeIcon, CodexIcon, GitHubIcon, OpenCodeIcon } from "../../../components/icons/source-icons";
 import { DiffViewer, FileViewer } from "../../../components/diff-viewer";
@@ -58,19 +53,6 @@ function formatTimeAgo(date: Date): string {
   if (diffHours > 0) return `${diffHours}h ago`;
   if (diffMinutes > 0) return `${diffMinutes}m ago`;
   return "just now";
-}
-
-function getSourceLabel(source: string): string {
-  switch (source) {
-    case "codex":
-      return "Codex";
-    case "claude-code":
-      return "Claude Code";
-    case "opencode":
-      return "OpenCode";
-    default:
-      return "Unknown";
-  }
 }
 
 function getSourceIcon(source: string, className?: string) {
@@ -112,22 +94,6 @@ function formatRepoName(repo: string): { label: string; isGitHub: boolean } {
   return { label: repo, isGitHub: false };
 }
 
-// Count user prompts in messages
-function countUserPrompts(messages: UnifiedTranscriptMessage[]): number {
-  return messages.filter((m) => m.type === "user").length;
-}
-
-// Get unique tools used in transcript
-function getUsedTools(messages: UnifiedTranscriptMessage[]): string[] {
-  const tools = new Set<string>();
-  for (const msg of messages) {
-    if (msg.type === "tool-call" && msg.toolName) {
-      tools.add(msg.toolName);
-    }
-  }
-  return Array.from(tools);
-}
-
 // Check if text is an internal system message (for filtering)
 // Note: Most internal messages are now filtered at ingest time in claudecode.ts
 // This is kept as a fallback for any edge cases
@@ -157,39 +123,94 @@ function TranscriptDetailComponent() {
   // Parse and validate the unified transcript
   const unifiedTranscript = unifiedTranscriptSchema.parse(data.unifiedTranscript);
   const timeAgo = formatTimeAgo(new Date(data.createdAt));
-  const userPrompts = countUserPrompts(unifiedTranscript.messages);
-  const usedTools = getUsedTools(unifiedTranscript.messages);
   const userMessages = getUserMessagesWithIndices(unifiedTranscript.messages);
-
-  // Calculate token usage percentage (approximate context limit)
-  const contextLimit = 200000; // Claude's context limit
-  const tokenPercentage = Math.round((unifiedTranscript.tokenUsage.totalTokens / contextLimit) * 100);
   const repoInfo = unifiedTranscript.git?.repo ? formatRepoName(unifiedTranscript.git.repo) : null;
 
-  // Auto-scroll to message if hash is present in URL
+  const pageTitle = data.summary || unifiedTranscript.preview || "Untitled Thread";
+
+  // Set document title
+  useEffect(() => {
+    document.title = `${pageTitle} - Agent Logs`;
+  }, [pageTitle]);
+
+  // Auto-scroll to message if hash is present in URL (instant, no animation)
   useEffect(() => {
     const hash = window.location.hash;
     if (hash) {
-      setTimeout(() => {
-        const target = document.querySelector(hash);
-        target?.scrollIntoView({ behavior: "smooth", block: "center" });
-      }, 100);
+      const target = document.querySelector(hash);
+      if (target) {
+        const rect = target.getBoundingClientRect();
+        const scrollTop = window.scrollY + rect.top - 16;
+        window.scrollTo({ top: scrollTop, behavior: "instant" });
+      }
     }
   }, []);
 
   return (
     <div className="flex gap-8">
-      {/* Fixed Navigation Indicator */}
-      <MessageNavigator userMessages={userMessages} />
-
       {/* Main Content */}
       <div className="min-w-0 flex-1">
-        {/* Header */}
-        <header className="mb-8">
-          <h1 className="truncate text-2xl font-semibold tracking-tight">
-            {data.summary || unifiedTranscript.preview || "Untitled Thread"}
-          </h1>
+        {/* Header with lines changed */}
+        <header className="mb-1 flex items-baseline gap-3">
+          <h1 className="min-w-0 truncate font-serif text-3xl font-semibold tracking-wide">{pageTitle}</h1>
+          {(data.linesAdded > 0 || data.linesRemoved > 0 || data.linesModified > 0) && (
+            <span className="flex shrink-0 items-center gap-1 text-sm">
+              {data.linesAdded - data.linesModified > 0 && (
+                <span className="text-green-500">+{data.linesAdded - data.linesModified}</span>
+              )}
+              {data.linesRemoved - data.linesModified > 0 && (
+                <span className="text-red-400">-{data.linesRemoved - data.linesModified}</span>
+              )}
+              {data.linesModified > 0 && <span className="text-yellow-500">~{data.linesModified}</span>}
+            </span>
+          )}
         </header>
+
+        {/* Log Metadata */}
+        <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+          {/* Author */}
+          <div className="flex items-center gap-1.5">
+            <img src={data.userImage || undefined} alt={data.userName || "User"} className="h-4 w-4 rounded-full" />
+            <span>{data.userName || "Unknown"}</span>
+          </div>
+          {/* Change time */}
+          <div className="flex items-center gap-1.5">
+            <Clock className="h-4 w-4" />
+            <span>{timeAgo}</span>
+          </div>
+          {/* Visibility */}
+          <VisibilitySection transcriptId={data.id} visibility={data.visibility} isOwner={data.isOwner} />
+          {/* Model */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex cursor-default items-center gap-1.5">
+                {getSourceIcon(data.source, "h-4 w-4")}
+                <span>{getModelDisplayName(unifiedTranscript.model)}</span>
+              </div>
+            </TooltipTrigger>
+            {unifiedTranscript.model && <TooltipContent side="bottom">{unifiedTranscript.model}</TooltipContent>}
+          </Tooltip>
+          {/* Git */}
+          {repoInfo && data.repoId && (
+            <Link
+              to="/app/repos/$id"
+              params={{ id: data.repoId }}
+              className="flex items-center gap-1.5 transition-colors hover:text-foreground"
+            >
+              {repoInfo.isGitHub ? <GitHubIcon className="h-4 w-4" /> : <Folder className="h-4 w-4" />}
+              <span>
+                {repoInfo.label}
+                {unifiedTranscript.git?.branch && `:${unifiedTranscript.git.branch}`}
+              </span>
+            </Link>
+          )}
+          {!repoInfo && unifiedTranscript.git?.branch && (
+            <div className="flex items-center gap-1.5">
+              <GitBranch className="h-4 w-4" />
+              <span>{unifiedTranscript.git.branch}</span>
+            </div>
+          )}
+        </div>
 
         {/* Messages */}
         <div className="space-y-4">
@@ -199,89 +220,12 @@ function TranscriptDetailComponent() {
         </div>
       </div>
 
-      {/* Sidebar */}
-      <aside className="sticky top-8 hidden h-fit w-72 shrink-0 lg:block">
-        <div className="space-y-6">
-          {/* Visibility */}
-          <VisibilitySection transcriptId={data.id} visibility={data.visibility} isOwner={data.isOwner} />
-
-          {/* Thread Metadata */}
-          <section>
-            <h2 className="mb-3 text-sm font-medium text-muted-foreground">Log</h2>
-            <div className="space-y-2.5 text-sm">
-              <SidebarItem
-                icon={
-                  <img
-                    src={data.userImage || undefined}
-                    alt={data.userName || "User"}
-                    className="h-4 w-4 rounded-full"
-                  />
-                }
-                label={data.userName || "Unknown"}
-              />
-              <SidebarItem icon={<Calendar className="h-4 w-4" />} label={timeAgo} />
-              {repoInfo && (
-                <SidebarItem
-                  icon={repoInfo.isGitHub ? <GitHubIcon className="h-4 w-4" /> : <Folder className="h-4 w-4" />}
-                  label={repoInfo.label}
-                  link={`/repos/${data.repoId}`}
-                />
-              )}
-              {unifiedTranscript.git?.branch && (
-                <SidebarItem icon={<GitBranch className="h-4 w-4" />} label={unifiedTranscript.git.branch} />
-              )}
-              <SidebarItem
-                icon={<Brain className="h-4 w-4" />}
-                label={getModelDisplayName(unifiedTranscript.model)}
-                tooltip={unifiedTranscript.model ?? undefined}
-              />
-              <SidebarItem
-                icon={<CircleDollarSign className="h-4 w-4" />}
-                label={`$${unifiedTranscript.costUsd.toFixed(2)}`}
-              />
-              <SidebarItem icon={getSourceIcon(data.source, "h-4 w-4")} label={getSourceLabel(data.source)} />
-              {data.transcriptId && (
-                <SidebarItem icon={<Hash className="h-4 w-4" />} label={data.transcriptId} tooltip="Transcript ID" />
-              )}
-              <SidebarItem icon={<MessageSquare className="h-4 w-4" />} label={`${userPrompts} prompts`} />
-              <SidebarItem
-                icon={<Zap className="h-4 w-4" />}
-                label={`${tokenPercentage}% of ${Math.round(contextLimit / 1000)}k`}
-              />
-              {(data.linesAdded > 0 || data.linesRemoved > 0) && (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Pencil className="h-4 w-4" />
-                  <span className="flex items-center gap-1.5">
-                    {data.linesAdded - data.linesModified > 0 && (
-                      <span className="text-green-500">+{data.linesAdded - data.linesModified}</span>
-                    )}
-                    {data.linesRemoved - data.linesModified > 0 && (
-                      <span className="text-red-400">-{data.linesRemoved - data.linesModified}</span>
-                    )}
-                    {data.linesModified > 0 && <span className="text-yellow-500">~{data.linesModified}</span>}
-                  </span>
-                </div>
-              )}
-            </div>
-          </section>
-
-          {/* Tools Used */}
-          {usedTools.length > 0 && (
-            <section>
-              <h2 className="mb-3 text-sm font-medium text-muted-foreground">Tools</h2>
-              <div className="flex flex-wrap gap-1.5">
-                {usedTools.slice(0, 8).map((tool) => (
-                  <span key={tool} className="rounded-md bg-accent/50 px-2 py-0.5 text-xs text-muted-foreground">
-                    {tool}
-                  </span>
-                ))}
-                {usedTools.length > 8 && (
-                  <span className="rounded-md bg-accent/50 px-2 py-0.5 text-xs text-muted-foreground">
-                    +{usedTools.length - 8} more
-                  </span>
-                )}
-              </div>
-            </section>
+      {/* Sidebar - vertically centered TOC with independent scroll */}
+      <aside className="sticky top-0 hidden h-screen w-56 shrink-0 lg:flex lg:items-center">
+        <div className="max-h-[80vh] overflow-y-auto">
+          {/* User Prompts Navigation */}
+          {userMessages.length > 0 && (
+            <PromptsList userMessages={userMessages} totalMessages={unifiedTranscript.messages.length} />
           )}
         </div>
       </aside>
@@ -289,44 +233,96 @@ function TranscriptDetailComponent() {
   );
 }
 
-function SidebarItem({
-  icon,
-  label,
-  link,
-  tooltip,
+function PromptsList({
+  userMessages,
+  totalMessages,
 }: {
-  icon: React.ReactNode;
-  label: string;
-  link?: string;
-  tooltip?: string;
+  userMessages: Array<{ index: number; text: string }>;
+  totalMessages: number;
 }) {
-  const content = (
-    <div className="flex items-center gap-2 text-muted-foreground">
-      {icon}
-      <span>{label}</span>
-    </div>
+  const [activeIndex, setActiveIndex] = useState<number | null>(userMessages[0]?.index ?? null);
+
+  // Calculate response length after each user message and map to mask percentage
+  const getMaskClass = (i: number): string => {
+    const currentIndex = userMessages[i].index;
+    const nextIndex = userMessages[i + 1]?.index ?? totalMessages;
+    const responseLength = nextIndex - currentIndex - 1;
+
+    // Map response length to mask percentage buckets (15% gradient width, variable endpoint)
+    if (responseLength <= 3) return "[mask-image:linear-gradient(to_right,black_0%,black_50%,transparent_65%)]";
+    if (responseLength <= 8) return "[mask-image:linear-gradient(to_right,black_0%,black_55%,transparent_70%)]";
+    if (responseLength <= 15) return "[mask-image:linear-gradient(to_right,black_0%,black_60%,transparent_75%)]";
+    if (responseLength <= 25) return "[mask-image:linear-gradient(to_right,black_0%,black_65%,transparent_80%)]";
+    return "[mask-image:linear-gradient(to_right,black_0%,black_70%,transparent_85%)]";
+  };
+
+  // Track which message is closest to the top of the viewport
+  useEffect(() => {
+    if (userMessages.length === 0) return;
+
+    const handleScroll = () => {
+      // Target line is 25% from the top of the viewport
+      const targetY = window.innerHeight * 0.25;
+      let closestIndex = userMessages[0]?.index ?? null;
+      let closestDistance = Infinity;
+
+      for (const msg of userMessages) {
+        const messageId = `msg-${msg.index + 1}`;
+        const element = document.getElementById(messageId);
+        if (!element) continue;
+
+        const rect = element.getBoundingClientRect();
+        // Distance from the top of the element to our target line
+        // We want the message whose top is at or just above the target line
+        const distance = Math.abs(rect.top - targetY);
+
+        // Prefer messages that have scrolled past the target (negative = above target)
+        const adjustedDistance = rect.top <= targetY ? distance : distance + 10000;
+
+        if (adjustedDistance < closestDistance) {
+          closestDistance = adjustedDistance;
+          closestIndex = msg.index;
+        }
+      }
+
+      setActiveIndex(closestIndex);
+    };
+
+    // Initial calculation
+    handleScroll();
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [userMessages]);
+
+  const scrollToMessage = (index: number) => {
+    const messageId = `msg-${index + 1}`;
+    const target = document.getElementById(messageId);
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
+  const padLength = String(userMessages.length).length;
+
+  return (
+    <section>
+      <div className="space-y-0.5">
+        {userMessages.map((msg, i) => (
+          <button
+            key={msg.index}
+            onClick={() => scrollToMessage(msg.index)}
+            className={`block w-full overflow-hidden py-1 text-left text-sm whitespace-nowrap transition-colors hover:text-foreground ${getMaskClass(i)} ${
+              activeIndex === msg.index ? "text-foreground" : "text-muted-foreground"
+            }`}
+          >
+            <span className="mr-2 text-muted-foreground/60 tabular-nums">{String(i + 1).padStart(padLength, "0")}</span>
+            {msg.text}
+          </button>
+        ))}
+      </div>
+    </section>
   );
-
-  const wrapped = link ? (
-    <Link to={link} className="block transition-colors hover:text-foreground">
-      {content}
-    </Link>
-  ) : (
-    content
-  );
-
-  if (tooltip) {
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className="cursor-default">{wrapped}</div>
-        </TooltipTrigger>
-        <TooltipContent side="left">{tooltip}</TooltipContent>
-      </Tooltip>
-    );
-  }
-
-  return wrapped;
 }
 
 function getVisibilityIcon(visibility: string) {
@@ -389,162 +385,51 @@ function VisibilitySection({ transcriptId, visibility, isOwner }: VisibilitySect
   };
 
   return (
-    <section>
+    <>
       {isOwner ? (
-        <div>
-          <Select value={currentVisibility} onValueChange={handleVisibilityChange} disabled={isUpdating}>
-            <SelectTrigger className="w-full">
-              <SelectValue>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  {showLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : getVisibilityIcon(currentVisibility)}
-                  <span>{getVisibilityLabel(currentVisibility)}</span>
-                </div>
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="private">
-                <div className="flex items-start gap-2.5">
-                  <Lock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                  <div className="space-y-0.5">
-                    <div className="text-sm text-muted-foreground">Private</div>
-                    <div className="text-xs text-muted-foreground/60">Only you can see this</div>
-                  </div>
-                </div>
-              </SelectItem>
-              <SelectItem value="team">
-                <div className="flex items-start gap-2.5">
-                  <Users className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                  <div className="space-y-0.5">
-                    <div className="text-sm text-muted-foreground">Team</div>
-                    <div className="text-xs text-muted-foreground/60">Visible to team members</div>
-                  </div>
-                </div>
-              </SelectItem>
-              <SelectItem value="public">
-                <div className="flex items-start gap-2.5">
-                  <Globe className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                  <div className="space-y-0.5">
-                    <div className="text-sm text-muted-foreground">Public</div>
-                    <div className="text-xs text-muted-foreground/60">Visible to everyone</div>
-                  </div>
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
-          {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
-        </div>
+        <Select value={currentVisibility} onValueChange={handleVisibilityChange} disabled={isUpdating}>
+          <SelectTrigger className="h-auto gap-1 border-0 bg-transparent p-0 shadow-none hover:bg-transparent focus:ring-0 dark:bg-transparent dark:hover:bg-transparent">
+            <div className="flex items-center gap-1.5">
+              {showLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : error ? (
+                <span className="text-destructive" title={error}>
+                  {getVisibilityIcon(currentVisibility)}
+                </span>
+              ) : (
+                getVisibilityIcon(currentVisibility)
+              )}
+              <span className={error ? "text-destructive" : ""}>{getVisibilityLabel(currentVisibility)}</span>
+            </div>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="private">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Lock className="h-4 w-4" />
+                <span>Private</span>
+              </div>
+            </SelectItem>
+            <SelectItem value="team">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Users className="h-4 w-4" />
+                <span>Team</span>
+              </div>
+            </SelectItem>
+            <SelectItem value="public">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Globe className="h-4 w-4" />
+                <span>Public</span>
+              </div>
+            </SelectItem>
+          </SelectContent>
+        </Select>
       ) : (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="flex items-center gap-1.5">
           {getVisibilityIcon(visibility)}
           <span>{getVisibilityLabel(visibility)}</span>
         </div>
       )}
-    </section>
-  );
-}
-
-interface MessageNavigatorProps {
-  userMessages: Array<{ index: number; text: string }>;
-}
-
-function MessageNavigator({ userMessages }: MessageNavigatorProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [visibleIndex, setVisibleIndex] = useState<number | null>(null);
-
-  // Set up Intersection Observer to track visible user messages
-  useEffect(() => {
-    if (userMessages.length === 0) return;
-
-    const observers: IntersectionObserver[] = [];
-    const visibilityMap = new Map<number, boolean>();
-
-    for (const msg of userMessages) {
-      const messageId = `msg-${msg.index + 1}`;
-      const element = document.getElementById(messageId);
-      if (!element) continue;
-
-      const observer = new IntersectionObserver(
-        (entries) => {
-          for (const entry of entries) {
-            visibilityMap.set(msg.index, entry.isIntersecting);
-          }
-          // Find the first visible message
-          for (const m of userMessages) {
-            if (visibilityMap.get(m.index)) {
-              setVisibleIndex(m.index);
-              return;
-            }
-          }
-        },
-        { threshold: 0.1, rootMargin: "-20% 0px -60% 0px" },
-      );
-
-      observer.observe(element);
-      observers.push(observer);
-    }
-
-    return () => {
-      for (const observer of observers) {
-        observer.disconnect();
-      }
-    };
-  }, [userMessages]);
-
-  const scrollToMessage = (index: number) => {
-    const messageId = `msg-${index + 1}`;
-    const target = document.getElementById(messageId);
-    if (target) {
-      target.scrollIntoView({ behavior: "smooth", block: "center" });
-      window.history.pushState({}, "", `#${messageId}`);
-    }
-    setIsOpen(false);
-  };
-
-  if (userMessages.length === 0) return null;
-
-  return (
-    <div className="fixed top-1/2 left-4 z-50 hidden -translate-y-1/2 lg:block">
-      <div className="relative">
-        {/* Dynamic lines indicator */}
-        <button
-          onClick={() => setIsOpen(!isOpen)}
-          className="flex flex-col items-center gap-1 rounded-lg border border-border bg-background/95 px-2 py-2.5 shadow-lg backdrop-blur transition-colors hover:bg-accent"
-          title="Jump to message"
-        >
-          {userMessages.map((msg) => (
-            <div
-              key={msg.index}
-              className={`h-0.5 w-5 rounded-full transition-colors ${
-                visibleIndex === msg.index ? "bg-white" : "bg-muted-foreground/40"
-              }`}
-            />
-          ))}
-        </button>
-
-        {isOpen && (
-          <div className="absolute top-0 left-12 w-72 rounded-lg border border-border bg-background/95 p-3 shadow-xl backdrop-blur">
-            <ol className="space-y-2">
-              {userMessages.map((msg, i) => (
-                <li key={msg.index}>
-                  <button
-                    onClick={() => scrollToMessage(msg.index)}
-                    className={`flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent ${
-                      visibleIndex === msg.index ? "bg-accent/50" : ""
-                    }`}
-                  >
-                    <span className="shrink-0 text-muted-foreground">{i + 1}.</span>
-                    <span className="line-clamp-1">
-                      {msg.text.slice(0, 50)}
-                      {msg.text.length > 50 ? "..." : ""}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ol>
-          </div>
-        )}
-      </div>
-    </div>
+    </>
   );
 }
 
@@ -564,7 +449,7 @@ function ImageGallery({ images }: { images: ImageReference[] }) {
           <img
             src={`/api/blobs/${img.sha256}`}
             alt={`Image ${img.sha256.slice(0, 8)}`}
-            className="max-h-64 max-w-full rounded-lg border border-border object-contain hover:border-primary"
+            className="max-h-90 max-w-full rounded-lg border border-border object-contain hover:border-border/80"
             loading="lazy"
           />
         </a>
@@ -645,7 +530,7 @@ function MessageBlock({ message, index, isAdmin }: MessageBlockProps) {
     const userImages = message.images ?? [];
 
     return (
-      <div id={messageId} className="flex min-w-0 items-start gap-3">
+      <div id={messageId} className="flex min-w-0 scroll-mt-4 items-start gap-3">
         <div className="min-w-0 rounded-lg bg-secondary/60 px-4 py-2.5">
           <p className="text-sm break-all whitespace-pre-wrap">{message.text}</p>
           <ImageGallery images={userImages} />
@@ -677,7 +562,7 @@ function MessageBlock({ message, index, isAdmin }: MessageBlockProps) {
   // Agent response - rendered text
   if (message.type === "agent") {
     return (
-      <div id={messageId} className="prose prose-invert prose-sm max-w-none">
+      <div id={messageId} className="prose prose-invert prose-sm max-w-none scroll-mt-4">
         <MarkdownRenderer className="text-sm">{message.text}</MarkdownRenderer>
       </div>
     );
@@ -686,7 +571,7 @@ function MessageBlock({ message, index, isAdmin }: MessageBlockProps) {
   // Compaction summary
   if (message.type === "compaction-summary") {
     return (
-      <div id={messageId} className="text-sm text-muted-foreground italic">
+      <div id={messageId} className="scroll-mt-4 text-sm text-muted-foreground italic">
         {message.text}
       </div>
     );
@@ -695,7 +580,7 @@ function MessageBlock({ message, index, isAdmin }: MessageBlockProps) {
   // Command (slash command)
   if (message.type === "command") {
     return (
-      <div id={messageId} className="flex items-start gap-3">
+      <div id={messageId} className="flex scroll-mt-4 items-start gap-3">
         <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary/60">
           <Terminal className="h-4 w-4 text-muted-foreground" />
         </div>
@@ -717,7 +602,7 @@ function MessageBlock({ message, index, isAdmin }: MessageBlockProps) {
 
 function ThinkingBlock({ messageId, text }: { messageId: string; text: string }) {
   return (
-    <Collapsible id={messageId} defaultOpen={false} className="group">
+    <Collapsible id={messageId} defaultOpen={false} className="group scroll-mt-4">
       <CollapsibleTrigger className="flex w-full items-center gap-2 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground">
         <span>Thinking</span>
         <ChevronDown className="h-4 w-4 transition-transform group-data-[open]:rotate-180" />
@@ -847,7 +732,7 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, isA
 
   // Common styles
   const collapsibleClassName =
-    "group overflow-hidden rounded-lg border border-border bg-zinc-900/50 transition-colors hover:border-muted-foreground/30";
+    "scroll-mt-4 group overflow-hidden rounded-lg border border-border bg-zinc-900/50 transition-colors hover:border-muted-foreground/30";
   const triggerClassName = "flex w-full items-center gap-3 px-3 py-2 text-left";
 
   // For Edit/Write tools, wrap DiffViewer/FileViewer in collapsible
