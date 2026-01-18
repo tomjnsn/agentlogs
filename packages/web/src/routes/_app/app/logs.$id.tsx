@@ -1,7 +1,7 @@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import type { UnifiedTranscriptMessage } from "@agentlogs/shared/claudecode";
 import { unifiedTranscriptSchema } from "@agentlogs/shared/schemas";
 import {
@@ -187,19 +187,29 @@ function TranscriptDetailComponent() {
             {unifiedTranscript.model && <TooltipContent side="bottom">{unifiedTranscript.model}</TooltipContent>}
           </Tooltip>
           {/* Git */}
-          {repoInfo && data.repoId && (
-            <Link
-              to="/app/repos/$id"
-              params={{ id: data.repoId }}
-              className="flex items-center gap-1.5 transition-colors hover:text-foreground"
-            >
-              {repoInfo.isGitHub ? <GitHubIcon className="h-4 w-4" /> : <Folder className="h-4 w-4" />}
-              <span>
-                {repoInfo.label}
-                {unifiedTranscript.git?.branch && `:${unifiedTranscript.git.branch}`}
-              </span>
-            </Link>
-          )}
+          {repoInfo &&
+            (repoInfo.isGitHub ? (
+              <a
+                href={`https://github.com/${repoInfo.label}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 transition-colors hover:text-foreground"
+              >
+                <GitHubIcon className="h-4 w-4" />
+                <span>
+                  {repoInfo.label}
+                  {unifiedTranscript.git?.branch && `:${unifiedTranscript.git.branch}`}
+                </span>
+              </a>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <Folder className="h-4 w-4" />
+                <span>
+                  {repoInfo.label}
+                  {unifiedTranscript.git?.branch && `:${unifiedTranscript.git.branch}`}
+                </span>
+              </div>
+            ))}
           {!repoInfo && unifiedTranscript.git?.branch && (
             <div className="flex items-center gap-1.5">
               <GitBranch className="h-4 w-4" />

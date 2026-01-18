@@ -26,7 +26,6 @@ import { Route as AppJoinCodeRouteImport } from './routes/_app/join.$code'
 import { Route as AppAppTeamRouteImport } from './routes/_app/app/team'
 import { Route as AppAppDeviceRouteImport } from './routes/_app/app/device'
 import { Route as AppAppAdminRouteImport } from './routes/_app/app/admin'
-import { Route as AppAppReposIdRouteImport } from './routes/_app/app/repos.$id'
 import { Route as AppAppPrivateCwdRouteImport } from './routes/_app/app/private.$cwd'
 import { Route as AppAppLogsIdRouteImport } from './routes/_app/app/logs.$id'
 
@@ -114,11 +113,6 @@ const AppAppAdminRoute = AppAppAdminRouteImport.update({
   path: '/app/admin',
   getParentRoute: () => AppRoute,
 } as any)
-const AppAppReposIdRoute = AppAppReposIdRouteImport.update({
-  id: '/app/repos/$id',
-  path: '/app/repos/$id',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppAppPrivateCwdRoute = AppAppPrivateCwdRouteImport.update({
   id: '/app/private/$cwd',
   path: '/app/private/$cwd',
@@ -149,7 +143,6 @@ export interface FileRoutesByFullPath {
   '/app': typeof AppAppIndexRoute
   '/app/logs/$id': typeof AppAppLogsIdRoute
   '/app/private/$cwd': typeof AppAppPrivateCwdRoute
-  '/app/repos/$id': typeof AppAppReposIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -170,7 +163,6 @@ export interface FileRoutesByTo {
   '/app': typeof AppAppIndexRoute
   '/app/logs/$id': typeof AppAppLogsIdRoute
   '/app/private/$cwd': typeof AppAppPrivateCwdRoute
-  '/app/repos/$id': typeof AppAppReposIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -193,7 +185,6 @@ export interface FileRoutesById {
   '/_app/app/': typeof AppAppIndexRoute
   '/_app/app/logs/$id': typeof AppAppLogsIdRoute
   '/_app/app/private/$cwd': typeof AppAppPrivateCwdRoute
-  '/_app/app/repos/$id': typeof AppAppReposIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -216,7 +207,6 @@ export interface FileRouteTypes {
     | '/app'
     | '/app/logs/$id'
     | '/app/private/$cwd'
-    | '/app/repos/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -237,7 +227,6 @@ export interface FileRouteTypes {
     | '/app'
     | '/app/logs/$id'
     | '/app/private/$cwd'
-    | '/app/repos/$id'
   id:
     | '__root__'
     | '/'
@@ -259,7 +248,6 @@ export interface FileRouteTypes {
     | '/_app/app/'
     | '/_app/app/logs/$id'
     | '/_app/app/private/$cwd'
-    | '/_app/app/repos/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -396,13 +384,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAppAdminRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/app/repos/$id': {
-      id: '/_app/app/repos/$id'
-      path: '/app/repos/$id'
-      fullPath: '/app/repos/$id'
-      preLoaderRoute: typeof AppAppReposIdRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/app/private/$cwd': {
       id: '/_app/app/private/$cwd'
       path: '/app/private/$cwd'
@@ -429,7 +410,6 @@ interface AppRouteChildren {
   AppAppIndexRoute: typeof AppAppIndexRoute
   AppAppLogsIdRoute: typeof AppAppLogsIdRoute
   AppAppPrivateCwdRoute: typeof AppAppPrivateCwdRoute
-  AppAppReposIdRoute: typeof AppAppReposIdRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -441,7 +421,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppAppIndexRoute: AppAppIndexRoute,
   AppAppLogsIdRoute: AppAppLogsIdRoute,
   AppAppPrivateCwdRoute: AppAppPrivateCwdRoute,
-  AppAppReposIdRoute: AppAppReposIdRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
