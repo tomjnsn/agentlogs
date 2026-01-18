@@ -155,13 +155,9 @@ function TranscriptDetailComponent() {
           <h1 className="min-w-0 truncate font-serif text-3xl font-semibold tracking-wide">{pageTitle}</h1>
           {(data.linesAdded > 0 || data.linesRemoved > 0 || data.linesModified > 0) && (
             <span className="flex shrink-0 items-center gap-1 text-sm">
-              {data.linesAdded - data.linesModified > 0 && (
-                <span className="text-green-500">+{data.linesAdded - data.linesModified}</span>
-              )}
-              {data.linesRemoved - data.linesModified > 0 && (
-                <span className="text-red-400">-{data.linesRemoved - data.linesModified}</span>
-              )}
+              {data.linesAdded > 0 && <span className="text-green-500">+{data.linesAdded}</span>}
               {data.linesModified > 0 && <span className="text-yellow-500">~{data.linesModified}</span>}
+              {data.linesRemoved > 0 && <span className="text-red-400">-{data.linesRemoved}</span>}
             </span>
           )}
         </header>
