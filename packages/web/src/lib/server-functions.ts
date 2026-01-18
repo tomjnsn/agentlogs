@@ -243,7 +243,14 @@ export const getTranscript = createServerFn({ method: "GET" })
       linesAdded: transcript.linesAdded,
       linesRemoved: transcript.linesRemoved,
       linesModified: transcript.linesModified,
-      commits: commits.filter((c) => c.commitSha).map((c) => c.commitSha as string),
+      commits: commits
+        .filter((c) => c.commitSha)
+        .map((c) => ({
+          sha: c.commitSha as string,
+          title: c.commitTitle,
+          branch: c.branch,
+          timestamp: c.timestamp,
+        })),
     };
   });
 
