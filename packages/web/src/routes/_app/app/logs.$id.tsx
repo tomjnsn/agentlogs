@@ -218,15 +218,6 @@ function TranscriptDetailComponent() {
           )}
         </div>
 
-        {/* Commits Timeline */}
-        {data.commits && data.commits.length > 0 && (
-          <CommitTimeline
-            commits={data.commits}
-            repoUrl={unifiedTranscript.git?.repo}
-            branch={data.commits[0]?.branch || unifiedTranscript.git?.branch || undefined}
-          />
-        )}
-
         {/* Messages */}
         <div className="space-y-4">
           {unifiedTranscript.messages.map((message, i) => (
@@ -237,10 +228,18 @@ function TranscriptDetailComponent() {
 
       {/* Sidebar - vertically centered TOC with independent scroll */}
       <aside className="sticky top-0 hidden h-screen w-56 shrink-0 lg:flex lg:items-center">
-        <div className="max-h-[80vh] overflow-y-auto">
+        <div className="max-h-[80vh] space-y-6 overflow-y-auto">
           {/* User Prompts Navigation */}
           {userMessages.length > 0 && (
             <PromptsList userMessages={userMessages} totalMessages={unifiedTranscript.messages.length} />
+          )}
+          {/* Commits */}
+          {data.commits && data.commits.length > 0 && (
+            <CommitTimeline
+              commits={data.commits}
+              repoUrl={unifiedTranscript.git?.repo}
+              branch={data.commits[0]?.branch || unifiedTranscript.git?.branch || undefined}
+            />
           )}
         </div>
       </aside>
@@ -322,6 +321,7 @@ function PromptsList({
 
   return (
     <section>
+      <div className="mb-2 text-xs font-medium text-muted-foreground">Prompts</div>
       <div className="space-y-0.5">
         {userMessages.map((msg, i) => (
           <button
@@ -377,7 +377,9 @@ function CommitTimeline({
   const sortedCommits = commits;
 
   return (
-    <div className="mb-6">
+    <section>
+      <div className="mb-2 text-xs font-medium text-muted-foreground">Commits</div>
+
       {/* Branch label */}
       {branch && (
         <div className="relative z-10 inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-xs font-medium text-foreground">
@@ -405,8 +407,8 @@ function CommitTimeline({
                   <div className="h-2.5 w-2.5 rounded-full border-2 border-border bg-background" />
                 </div>
                 {/* Content */}
-                <span className="font-medium text-muted-foreground">{title}</span>
-                <span className="ml-2 text-muted-foreground/60">{timeAgo}</span>
+                <span className="min-w-0 flex-1 truncate font-medium text-muted-foreground">{title}</span>
+                <span className="shrink-0 text-muted-foreground/60">{timeAgo}</span>
               </>
             );
 
@@ -416,19 +418,19 @@ function CommitTimeline({
                 href={commitUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="relative block py-1 pl-1 text-xs transition-colors hover:text-primary"
+                className="relative flex gap-2 py-1 pl-1 text-xs transition-colors hover:text-primary"
               >
                 {commitContent}
               </a>
             ) : (
-              <div key={i} className="relative py-1 pl-1 text-xs">
+              <div key={i} className="relative flex gap-2 py-1 pl-1 text-xs">
                 {commitContent}
               </div>
             );
           })}
         </div>
       </div>
-    </div>
+    </section>
   );
 }
 
