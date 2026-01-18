@@ -10,6 +10,7 @@ import {
   FileText,
   Folder,
   GitBranch,
+  GitCommitHorizontal,
   Globe,
   Loader2,
   Lock,
@@ -163,7 +164,7 @@ function TranscriptDetailComponent() {
         </header>
 
         {/* Log Metadata */}
-        <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+        <div className="mb-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
           {/* Author */}
           <div className="flex items-center gap-1.5">
             <img src={data.userImage || undefined} alt={data.userName || "User"} className="h-4 w-4 rounded-full" />
@@ -207,6 +208,42 @@ function TranscriptDetailComponent() {
             </div>
           )}
         </div>
+
+        {/* Commits */}
+        {data.commits && data.commits.length > 0 && (
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            {data.commits.map((sha) => {
+              const isGitHub = unifiedTranscript.git?.repo?.startsWith("github.com/");
+              const commitUrl = isGitHub ? `https://${unifiedTranscript.git!.repo}/commit/${sha}` : null;
+
+              const content = (
+                <>
+                  <GitCommitHorizontal className="h-3.5 w-3.5" />
+                  {sha.slice(0, 7)}
+                </>
+              );
+
+              return commitUrl ? (
+                <a
+                  key={sha}
+                  href={commitUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-md bg-secondary/60 px-2 py-1 font-mono text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                >
+                  {content}
+                </a>
+              ) : (
+                <span
+                  key={sha}
+                  className="inline-flex items-center gap-1.5 rounded-md bg-secondary/60 px-2 py-1 font-mono text-xs text-muted-foreground"
+                >
+                  {content}
+                </span>
+              );
+            })}
+          </div>
+        )}
 
         {/* Messages */}
         <div className="space-y-4">

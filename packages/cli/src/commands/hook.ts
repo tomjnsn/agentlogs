@@ -190,16 +190,20 @@ async function handlePostToolUse(hookInput: ClaudeHookInput): Promise<void> {
     return;
   }
 
-  // Parse SHA from git commit output: "[branch sha] message"
+  // Parse SHA, title, and branch from git commit output: "[branch sha] message"
   const toolOutput = getToolOutput(hookInput);
   const commitSha = toolOutput ? parseCommitShaFromOutput(toolOutput) : undefined;
+  const commitTitle = toolOutput ? parseCommitTitleFromOutput(toolOutput) : undefined;
+  const branch = toolOutput ? parseBranchFromOutput(toolOutput) : undefined;
 
-  // Track the commit with SHA
+  // Track the commit
   await trackCommit({
-    sessionId: transcriptId, // Use the transcript ID from the URL
+    transcriptId,
     repoPath,
     timestamp: new Date().toISOString(),
     commitSha,
+    commitTitle,
+    branch,
   });
 
   logger.info("PostToolUse: tracked commit", {
@@ -241,6 +245,20 @@ function parseCommitShaFromOutput(output: string): string | undefined {
   //   [main (root-commit) abc1234] Initial commit
   //   [feature/foo 1234567] Fix bug
   const match = output.match(/\[[\w/-]+(?:\s+\([^)]+\))?\s+([a-f0-9]{7,40})\]/);
+  return match ? match[1] : undefined;
+}
+
+function parseCommitTitleFromOutput(output: string): string | undefined {
+  // Git commit output format: "[branch sha] message"
+  // Extract the message (commit title/first line)
+  const match = output.match(/\[[\w/-]+(?:\s+\([^)]+\))?\s+[a-f0-9]{7,40}\]\s+(.+)/);
+  return match ? match[1].trim() : undefined;
+}
+
+function parseBranchFromOutput(output: string): string | undefined {
+  // Git commit output format: "[branch sha] message"
+  // Extract the branch name
+  const match = output.match(/\[([\w/-]+)(?:\s+\([^)]+\))?\s+[a-f0-9]{7,40}\]/);
   return match ? match[1] : undefined;
 }
 
@@ -445,15 +463,17 @@ export function getRepoPath(hookInput: ClaudeHookInput): string {
 }
 
 async function trackCommit(payload: {
-  sessionId: string;
+  transcriptId: string;
   repoPath: string;
   timestamp: string;
   commitSha?: string;
+  commitTitle?: string;
+  branch?: string;
 }): Promise<void> {
   const authenticatedEnvs = getAuthenticatedEnvironments();
   if (authenticatedEnvs.length === 0) {
     logger.warn("Commit tracking skipped: no authenticated environments. Run 'agentlogs login' first.", {
-      sessionId: payload.sessionId.substring(0, 8),
+      transcriptId: payload.transcriptId.substring(0, 8),
     });
     return;
   }
@@ -472,10 +492,12 @@ async function trackCommit(payload: {
           Authorization: `Bearer ${env.token}`,
         },
         body: JSON.stringify({
-          session_id: payload.sessionId,
+          transcript_id: payload.transcriptId,
           repo_path: payload.repoPath,
           timestamp: payload.timestamp,
           commit_sha: payload.commitSha,
+          commit_title: payload.commitTitle,
+          branch: payload.branch,
         }),
         signal: controller.signal,
       });
@@ -484,26 +506,26 @@ async function trackCommit(payload: {
 
       if (!response.ok) {
         logger.warn(`Commit tracking request to ${env.name} failed`, {
-          sessionId: payload.sessionId.substring(0, 8),
+          transcriptId: payload.transcriptId.substring(0, 8),
           status: response.status,
         });
         continue;
       }
 
       logger.info(`Commit tracking recorded (${env.name})`, {
-        sessionId: payload.sessionId.substring(0, 8),
+        transcriptId: payload.transcriptId.substring(0, 8),
         repoPath: payload.repoPath,
       });
     } catch (error) {
       // Check if it was a timeout (AbortError)
       if (error instanceof Error && error.name === "AbortError") {
         logger.warn(`Commit tracking request to ${env.name} timed out after 5s`, {
-          sessionId: payload.sessionId.substring(0, 8),
+          transcriptId: payload.transcriptId.substring(0, 8),
         });
         continue;
       }
       logger.error(`Commit tracking request to ${env.name} error`, {
-        sessionId: payload.sessionId.substring(0, 8),
+        transcriptId: payload.transcriptId.substring(0, 8),
         error: error instanceof Error ? error.message : String(error),
       });
     }

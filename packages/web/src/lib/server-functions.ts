@@ -6,6 +6,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { createDrizzle } from "../db";
 import * as queries from "../db/queries";
 import {
+  commitTracking,
   teamInvites,
   teamMembers,
   teams,
@@ -210,6 +211,18 @@ export const getTranscript = createServerFn({ method: "GET" })
     const unifiedJson = await r2Object.text();
     const unifiedTranscript = JSON.parse(unifiedJson);
 
+    // Fetch commits associated with this transcript
+    const commits = await db
+      .select({
+        commitSha: commitTracking.commitSha,
+        commitTitle: commitTracking.commitTitle,
+        branch: commitTracking.branch,
+        timestamp: commitTracking.timestamp,
+      })
+      .from(commitTracking)
+      .where(eq(commitTracking.transcriptId, transcript.id))
+      .orderBy(commitTracking.timestamp);
+
     // Return transcript with metadata and unified content
     return {
       id: transcript.id,
@@ -230,6 +243,7 @@ export const getTranscript = createServerFn({ method: "GET" })
       linesAdded: transcript.linesAdded,
       linesRemoved: transcript.linesRemoved,
       linesModified: transcript.linesModified,
+      commits: commits.filter((c) => c.commitSha).map((c) => c.commitSha as string),
     };
   });
 

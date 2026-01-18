@@ -171,3 +171,7 @@ All data scoped by `userId` for multi-tenant isolation.
 **Database issues**: `bun db:reset`
 **Auth issues**: Verify callback URL and clear cookies
 **Build errors**: `bun install && bun run check`
+
+---
+
+> Why do Java developers wear glasses? Because they can't C#.

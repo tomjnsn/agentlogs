@@ -7,10 +7,12 @@ import { createAuth } from "../../lib/auth";
 import { logger } from "../../lib/logger";
 
 interface CommitTrackPayload {
-  session_id?: string;
+  transcript_id?: string;
   repo_path?: string;
   timestamp?: string;
   commit_sha?: string;
+  commit_title?: string;
+  branch?: string;
 }
 
 export const Route = createFileRoute("/api/commit-track")({
@@ -44,12 +46,12 @@ export const Route = createFileRoute("/api/commit-track")({
           return json({ error: "Invalid JSON" }, { status: 400 });
         }
 
-        const { session_id, repo_path, timestamp, commit_sha } = payload;
+        const { transcript_id, repo_path, timestamp, commit_sha, commit_title, branch } = payload;
 
-        if (!session_id || !repo_path || !timestamp) {
+        if (!transcript_id || !repo_path || !timestamp) {
           logger.error("Commit track validation failed: missing required fields", {
             userId,
-            session_id,
+            transcript_id,
             repo_path,
             timestamp,
           });
@@ -59,15 +61,17 @@ export const Route = createFileRoute("/api/commit-track")({
         try {
           await db.insert(commitTracking).values({
             userId,
-            sessionId: session_id,
+            transcriptId: transcript_id,
             repoPath: repo_path,
             timestamp,
             commitSha: commit_sha,
+            commitTitle: commit_title,
+            branch,
           });
 
           logger.info("Commit track stored", {
             userId,
-            sessionId: session_id.substring(0, 8),
+            transcriptId: transcript_id.substring(0, 8),
             repoPath: repo_path,
             commitSha: commit_sha?.substring(0, 8),
           });
@@ -76,7 +80,7 @@ export const Route = createFileRoute("/api/commit-track")({
         } catch (error) {
           logger.error("Commit track insert failed", {
             userId,
-            sessionId: session_id.substring(0, 8),
+            transcriptId: transcript_id.substring(0, 8),
             repoPath: repo_path,
             error: error instanceof Error ? error.message : String(error),
           });

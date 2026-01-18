@@ -188,19 +188,32 @@ export const transcripts = sqliteTable(
   }),
 );
 
-export const commitTracking = sqliteTable("commit_tracking", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => generateId()),
-  userId: text("user_id").notNull(),
-  sessionId: text("session_id").notNull(),
-  repoPath: text("repo_path").notNull(),
-  timestamp: text("timestamp").notNull(),
-  commitSha: text("commit_sha"),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .$defaultFn(() => new Date()),
-});
+export const commitTracking = sqliteTable(
+  "commit_tracking",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => generateId()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    transcriptId: text("transcript_id")
+      .notNull()
+      .references(() => transcripts.id),
+    repoPath: text("repo_path").notNull(),
+    timestamp: text("timestamp").notNull(),
+    commitSha: text("commit_sha"),
+    commitTitle: text("commit_title"),
+    branch: text("branch"),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (table) => ({
+    transcriptIdx: index("idx_commit_tracking_transcript").on(table.transcriptId),
+    userIdx: index("idx_commit_tracking_user").on(table.userId),
+  }),
+);
 
 // =============================================================================
 // Blob Storage Tables (content-addressed deduplication)
@@ -365,6 +378,18 @@ export const transcriptsRelations = relations(transcripts, ({ one, many }) => ({
     references: [teams.id],
   }),
   transcriptBlobs: many(transcriptBlobs),
+  commits: many(commitTracking),
+}));
+
+export const commitTrackingRelations = relations(commitTracking, ({ one }) => ({
+  user: one(user, {
+    fields: [commitTracking.userId],
+    references: [user.id],
+  }),
+  transcript: one(transcripts, {
+    fields: [commitTracking.transcriptId],
+    references: [transcripts.id],
+  }),
 }));
 
 // Blob relations
