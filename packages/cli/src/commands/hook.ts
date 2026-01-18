@@ -22,6 +22,11 @@ interface ClaudeHookInput {
     command?: string;
     [key: string]: unknown;
   };
+  tool_response?: {
+    stdout?: string;
+    stderr?: string;
+    [key: string]: unknown;
+  };
   command?: string;
   repo_path?: string;
   [key: string]: unknown;
@@ -87,6 +92,8 @@ export async function hookCommand(): Promise<void> {
     // Process event
     if (eventName === "PreToolUse") {
       await handlePreToolUse(hookInput);
+    } else if (eventName === "PostToolUse") {
+      await handlePostToolUse(hookInput);
     } else if (eventName === "SessionEnd") {
       await handleSessionEnd(hookInput);
     } else if (eventName === "Stop") {
@@ -150,15 +157,12 @@ async function handlePreToolUse(hookInput: ClaudeHookInput): Promise<void> {
   process.stdout.write(JSON.stringify(output));
 
   if (shouldTrack) {
+    // Upload partial transcript so the link works immediately
+    // Actual commit tracking happens in PostToolUse when we have the SHA
     await uploadPartialTranscript({
       sessionId,
       transcriptPath: hookInput.transcript_path,
       cwd: typeof hookInput.cwd === "string" ? hookInput.cwd : undefined,
-    });
-    await trackCommit({
-      sessionId,
-      repoPath: getRepoPath(hookInput),
-      timestamp: new Date().toISOString(),
     });
   }
 
@@ -167,6 +171,77 @@ async function handlePreToolUse(hookInput: ClaudeHookInput): Promise<void> {
     shouldTrack,
     modified,
   });
+}
+
+async function handlePostToolUse(hookInput: ClaudeHookInput): Promise<void> {
+  const sessionId = hookInput.session_id || "unknown";
+  const repoPath = getRepoPath(hookInput);
+
+  // Check if this is a git commit we tracked by looking for our link in the command
+  const { command } = extractCommand(hookInput);
+  if (!command || !containsGitCommit(command)) {
+    return;
+  }
+
+  // Extract transcript ID from the command (where PreToolUse appended it)
+  const transcriptId = extractTranscriptIdFromOutput(command);
+  if (!transcriptId) {
+    logger.debug("PostToolUse: git commit without agentlogs link", { sessionId: sessionId.substring(0, 8) });
+    return;
+  }
+
+  // Parse SHA from git commit output: "[branch sha] message"
+  const toolOutput = getToolOutput(hookInput);
+  const commitSha = toolOutput ? parseCommitShaFromOutput(toolOutput) : undefined;
+
+  // Track the commit with SHA
+  await trackCommit({
+    sessionId: transcriptId, // Use the transcript ID from the URL
+    repoPath,
+    timestamp: new Date().toISOString(),
+    commitSha,
+  });
+
+  logger.info("PostToolUse: tracked commit", {
+    sessionId: sessionId.substring(0, 8),
+    transcriptId,
+    commitSha: commitSha?.substring(0, 8),
+  });
+}
+
+function getToolOutput(hookInput: ClaudeHookInput): string | undefined {
+  // Try tool_response.stdout first
+  if (hookInput.tool_response?.stdout) {
+    return hookInput.tool_response.stdout;
+  }
+  // Try stringifying the whole tool_response
+  if (hookInput.tool_response) {
+    return JSON.stringify(hookInput.tool_response);
+  }
+  return undefined;
+}
+
+function extractTranscriptIdFromOutput(output: string): string | undefined {
+  // Find all agentlogs.ai/s/ links and return the last one
+  // (we append at end, so last match avoids conflicts with user-added links)
+  const matches = output.match(/agentlogs\.ai\/s\/([a-zA-Z0-9_-]+)/g);
+  if (!matches || matches.length === 0) {
+    return undefined;
+  }
+  // Get the last match and extract the ID
+  const lastMatch = matches[matches.length - 1];
+  const idMatch = lastMatch.match(/agentlogs\.ai\/s\/([a-zA-Z0-9_-]+)/);
+  return idMatch ? idMatch[1] : undefined;
+}
+
+function parseCommitShaFromOutput(output: string): string | undefined {
+  // Git commit output format: "[branch sha] message" or "[branch (root-commit) sha] message"
+  // Examples:
+  //   [main 7e21a95] Add feature
+  //   [main (root-commit) abc1234] Initial commit
+  //   [feature/foo 1234567] Fix bug
+  const match = output.match(/\[[\w/-]+(?:\s+\([^)]+\))?\s+([a-f0-9]{7,40})\]/);
+  return match ? match[1] : undefined;
 }
 
 async function handleSessionEnd(hookInput: ClaudeHookInput): Promise<void> {
@@ -369,7 +444,12 @@ export function getRepoPath(hookInput: ClaudeHookInput): string {
   return "";
 }
 
-async function trackCommit(payload: { sessionId: string; repoPath: string; timestamp: string }): Promise<void> {
+async function trackCommit(payload: {
+  sessionId: string;
+  repoPath: string;
+  timestamp: string;
+  commitSha?: string;
+}): Promise<void> {
   const authenticatedEnvs = getAuthenticatedEnvironments();
   if (authenticatedEnvs.length === 0) {
     logger.warn("Commit tracking skipped: no authenticated environments. Run 'agentlogs login' first.", {
@@ -395,6 +475,7 @@ async function trackCommit(payload: { sessionId: string; repoPath: string; times
           session_id: payload.sessionId,
           repo_path: payload.repoPath,
           timestamp: payload.timestamp,
+          commit_sha: payload.commitSha,
         }),
         signal: controller.signal,
       });
