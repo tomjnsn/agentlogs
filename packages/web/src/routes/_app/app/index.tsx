@@ -382,29 +382,13 @@ function TranscriptItem({ transcript }: { transcript: TranscriptData }) {
             {transcript.repoName && (
               <>
                 <span>•</span>
-                {transcript.repoName.startsWith("github.com/") ? (
-                  <a
-                    href={`https://${transcript.repoName}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="flex items-center gap-1 hover:underline"
-                  >
-                    <GitHubIcon className="h-3.5 w-3.5" />
-                    <span>
-                      <span className="text-foreground/80">{transcript.repoName.replace(/^github\.com\//, "")}</span>
-                      <span className="hidden sm:inline">{transcript.branch && `:${transcript.branch}`}</span>
-                    </span>
-                  </a>
-                ) : (
-                  <span className="flex items-center gap-1">
-                    <GitHubIcon className="h-3.5 w-3.5" />
-                    <span>
-                      <span className="text-foreground/80">{transcript.repoName}</span>
-                      <span className="hidden sm:inline">{transcript.branch && `:${transcript.branch}`}</span>
-                    </span>
+                <span className="flex items-center gap-1">
+                  <GitHubIcon className="h-3.5 w-3.5" />
+                  <span>
+                    <span className="text-foreground/80">{transcript.repoName.replace(/^github\.com\//, "")}</span>
+                    <span className="hidden sm:inline">{transcript.branch && `:${transcript.branch}`}</span>
                   </span>
-                )}
+                </span>
               </>
             )}
           </div>
