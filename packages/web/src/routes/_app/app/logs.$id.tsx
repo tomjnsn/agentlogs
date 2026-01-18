@@ -10,7 +10,6 @@ import {
   FileText,
   Folder,
   GitBranch,
-  GitCommitHorizontal,
   Globe,
   Loader2,
   Lock,
@@ -209,40 +208,13 @@ function TranscriptDetailComponent() {
           )}
         </div>
 
-        {/* Commits */}
+        {/* Commits Timeline */}
         {data.commits && data.commits.length > 0 && (
-          <div className="mb-4 flex flex-wrap items-center gap-2">
-            {data.commits.map((sha) => {
-              const isGitHub = unifiedTranscript.git?.repo?.startsWith("github.com/");
-              const commitUrl = isGitHub ? `https://${unifiedTranscript.git!.repo}/commit/${sha}` : null;
-
-              const content = (
-                <>
-                  <GitCommitHorizontal className="h-3.5 w-3.5" />
-                  {sha.slice(0, 7)}
-                </>
-              );
-
-              return commitUrl ? (
-                <a
-                  key={sha}
-                  href={commitUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-md bg-secondary/60 px-2 py-1 font-mono text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                >
-                  {content}
-                </a>
-              ) : (
-                <span
-                  key={sha}
-                  className="inline-flex items-center gap-1.5 rounded-md bg-secondary/60 px-2 py-1 font-mono text-xs text-muted-foreground"
-                >
-                  {content}
-                </span>
-              );
-            })}
-          </div>
+          <CommitTimeline
+            commits={data.commits}
+            repoUrl={unifiedTranscript.git?.repo}
+            branch={data.commits[0]?.branch || unifiedTranscript.git?.branch || undefined}
+          />
         )}
 
         {/* Messages */}
@@ -355,6 +327,98 @@ function PromptsList({
         ))}
       </div>
     </section>
+  );
+}
+
+interface Commit {
+  sha: string;
+  title: string | null;
+  branch: string | null;
+  timestamp: string;
+}
+
+function formatCommitTime(timestamp: string): string {
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMinutes = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMinutes / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffDays > 0) return `${diffDays}d`;
+  if (diffHours > 0) return `${diffHours}h`;
+  if (diffMinutes > 0) return `${diffMinutes}m`;
+  return "now";
+}
+
+function CommitTimeline({
+  commits,
+  repoUrl,
+  branch,
+}: {
+  commits: Commit[];
+  repoUrl?: string | null;
+  branch?: string | null;
+}) {
+  const isGitHub = repoUrl?.startsWith("github.com/");
+  const getCommitUrl = (sha: string) => (isGitHub ? `https://${repoUrl}/commit/${sha}` : null);
+
+  // Keep chronological order (oldest first)
+  const sortedCommits = commits;
+
+  return (
+    <div className="mb-6">
+      {/* Branch label */}
+      {branch && (
+        <div className="relative z-10 inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-xs font-medium text-foreground">
+          <GitBranch className="h-3.5 w-3.5" />
+          {branch}
+        </div>
+      )}
+
+      {/* Timeline */}
+      <div className="relative ml-2.5 pl-4.75">
+        {/* Vertical line */}
+        <div className="absolute top-0 bottom-1 left-[7px] w-0.5 -translate-y-1.5 bg-border" />
+
+        {/* Commits */}
+        <div>
+          {sortedCommits.map((commit, i) => {
+            const commitUrl = getCommitUrl(commit.sha);
+            const timeAgo = formatCommitTime(commit.timestamp);
+            const title = commit.title || commit.sha.slice(0, 7);
+
+            const commitContent = (
+              <>
+                {/* Dot */}
+                <div className="absolute top-1/2 -left-4 -translate-y-1/2">
+                  <div className="h-2.5 w-2.5 rounded-full border-2 border-border bg-background" />
+                </div>
+                {/* Content */}
+                <span className="font-medium text-muted-foreground">{title}</span>
+                <span className="ml-2 text-muted-foreground/60">{timeAgo}</span>
+              </>
+            );
+
+            return commitUrl ? (
+              <a
+                key={i}
+                href={commitUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="relative block py-1 pl-1 text-xs transition-colors hover:text-primary"
+              >
+                {commitContent}
+              </a>
+            ) : (
+              <div key={i} className="relative py-1 pl-1 text-xs">
+                {commitContent}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
 }
 
