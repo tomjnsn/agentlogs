@@ -1,9 +1,10 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Globe, Loader2, Lock, MessageSquare, Search, Terminal, Users } from "lucide-react";
+import { Globe, Loader2, Lock, MessageSquare, Search, Terminal } from "lucide-react";
 import { ClaudeCodeIcon, CodexIcon, GitHubIcon, OpenCodeIcon } from "../../../components/icons/source-icons";
 import { useCallback, useMemo, useState } from "react";
 import { getDailyActivity, getTranscriptsPaginated } from "../../../lib/server-functions";
@@ -97,6 +98,7 @@ export const Route = createFileRoute("/_app/app/")({
       throw error;
     }
   },
+  staleTime: 0, // Always refetch to ensure visibility changes are reflected
   component: HomeComponent,
   errorComponent: ErrorComponent,
 });
@@ -154,16 +156,24 @@ function getSourceIcon(source: string, className?: string) {
   }
 }
 
-function getVisibilityIcon(visibility: string) {
-  switch (visibility) {
-    case "public":
-      return <Globe className="h-3.5 w-3.5 text-emerald-500/60" />;
-    case "team":
-      return <Users className="h-3.5 w-3.5 text-sky-400/60" />;
-    case "private":
-    default:
-      return <Lock className="h-3.5 w-3.5 text-muted-foreground/60" />;
+function VisibilityBadge({ visibility }: { visibility: string }) {
+  if (visibility === "public") {
+    return (
+      <Badge variant="secondary" className="h-4 gap-0.5 px-1.5 text-[10px]">
+        <Globe className="h-2.5 w-2.5" />
+        Public
+      </Badge>
+    );
   }
+  if (visibility === "private") {
+    return (
+      <Badge variant="outline" className="h-4 gap-0.5 px-1.5 text-[10px]">
+        <Lock className="h-2.5 w-2.5" />
+        Private
+      </Badge>
+    );
+  }
+  return null;
 }
 
 function HomeComponent() {
@@ -337,7 +347,10 @@ function TranscriptItem({ transcript }: { transcript: TranscriptData }) {
         <div className="min-w-0 flex-1 space-y-1.5">
           {/* Summary */}
           {transcript.summary && (
-            <p className="line-clamp-2 text-sm font-medium sm:line-clamp-1">{transcript.summary}</p>
+            <div className="flex items-center gap-2">
+              <p className="line-clamp-2 text-sm font-medium sm:line-clamp-1">{transcript.summary}</p>
+              <VisibilityBadge visibility={transcript.visibility} />
+            </div>
           )}
 
           {/* Preview */}
@@ -351,7 +364,6 @@ function TranscriptItem({ transcript }: { transcript: TranscriptData }) {
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground sm:text-sm">
             <span className="flex items-center gap-1.5">
               {getSourceIcon(transcript.source, "h-3.5 w-3.5")}
-              {getVisibilityIcon(transcript.visibility)}
               <span className="font-medium text-foreground/80">{transcript.userName || "Unknown"}</span>
             </span>
             <span>{timeAgo}</span>
@@ -370,13 +382,29 @@ function TranscriptItem({ transcript }: { transcript: TranscriptData }) {
             {transcript.repoName && (
               <>
                 <span>•</span>
-                <span className="flex items-center gap-1">
-                  <GitHubIcon className="h-3.5 w-3.5" />
-                  <span>
-                    <span className="text-foreground/80">{transcript.repoName.replace(/^github\.com\//, "")}</span>
-                    <span className="hidden sm:inline">{transcript.branch && `@${transcript.branch}`}</span>
+                {transcript.repoName.startsWith("github.com/") ? (
+                  <a
+                    href={`https://${transcript.repoName}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex items-center gap-1 hover:underline"
+                  >
+                    <GitHubIcon className="h-3.5 w-3.5" />
+                    <span>
+                      <span className="text-foreground/80">{transcript.repoName.replace(/^github\.com\//, "")}</span>
+                      <span className="hidden sm:inline">{transcript.branch && `:${transcript.branch}`}</span>
+                    </span>
+                  </a>
+                ) : (
+                  <span className="flex items-center gap-1">
+                    <GitHubIcon className="h-3.5 w-3.5" />
+                    <span>
+                      <span className="text-foreground/80">{transcript.repoName}</span>
+                      <span className="hidden sm:inline">{transcript.branch && `:${transcript.branch}`}</span>
+                    </span>
                   </span>
-                </span>
+                )}
               </>
             )}
           </div>
@@ -387,7 +415,7 @@ function TranscriptItem({ transcript }: { transcript: TranscriptData }) {
           <img
             src={`/api/blobs/${transcript.previewBlobSha256}`}
             alt=""
-            className="hidden h-14 w-14 shrink-0 self-center rounded-md border border-border object-cover md:block"
+            className="hidden w-auto max-w-40 shrink-0 self-stretch rounded-md border border-border object-contain md:block"
             loading="lazy"
           />
         )}
