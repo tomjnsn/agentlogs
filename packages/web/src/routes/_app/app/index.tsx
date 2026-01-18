@@ -159,16 +159,16 @@ function getSourceIcon(source: string, className?: string) {
 function VisibilityBadge({ visibility }: { visibility: string }) {
   if (visibility === "public") {
     return (
-      <Badge variant="secondary" className="h-4 gap-0.5 px-1.5 text-[10px]">
-        <Globe className="h-2.5 w-2.5" />
+      <Badge variant="secondary" className="h-4 gap-1 px-1.5 text-[10px]">
+        <Globe className="h-2 w-2" />
         Public
       </Badge>
     );
   }
   if (visibility === "private") {
     return (
-      <Badge variant="outline" className="h-4 gap-0.5 px-1.5 text-[10px]">
-        <Lock className="h-2.5 w-2.5" />
+      <Badge variant="outline" className="h-4 gap-1 px-1.5 text-[10px]">
+        <Lock className="h-2 w-2" />
         Private
       </Badge>
     );
