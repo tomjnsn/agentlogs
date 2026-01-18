@@ -1,0 +1,1 @@
+ALTER TABLE `commit_tracking` ADD `commit_sha` text;

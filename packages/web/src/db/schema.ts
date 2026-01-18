@@ -196,6 +196,7 @@ export const commitTracking = sqliteTable("commit_tracking", {
   sessionId: text("session_id").notNull(),
   repoPath: text("repo_path").notNull(),
   timestamp: text("timestamp").notNull(),
+  commitSha: text("commit_sha"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),

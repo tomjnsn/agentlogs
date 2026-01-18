@@ -10,6 +10,7 @@ interface CommitTrackPayload {
   session_id?: string;
   repo_path?: string;
   timestamp?: string;
+  commit_sha?: string;
 }
 
 export const Route = createFileRoute("/api/commit-track")({
@@ -43,7 +44,7 @@ export const Route = createFileRoute("/api/commit-track")({
           return json({ error: "Invalid JSON" }, { status: 400 });
         }
 
-        const { session_id, repo_path, timestamp } = payload;
+        const { session_id, repo_path, timestamp, commit_sha } = payload;
 
         if (!session_id || !repo_path || !timestamp) {
           logger.error("Commit track validation failed: missing required fields", {
@@ -61,12 +62,14 @@ export const Route = createFileRoute("/api/commit-track")({
             sessionId: session_id,
             repoPath: repo_path,
             timestamp,
+            commitSha: commit_sha,
           });
 
           logger.info("Commit track stored", {
             userId,
             sessionId: session_id.substring(0, 8),
             repoPath: repo_path,
+            commitSha: commit_sha?.substring(0, 8),
           });
 
           return json({ success: true });
