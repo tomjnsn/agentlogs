@@ -232,8 +232,8 @@ function HomeComponent() {
   return (
     <div className="space-y-6">
       {/* Filters + Activity Chart */}
-      <div className="flex items-center gap-4 pl-15">
-        <div className="relative min-w-[300px]">
+      <div className="flex items-center gap-3 px-2 md:gap-4 md:pl-16">
+        <div className="relative min-w-0 flex-1">
           <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search logs..."
@@ -244,7 +244,7 @@ function HomeComponent() {
         </div>
 
         <Select value={selectedRepo} onValueChange={setSelectedRepo}>
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-[160px] shrink-0 sm:w-[200px]">
             <SelectValue>
               {selectedRepo === "all"
                 ? "All repositories"
@@ -277,9 +277,11 @@ function HomeComponent() {
           </SelectContent>
         </Select>
 
-        <div className="grow" />
+        <div className="hidden lg:block lg:grow" />
 
-        <ActivityChart data={dailyActivity} />
+        <div className="hidden lg:block">
+          <ActivityChart data={dailyActivity} />
+        </div>
       </div>
 
       {/* Transcript List */}
@@ -324,30 +326,34 @@ function TranscriptItem({ transcript }: { transcript: TranscriptData }) {
 
   return (
     <Link to="/app/logs/$id" params={{ id: transcript.id }} className="group block">
-      <div className="flex gap-4 rounded-lg px-2 py-3 transition-colors hover:bg-accent/15">
+      <div className="flex gap-3 rounded-lg px-2 py-3 transition-colors hover:bg-accent/15 sm:gap-4">
         {/* Avatar */}
-        <Avatar className="h-10 w-10 shrink-0 self-center">
+        <Avatar className="h-8 w-8 shrink-0 self-start sm:h-10 sm:w-10 sm:self-center">
           <AvatarImage src={transcript.userImage || undefined} alt={transcript.userName || "User"} />
-          <AvatarFallback>{getInitials(transcript.userName)}</AvatarFallback>
+          <AvatarFallback className="text-xs sm:text-sm">{getInitials(transcript.userName)}</AvatarFallback>
         </Avatar>
 
         {/* Content */}
         <div className="min-w-0 flex-1 space-y-1.5">
           {/* Summary */}
-          {transcript.summary && <p className="text-sm font-medium">{transcript.summary}</p>}
+          {transcript.summary && (
+            <p className="line-clamp-2 text-sm font-medium sm:line-clamp-1">{transcript.summary}</p>
+          )}
 
           {/* Preview */}
           {transcript.preview && (
-            <div className="truncate rounded-md bg-secondary/50 px-3 py-2 text-sm text-muted-foreground">
+            <div className="line-clamp-2 rounded-md bg-secondary/50 px-2 py-1.5 text-sm text-muted-foreground sm:truncate sm:px-3 sm:py-2">
               {transcript.preview}
             </div>
           )}
 
           {/* Meta row */}
-          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            {getSourceIcon(transcript.source, "h-3.5 w-3.5")}
-            {getVisibilityIcon(transcript.visibility)}
-            <span className="font-medium text-foreground/80">{transcript.userName || "Unknown"}</span>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground sm:text-sm">
+            <span className="flex items-center gap-1.5">
+              {getSourceIcon(transcript.source, "h-3.5 w-3.5")}
+              {getVisibilityIcon(transcript.visibility)}
+              <span className="font-medium text-foreground/80">{transcript.userName || "Unknown"}</span>
+            </span>
             <span>{timeAgo}</span>
             <span>•</span>
             <span className="flex items-center gap-1">
@@ -368,7 +374,7 @@ function TranscriptItem({ transcript }: { transcript: TranscriptData }) {
                   <GitHubIcon className="h-3.5 w-3.5" />
                   <span>
                     <span className="text-foreground/80">{transcript.repoName.replace(/^github\.com\//, "")}</span>
-                    {transcript.branch && `@${transcript.branch}`}
+                    <span className="hidden sm:inline">{transcript.branch && `@${transcript.branch}`}</span>
                   </span>
                 </span>
               </>
@@ -376,12 +382,12 @@ function TranscriptItem({ transcript }: { transcript: TranscriptData }) {
           </div>
         </div>
 
-        {/* Preview image thumbnail */}
+        {/* Preview image thumbnail - hidden on smaller screens */}
         {transcript.previewBlobSha256 && (
           <img
             src={`/api/blobs/${transcript.previewBlobSha256}`}
             alt=""
-            className="h-14 w-14 shrink-0 self-center rounded-md border border-border object-cover"
+            className="hidden h-14 w-14 shrink-0 self-center rounded-md border border-border object-cover md:block"
             loading="lazy"
           />
         )}
