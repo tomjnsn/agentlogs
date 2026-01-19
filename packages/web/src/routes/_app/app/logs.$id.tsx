@@ -58,6 +58,18 @@ function formatTimeAgo(date: Date): string {
   return "just now";
 }
 
+function formatDuration(ms: number): string {
+  if (ms < 1000) return `${ms}ms`;
+  const seconds = ms / 1000;
+  if (seconds < 60) return `${seconds.toFixed(1)}s`;
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  if (minutes < 60) return `${minutes}m ${Math.round(remainingSeconds)}s`;
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return `${hours}h ${remainingMinutes}m`;
+}
+
 function getSourceIcon(source: string, className?: string) {
   switch (source) {
     case "codex":
@@ -621,7 +633,7 @@ function getToolDescription(toolName: string | null, input: unknown): string {
     case "Bash":
       return inputObj?.command ? String(inputObj.command) : "";
     case "Task":
-      return inputObj?.prompt ? String(inputObj.prompt) : "";
+      return inputObj?.description ? String(inputObj.description) : inputObj?.prompt ? String(inputObj.prompt) : "";
     case "WebFetch":
       return inputObj?.url ? String(inputObj.url) : "";
     case "WebSearch":
@@ -652,7 +664,7 @@ function MessageBlock({ message, index, isAdmin }: MessageBlockProps) {
     return (
       <div id={messageId} className="flex min-w-0 scroll-mt-4 items-start gap-3">
         <div className="min-w-0 rounded-lg bg-secondary/60 px-4 py-2.5">
-          <p className="text-sm break-all whitespace-pre-wrap">{message.text}</p>
+          <p className="font-mono text-sm break-all whitespace-pre-wrap">{message.text}</p>
           <ImageGallery images={userImages} />
         </div>
       </div>
@@ -1065,6 +1077,79 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, isA
           {isAdmin && <AdminDebugSection input={input} output={output} error={error} />}
         </CollapsibleContent>
       </Collapsible>
+    );
+  }
+
+  // Task tool rendering
+  if (toolName === "Task") {
+    type TaskContentItem = { type?: string; text?: string };
+    const taskOutput = outputObj as
+      | { status?: string; totalDurationMs?: number; totalToolUseCount?: number; content?: TaskContentItem[] }
+      | undefined;
+    const subagentType = inputObj?.subagent_type ? String(inputObj.subagent_type) : null;
+    const taskDescription = inputObj?.description ? String(inputObj.description) : null;
+    const taskPrompt = inputObj?.prompt ? String(inputObj.prompt) : null;
+    const durationMs = taskOutput?.totalDurationMs;
+
+    // Extract text content from output
+    const textContents: string[] = [];
+    if (Array.isArray(taskOutput?.content)) {
+      for (const item of taskOutput.content) {
+        if (typeof item === "object" && item !== null && item.type === "text" && typeof item.text === "string") {
+          textContents.push(item.text);
+        }
+      }
+    }
+
+    // Get images from output
+    const taskOutputImages = extractImageReferences(output);
+
+    return (
+      <div className="flex flex-col gap-3">
+        <Collapsible id={messageId} defaultOpen={false} className={collapsibleClassName}>
+          <CollapsibleTrigger className={triggerClassName}>
+            <ClaudeCodeIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="text-sm font-medium">{subagentType ?? "Task"}</span>
+            <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
+              {taskDescription ?? (taskPrompt ? taskPrompt.slice(0, 80) : "")}
+            </span>
+            {durationMs != null && !error && !isError && (
+              <span className="shrink-0 text-xs text-muted-foreground">{formatDuration(durationMs)}</span>
+            )}
+            {(error || isError) && (
+              <span className="shrink-0 rounded bg-destructive/20 px-1.5 py-0.5 text-xs text-destructive">Error</span>
+            )}
+            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[open]:rotate-180" />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="space-y-3 p-3">
+              {/* Prompt rendered as markdown */}
+              {taskPrompt && (
+                <div className="prose prose-sm prose-invert max-w-none rounded-md bg-black/20 p-3">
+                  <MarkdownRenderer>{taskPrompt}</MarkdownRenderer>
+                </div>
+              )}
+              {/* Output text rendered as markdown */}
+              {textContents.length > 0 && (
+                <div className="prose prose-sm prose-invert max-w-none">
+                  <MarkdownRenderer>{textContents.join("\n\n")}</MarkdownRenderer>
+                </div>
+              )}
+              {/* Error display */}
+              {error && (
+                <div>
+                  <div className="mb-1.5 text-xs font-medium text-destructive">Error</div>
+                  <pre className="overflow-x-auto rounded-md bg-destructive/10 p-3 text-xs text-destructive">
+                    {error}
+                  </pre>
+                </div>
+              )}
+              {isAdmin && <AdminDebugSection input={input} output={output} error={error} />}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+        {taskOutputImages.length > 0 && <ImageGallery images={taskOutputImages} />}
+      </div>
     );
   }
 
