@@ -284,3 +284,138 @@ export function BashCommand({ command, className }: BashCommandProps) {
     </div>
   );
 }
+
+/**
+ * Code block with syntax highlighting
+ * Uses the File component from @pierre/diffs for syntax highlighting
+ */
+interface CodeBlockProps {
+  content: string;
+  language?: string;
+  className?: string;
+}
+
+export function CodeBlock({ content, language = "bash", className }: CodeBlockProps) {
+  // Map language to a fake filename for syntax detection
+  const filename = language === "bash" || language === "shell" ? "command.sh" : `file.${language}`;
+
+  return (
+    <div className={`code-block-container overflow-hidden ${className || ""}`}>
+      <DiffErrorBoundary
+        fallback={
+          <pre className="overflow-x-auto text-[13px] leading-5 whitespace-pre-wrap text-[#dbd7caee]">{content}</pre>
+        }
+      >
+        <File
+          file={{
+            name: filename,
+            contents: content,
+          }}
+          options={{
+            theme: "vitesse-dark",
+            overflow: "scroll",
+            disableFileHeader: true,
+            disableLineNumbers: true,
+            unsafeCSS:
+              ":host, [data-diffs], [data-line] { --diffs-bg: transparent; } pre { background: transparent !important; } [data-code] { padding-top: 0 !important; padding-bottom: 0 !important; }",
+          }}
+        />
+      </DiffErrorBoundary>
+    </div>
+  );
+}
+
+/**
+ * Shell output renderer that detects and highlights diff sections
+ */
+interface ShellOutputProps {
+  content: string;
+  className?: string;
+}
+
+type OutputSegment = {
+  type: "text" | "diff";
+  content: string;
+};
+
+/**
+ * Split shell output into text and diff segments
+ * Detects git diff output by looking for "diff --git" markers
+ */
+function splitShellOutput(content: string): OutputSegment[] {
+  const segments: OutputSegment[] = [];
+  const lines = content.split("\n");
+
+  let currentSegment: OutputSegment | null = null;
+  let inDiff = false;
+
+  for (const line of lines) {
+    const isDiffStart = line.startsWith("diff --git ");
+    const isDiffLine =
+      inDiff &&
+      (line.startsWith("index ") ||
+        line.startsWith("--- ") ||
+        line.startsWith("+++ ") ||
+        line.startsWith("@@ ") ||
+        line.startsWith("+") ||
+        line.startsWith("-") ||
+        line.startsWith(" ") ||
+        line === "");
+
+    // Check if we're exiting a diff (non-diff line after being in diff)
+    const isExitingDiff = inDiff && !isDiffStart && !isDiffLine && line.trim() !== "";
+
+    if (isDiffStart) {
+      // Starting a new diff section
+      if (currentSegment && currentSegment.content) {
+        segments.push(currentSegment);
+      }
+      currentSegment = { type: "diff", content: line };
+      inDiff = true;
+    } else if (isExitingDiff) {
+      // Exiting diff, start text section
+      if (currentSegment && currentSegment.content) {
+        segments.push(currentSegment);
+      }
+      currentSegment = { type: "text", content: line };
+      inDiff = false;
+    } else if (inDiff) {
+      // Continue diff section
+      currentSegment!.content += "\n" + line;
+    } else {
+      // Text section
+      if (!currentSegment || currentSegment.type !== "text") {
+        if (currentSegment && currentSegment.content) {
+          segments.push(currentSegment);
+        }
+        currentSegment = { type: "text", content: line };
+      } else {
+        currentSegment.content += "\n" + line;
+      }
+    }
+  }
+
+  // Push final segment
+  if (currentSegment && currentSegment.content) {
+    segments.push(currentSegment);
+  }
+
+  return segments;
+}
+
+export function ShellOutput({ content, className }: ShellOutputProps) {
+  const segments = splitShellOutput(content);
+
+  // If no diff segments, just render as plain text
+  if (segments.every((s) => s.type === "text")) {
+    return <CodeBlock content={content} language="txt" className={className} />;
+  }
+
+  return (
+    <div className={className}>
+      {segments.map((segment, i) => (
+        <CodeBlock key={i} content={segment.content} language={segment.type === "diff" ? "diff" : "txt"} />
+      ))}
+    </div>
+  );
+}

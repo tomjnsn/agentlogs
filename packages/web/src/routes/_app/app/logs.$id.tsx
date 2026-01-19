@@ -21,7 +21,7 @@ import {
   Users,
 } from "lucide-react";
 import { ClaudeCodeIcon, CodexIcon, GitHubIcon, OpenCodeIcon } from "../../../components/icons/source-icons";
-import { DiffViewer, FileViewer } from "../../../components/diff-viewer";
+import { CodeBlock, DiffViewer, FileViewer, ShellOutput } from "../../../components/diff-viewer";
 import { useEffect, useState } from "react";
 import { MarkdownRenderer } from "../../../components/markdown-renderer";
 
@@ -985,40 +985,12 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, isA
           <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[open]:rotate-180" />
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="space-y-3 p-3">
-            <div>
-              <div className="mb-1.5 text-xs font-medium text-muted-foreground">Command</div>
-              <pre className="overflow-x-auto rounded-md bg-black/30 p-3 font-mono text-xs whitespace-pre-wrap">
-                {String(inputObj!.command)}
-              </pre>
-            </div>
-            {outputObj?.stdout ? (
-              <div>
-                <div className="mb-1.5 text-xs font-medium text-muted-foreground">Output</div>
-                <pre className="overflow-x-auto rounded-md bg-black/30 p-3 font-mono text-xs whitespace-pre-wrap">
-                  {String(outputObj.stdout)}
-                </pre>
-              </div>
-            ) : null}
-            {outputObj?.stderr ? (
-              <div>
-                <div className="mb-1.5 text-xs font-medium text-red-400">Stderr</div>
-                <pre className="overflow-x-auto rounded-md bg-red-950/30 p-3 font-mono text-xs whitespace-pre-wrap text-red-300">
-                  {String(outputObj.stderr)}
-                </pre>
-              </div>
-            ) : null}
-            {error && (
-              <div>
-                <div className="mb-1.5 text-xs font-medium text-destructive">Error</div>
-                <pre className="overflow-x-auto rounded-md bg-destructive/10 p-3 font-mono text-xs whitespace-pre-wrap text-destructive">
-                  {error}
-                </pre>
-              </div>
-            )}
-            {!outputObj?.stdout && !outputObj?.stderr && !error && (
-              <div className="text-xs text-muted-foreground">No output</div>
-            )}
+          <div className="p-3">
+            <CodeBlock content={String(inputObj!.command)} language="bash" />
+            {outputObj?.stdout ? <ShellOutput content={String(outputObj.stdout)} /> : null}
+            {outputObj?.stderr ? <CodeBlock content={String(outputObj.stderr)} language="txt" /> : null}
+            {error && <CodeBlock content={error} language="txt" />}
+            {typeof output === "string" && output && <ShellOutput content={output} />}
             {isAdmin && <AdminDebugSection input={input} output={output} error={error} />}
           </div>
         </CollapsibleContent>
