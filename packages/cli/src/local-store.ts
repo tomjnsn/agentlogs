@@ -11,11 +11,11 @@ let db: Database | null = null;
 let cuidGenerator: (() => string) | null = null;
 
 /**
- * Get the CUID2 generator (10-character IDs matching server)
+ * Get the CUID2 generator
  */
 function getCuidGenerator(): () => string {
   if (!cuidGenerator) {
-    cuidGenerator = init({ length: 10 });
+    cuidGenerator = init();
   }
   return cuidGenerator!;
 }

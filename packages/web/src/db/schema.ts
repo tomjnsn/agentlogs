@@ -7,10 +7,7 @@ let cuidGenerator: (() => string) | undefined;
 const getCuidGenerator = () => {
   if (!cuidGenerator) {
     // Lazily initialize to avoid calling crypto APIs at module load (Cloudflare restriction)
-    cuidGenerator = init({
-      random: () => crypto.getRandomValues(new Uint32Array(1))[0] / 0xffffffff,
-      length: 10,
-    });
+    cuidGenerator = init();
   }
   return cuidGenerator;
 };

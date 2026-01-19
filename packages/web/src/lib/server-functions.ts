@@ -22,10 +22,7 @@ import { logger } from "./logger";
 let cuidGenerator: (() => string) | undefined;
 const getCuidGenerator = () => {
   if (!cuidGenerator) {
-    cuidGenerator = init({
-      random: () => crypto.getRandomValues(new Uint32Array(1))[0] / 0xffffffff,
-      length: 10,
-    });
+    cuidGenerator = init();
   }
   return cuidGenerator;
 };
