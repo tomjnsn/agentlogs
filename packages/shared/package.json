@@ -12,7 +12,8 @@
     "./paths": "./src/paths.ts",
     "./claudecode": "./src/claudecode.ts",
     "./codex": "./src/codex.ts",
-    "./pricing": "./src/pricing.ts"
+    "./pricing": "./src/pricing.ts",
+    "./redact": "./src/redact.ts"
   },
   "scripts": {
     "check": "tsgo --project tsconfig.json"

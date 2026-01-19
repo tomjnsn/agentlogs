@@ -17,3 +17,4 @@ export {
 } from "./opencode";
 export * from "./pricing";
 export * from "./transcripts";
+export * from "./redact";

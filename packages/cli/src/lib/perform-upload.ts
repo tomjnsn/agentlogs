@@ -4,6 +4,7 @@ import { dirname, isAbsolute, resolve } from "path";
 import type { TranscriptSource, UploadBlob, UploadPayload } from "@agentlogs/shared";
 import { convertClaudeCodeTranscript, resolveGitContext, type UnifiedTranscript } from "@agentlogs/shared/claudecode";
 import { convertCodexTranscript } from "@agentlogs/shared/codex";
+import { redactSecretsDeep, redactSecretsPreserveLength } from "@agentlogs/shared/redact";
 import { LiteLLMPricingFetcher } from "@agentlogs/shared/pricing";
 import { uploadTranscript } from "@agentlogs/shared/upload";
 import type { UploadOptions } from "@agentlogs/shared/upload";
@@ -46,6 +47,7 @@ export async function performUpload(
   }
 
   const rawContent = readFileSync(transcriptPath, "utf8");
+  const redactedRawContent = redactSecretsPreserveLength(rawContent);
   const lines = rawContent.split(/\r?\n/);
   const records: Record<string, unknown>[] = [];
   let invalidLines = 0;
@@ -105,7 +107,10 @@ export async function performUpload(
     throw new Error(`Unable to convert ${source} transcript to unified format.`);
   }
 
-  const { transcript: unifiedTranscript, blobs: transcriptBlobs } = conversionResult;
+  const { transcript, blobs: transcriptBlobs } = conversionResult;
+
+  // Redact secrets from transcript messages
+  const unifiedTranscript = redactSecretsDeep(transcript);
 
   const finalSessionId = sessionId ?? unifiedTranscript.id;
   if (!finalSessionId) {
@@ -119,7 +124,7 @@ export async function performUpload(
   }
 
   const eventCount = records.length;
-  const sha256 = createHash("sha256").update(rawContent).digest("hex");
+  const sha256 = createHash("sha256").update(redactedRawContent).digest("hex");
 
   // Generate stable client ID for this transcript
   const clientId = getOrCreateTranscriptId(finalSessionId);
@@ -137,7 +142,7 @@ export async function performUpload(
   const payload: UploadPayload = {
     id: clientId,
     sha256,
-    rawTranscript: rawContent,
+    rawTranscript: redactedRawContent,
     unifiedTranscript,
     blobs: uploadBlobs.length > 0 ? uploadBlobs : undefined,
   };

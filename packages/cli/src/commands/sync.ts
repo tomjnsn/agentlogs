@@ -3,6 +3,7 @@ import { promises as fs } from "fs";
 import { homedir } from "os";
 import { basename, extname, join, relative, resolve } from "path";
 import { fetchTranscriptMetadata, getRepoMetadata } from "@agentlogs/shared";
+import { redactSecretsPreserveLength } from "@agentlogs/shared/redact";
 import { getAuthenticatedEnvironments, type Environment } from "../config";
 import { performUpload } from "../lib/perform-upload";
 
@@ -182,7 +183,8 @@ async function discoverLocalTranscripts(projectsRoot: string): Promise<LocalTran
 
       try {
         const raw = await fs.readFile(filePath, "utf8");
-        const sha256 = createHash("sha256").update(raw).digest("hex");
+        const redactedRaw = redactSecretsPreserveLength(raw);
+        const sha256 = createHash("sha256").update(redactedRaw).digest("hex");
         const cwd = extractCwdFromTranscript(raw);
         const repoId = await resolveRepoIdFromCwd(cwd);
 
