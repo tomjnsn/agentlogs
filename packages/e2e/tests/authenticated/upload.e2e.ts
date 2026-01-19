@@ -63,7 +63,8 @@ function uploadWithHome(fixture: FixtureCase, homeDir: string): UploadResult {
   const transcriptId = transcriptIdMatch ? transcriptIdMatch[1] : null;
 
   // Extract database ID from output (if present)
-  const idMatch = output.match(/ID: ([a-z0-9]{10})/);
+  // CUID2 IDs are 24 characters by default
+  const idMatch = output.match(/ID: ([a-z0-9]+)/);
   const id = idMatch ? idMatch[1] : null;
 
   return { output, transcriptId, id };
