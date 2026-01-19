@@ -6,9 +6,11 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import type { UnifiedTranscriptMessage } from "@agentlogs/shared/claudecode";
 import { unifiedTranscriptSchema } from "@agentlogs/shared/schemas";
 import {
+  Asterisk,
   SquareCheck,
   ChevronDown,
   Clock,
+  ExternalLink,
   FileText,
   Folder,
   GitBranch,
@@ -602,7 +604,7 @@ function getToolIcon(toolName: string | null): React.ComponentType<{ className?:
     case "Edit":
       return Pencil;
     case "Glob":
-      return Folder;
+      return Asterisk;
     case "Grep":
     case "WebSearch":
       return Search;
@@ -845,6 +847,8 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, isA
   const isReadWithContent = toolName === "Read" && !!inputObj?.file_path && !!fileObj?.content;
   const isBashWithCommand = toolName === "Bash" && !!inputObj?.command;
   const isGrepWithFilenames = toolName === "Grep" && Array.isArray(outputObj?.filenames);
+  const isGlobWithFilenames = toolName === "Glob" && Array.isArray(outputObj?.filenames);
+  const isWebSearchWithResults = toolName === "WebSearch" && Array.isArray(outputObj?.results);
 
   // Calculate diff stats for Edit tool
   const diffStats = isEditWithDiff ? parseDiffStats(String(inputObj!.diff)) : null;
@@ -1006,6 +1010,39 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, isA
     );
   }
 
+  // For Glob results with filenames
+  if (isGlobWithFilenames) {
+    const filenames = outputObj!.filenames as string[];
+
+    return (
+      <Collapsible id={messageId} defaultOpen={false} className={collapsibleClassName}>
+        <CollapsibleTrigger className={triggerClassName}>
+          <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="text-sm font-medium">{displayName}</span>
+          <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{description}</span>
+          <span className="shrink-0 text-sm text-muted-foreground">{filenames.length} files</span>
+          {(error || isError) && (
+            <span className="shrink-0 rounded bg-destructive/20 px-1.5 py-0.5 text-xs text-destructive">Error</span>
+          )}
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[open]:rotate-180" />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="px-3 py-2">
+            <ul className="space-y-1 text-sm">
+              {filenames.map((filename, i) => (
+                <li key={i} className="flex items-center gap-2 text-muted-foreground">
+                  <FileText className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{filename}</span>
+                </li>
+              ))}
+            </ul>
+            {isAdmin && <AdminDebugSection input={input} output={output} error={error} />}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    );
+  }
+
   // For Bash commands
   if (isBashWithCommand) {
     return (
@@ -1092,6 +1129,97 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, isA
     );
   }
 
+  // WebSearch tool rendering
+  if (isWebSearchWithResults) {
+    const results = outputObj!.results as unknown[];
+
+    // Extract markdown text (string items in results array)
+    const markdownTexts: string[] = [];
+    // Extract links (from objects with content array)
+    const links: Array<{ title: string; url: string }> = [];
+
+    for (const item of results) {
+      if (typeof item === "string") {
+        markdownTexts.push(item);
+      } else if (typeof item === "object" && item !== null) {
+        const obj = item as Record<string, unknown>;
+        if (Array.isArray(obj.content)) {
+          for (const link of obj.content) {
+            if (
+              typeof link === "object" &&
+              link !== null &&
+              typeof (link as Record<string, unknown>).title === "string" &&
+              typeof (link as Record<string, unknown>).url === "string"
+            ) {
+              links.push({
+                title: (link as Record<string, string>).title,
+                url: (link as Record<string, string>).url,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    const resultCount = links.length;
+
+    return (
+      <Collapsible id={messageId} defaultOpen={false} className={collapsibleClassName}>
+        <CollapsibleTrigger className={triggerClassName}>
+          <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="text-sm font-medium">WebSearch</span>
+          <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{description}</span>
+          {resultCount > 0 && !error && !isError && (
+            <span className="shrink-0 text-sm text-muted-foreground">{resultCount} results</span>
+          )}
+          {(error || isError) && (
+            <span className="shrink-0 rounded bg-destructive/20 px-1.5 py-0.5 text-xs text-destructive">Error</span>
+          )}
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[open]:rotate-180" />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="space-y-3 p-3">
+            {/* Markdown summary first */}
+            {markdownTexts.length > 0 && (
+              <div className="prose prose-sm prose-invert max-w-none">
+                <MarkdownRenderer>{markdownTexts.join("\n\n")}</MarkdownRenderer>
+              </div>
+            )}
+            {/* Links list */}
+            {links.length > 0 && (
+              <ol className="space-y-1">
+                {links.map((link, i) => (
+                  <li key={i} className="flex items-baseline gap-2">
+                    <span className="shrink-0 text-sm text-muted-foreground/50 tabular-nums">
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <a
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground"
+                    >
+                      <span className="truncate">{link.title}</span>
+                      <ExternalLink className="h-3 w-3 shrink-0" />
+                    </a>
+                  </li>
+                ))}
+              </ol>
+            )}
+            {/* Error display */}
+            {error && (
+              <div>
+                <div className="mb-1.5 text-xs font-medium text-destructive">Error</div>
+                <pre className="overflow-x-auto rounded-md bg-destructive/10 p-3 text-xs text-destructive">{error}</pre>
+              </div>
+            )}
+            {isAdmin && <AdminDebugSection input={input} output={output} error={error} />}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    );
+  }
+
   // Task tool rendering
   if (toolName === "Task") {
     type TaskContentItem = { type?: string; text?: string };
@@ -1137,7 +1265,7 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, isA
             <div className="space-y-3 p-3">
               {/* Prompt rendered as markdown */}
               {taskPrompt && (
-                <div className="prose prose-sm prose-invert max-w-none rounded-md bg-black/20 p-3">
+                <div className="prose prose-sm prose-invert max-w-none rounded-md bg-secondary/60 p-3">
                   <MarkdownRenderer>{taskPrompt}</MarkdownRenderer>
                 </div>
               )}

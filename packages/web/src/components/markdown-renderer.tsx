@@ -163,6 +163,21 @@ function PreRenderer({ children }: { children?: ReactNode }) {
   return <>{children}</>;
 }
 
+// Custom link renderer - adds security attributes for external links
+function LinkRenderer({ href, children }: { href?: string; children?: ReactNode }) {
+  const isExternal = href && (href.startsWith("http://") || href.startsWith("https://"));
+
+  if (isExternal) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer">
+        {children}
+      </a>
+    );
+  }
+
+  return <a href={href}>{children}</a>;
+}
+
 export function MarkdownRenderer({ children, className }: Props) {
   return (
     <div className={className}>
@@ -171,6 +186,7 @@ export function MarkdownRenderer({ children, className }: Props) {
         components={{
           code: CodeRenderer,
           pre: PreRenderer,
+          a: LinkRenderer,
         }}
       >
         {children}
