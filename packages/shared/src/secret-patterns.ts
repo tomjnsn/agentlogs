@@ -103,10 +103,6 @@ export const SECRET_PATTERNS: SecretPattern[] = [
     regex: "dop_v1_[a-z0-9]{64}",
   },
   {
-    name: "Vault Token",
-    regex: "s\\.[a-zA-Z0-9]{8,}",
-  },
-  {
     name: "CircleCI Token",
     regex: "circle-token=[a-z0-9]{40}",
   },
