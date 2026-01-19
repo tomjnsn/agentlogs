@@ -23,7 +23,7 @@ import {
   Terminal,
   Users,
 } from "lucide-react";
-import { ClaudeCodeIcon, CodexIcon, GitHubIcon, OpenCodeIcon } from "../../../components/icons/source-icons";
+import { ClaudeCodeIcon, CodexIcon, GitHubIcon, MCPIcon, OpenCodeIcon } from "../../../components/icons/source-icons";
 import { CodeBlock, DiffViewer, FileViewer, ShellOutput } from "../../../components/diff-viewer";
 import { useEffect, useState } from "react";
 import { MarkdownRenderer } from "../../../components/markdown-renderer";
@@ -570,6 +570,14 @@ function ImageGallery({ images }: { images: ImageReference[] }) {
   );
 }
 
+// Parse MCP tool name: mcp__server__function -> { server, fn }
+function parseMCPToolName(toolName: string | null): { server: string; fn: string } | null {
+  if (!toolName) return null;
+  const match = toolName.match(/^mcp__([^_]+)__(.+)$/);
+  if (!match) return null;
+  return { server: match[1], fn: match[2] };
+}
+
 // Get icon for tool type
 function getToolIcon(toolName: string | null): React.ComponentType<{ className?: string }> {
   switch (toolName) {
@@ -1057,6 +1065,97 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, isA
           {isAdmin && <AdminDebugSection input={input} output={output} error={error} />}
         </CollapsibleContent>
       </Collapsible>
+    );
+  }
+
+  // MCP tool rendering
+  const mcpInfo = parseMCPToolName(toolName);
+  if (mcpInfo) {
+    // Extract text content and files from output
+    const outputArray = Array.isArray(output) ? output : [];
+    const textContents: string[] = [];
+    const fileContents: Array<{ path: string; label: string }> = [];
+
+    for (const item of outputArray) {
+      if (typeof item === "object" && item !== null) {
+        const obj = item as Record<string, unknown>;
+        if (obj.type === "text" && typeof obj.text === "string") {
+          textContents.push(obj.text);
+        }
+      }
+    }
+
+    // Parse file references from text content (e.g., "[Screenshot of viewport](/path/to/file.png)")
+    for (const text of textContents) {
+      const fileMatches = text.matchAll(/\[([^\]]+)\]\(([^)]+)\)/g);
+      for (const match of fileMatches) {
+        if (match[2].startsWith("/") && !match[2].startsWith("/url")) {
+          fileContents.push({ label: match[1], path: match[2] });
+        }
+      }
+    }
+
+    // Get first image for collapsed preview
+    const previewImage = outputImages.length > 0 ? outputImages[0] : null;
+
+    return (
+      <div className="flex flex-col gap-3">
+        <Collapsible id={messageId} defaultOpen={false} className={collapsibleClassName}>
+          <CollapsibleTrigger className={triggerClassName}>
+            <MCPIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="text-sm font-medium">
+              {mcpInfo.server.charAt(0).toUpperCase() + mcpInfo.server.slice(1)}
+            </span>
+            <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{mcpInfo.fn}</span>
+            {(error || isError) && (
+              <span className="shrink-0 rounded bg-destructive/20 px-1.5 py-0.5 text-xs text-destructive">Error</span>
+            )}
+            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[open]:rotate-180" />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="space-y-3 p-3">
+              {/* Input as JSON syntax highlighted */}
+              {input != null && (
+                <div>
+                  <div className="mb-1.5 text-xs font-medium text-muted-foreground">Input</div>
+                  <CodeBlock
+                    content={JSON.stringify(replaceImageReferencesForDisplay(input), null, 2)}
+                    language="json"
+                  />
+                </div>
+              )}
+              {/* Output text rendered as markdown */}
+              {textContents.length > 0 && (
+                <div>
+                  <div className="mb-1.5 text-xs font-medium text-muted-foreground">Output</div>
+                  <div className="prose prose-sm prose-invert max-w-none">
+                    <MarkdownRenderer>{textContents.join("\n\n")}</MarkdownRenderer>
+                  </div>
+                </div>
+              )}
+              {/* Error display */}
+              {error && (
+                <div>
+                  <div className="mb-1.5 text-xs font-medium text-destructive">Error</div>
+                  <pre className="overflow-x-auto rounded-md bg-destructive/10 p-3 text-xs text-destructive">
+                    {error}
+                  </pre>
+                </div>
+              )}
+              {isAdmin && <AdminDebugSection input={input} output={output} error={error} />}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+        {previewImage && (
+          <a href={`/api/blobs/${previewImage.sha256}`} target="_blank" rel="noopener noreferrer">
+            <img
+              src={`/api/blobs/${previewImage.sha256}`}
+              alt="Preview"
+              className="max-h-96 rounded-lg border border-border"
+            />
+          </a>
+        )}
+      </div>
     );
   }
 
