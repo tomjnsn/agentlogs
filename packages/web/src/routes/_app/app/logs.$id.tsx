@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -5,6 +6,7 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import type { UnifiedTranscriptMessage } from "@agentlogs/shared/claudecode";
 import { unifiedTranscriptSchema } from "@agentlogs/shared/schemas";
 import {
+  SquareCheck,
   ChevronDown,
   Clock,
   FileText,
@@ -16,6 +18,7 @@ import {
   Pencil,
   Search,
   Sparkles,
+  Square,
   SquareTerminal,
   Terminal,
   Users,
@@ -993,6 +996,65 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, isA
             {typeof output === "string" && output && <ShellOutput content={output} />}
             {isAdmin && <AdminDebugSection input={input} output={output} error={error} />}
           </div>
+        </CollapsibleContent>
+      </Collapsible>
+    );
+  }
+
+  // For TodoWrite tool - render as a nice todo list
+  if (toolName === "TodoWrite") {
+    type TodoItem = { content: string; status: "pending" | "in_progress" | "completed"; activeForm?: string };
+    const todos: TodoItem[] = (outputObj?.newTodos ?? inputObj?.todos ?? outputObj?.oldTodos ?? []) as TodoItem[];
+    const completedCount = todos.filter((t) => t.status === "completed").length;
+
+    return (
+      <Collapsible id={messageId} defaultOpen={false} className={collapsibleClassName}>
+        <CollapsibleTrigger className={triggerClassName}>
+          <SquareCheck className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="text-sm font-medium">Todo</span>
+          <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
+            {completedCount}/{todos.length} completed
+          </span>
+          {(error || isError) && (
+            <span className="shrink-0 rounded bg-destructive/20 px-1.5 py-0.5 text-xs text-destructive">Error</span>
+          )}
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[open]:rotate-180" />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <ul className="space-y-1 p-3 font-sans">
+            {todos.map((todo, i) => (
+              <li key={i} className="flex items-start gap-2">
+                {todo.status === "completed" ? (
+                  <SquareCheck className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                ) : (
+                  <Square className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                )}
+                <span
+                  className={
+                    todo.status === "completed"
+                      ? "text-sm text-muted-foreground line-through"
+                      : todo.status === "in_progress"
+                        ? "text-sm text-foreground"
+                        : "text-sm text-muted-foreground"
+                  }
+                >
+                  {todo.content}
+                  {todo.status === "in_progress" && (
+                    <Badge variant="secondary" className="ml-1.5 h-4 align-middle text-[10px]">
+                      in progress
+                    </Badge>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {(error || isError) && (
+            <div className="m-3 rounded-lg bg-destructive/10 p-3">
+              <div className="mb-1.5 text-xs font-medium text-destructive">Error</div>
+              <pre className="text-xs text-destructive">{error || "Operation failed"}</pre>
+            </div>
+          )}
+          {isAdmin && <AdminDebugSection input={input} output={output} error={error} />}
         </CollapsibleContent>
       </Collapsible>
     );
