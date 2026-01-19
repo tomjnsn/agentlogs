@@ -481,3 +481,92 @@ export function ShellOutput({ content, className }: ShellOutputProps) {
     </div>
   );
 }
+
+/**
+ * Parse ripgrep output into structured chunks
+ * Format: "line_num: content" for matches, "line_num- content" for context, "--" for separators
+ */
+interface GrepChunk {
+  filePath: string | null;
+  lines: Array<{ lineNum: number; content: string; isMatch: boolean }>;
+  startLine: number;
+}
+
+function parseGrepContent(content: string, inputPath?: string): GrepChunk[] {
+  const chunks: GrepChunk[] = [];
+  const rawChunks = content.split(/^--$/m);
+
+  for (const rawChunk of rawChunks) {
+    const lines = rawChunk.split("\n").filter((l) => l.trim());
+    if (lines.length === 0) continue;
+
+    const chunkLines: GrepChunk["lines"] = [];
+    let filePath: string | null = null;
+    let minLine = Infinity;
+
+    for (const line of lines) {
+      // Try to match: [filename:]line_num[:|-]content
+      // The : after line_num indicates a match, - indicates context
+      const match = line.match(/^(?:([^:]+):)?(\d+)([:|-])(.*)$/);
+      if (match) {
+        const [, file, lineNumStr, separator, lineContent] = match;
+        const lineNum = parseInt(lineNumStr, 10);
+        const isMatch = separator === ":";
+
+        if (file && !filePath) {
+          filePath = file;
+        }
+
+        minLine = Math.min(minLine, lineNum);
+        chunkLines.push({ lineNum, content: lineContent, isMatch });
+      }
+    }
+
+    if (chunkLines.length > 0) {
+      chunks.push({
+        filePath: filePath || inputPath || null,
+        lines: chunkLines,
+        startLine: minLine === Infinity ? 1 : minLine,
+      });
+    }
+  }
+
+  return chunks;
+}
+
+/**
+ * Grep content viewer for displaying ripgrep output with syntax highlighting
+ */
+interface GrepContentViewerProps {
+  content: string;
+  inputPath?: string;
+  className?: string;
+}
+
+export function GrepContentViewer({ content, inputPath, className }: GrepContentViewerProps) {
+  const chunks = parseGrepContent(content, inputPath);
+
+  if (chunks.length === 0) {
+    return <CodeBlock content={content} language="txt" className={className} />;
+  }
+
+  return (
+    <div className={`space-y-2 ${className || ""}`}>
+      {chunks.map((chunk, i) => {
+        const filePath = chunk.filePath || "file.txt";
+        const chunkContent = chunk.lines.map((l) => l.content).join("\n");
+
+        return (
+          <div key={i} className="overflow-hidden rounded-lg border border-border/50 bg-zinc-900/30">
+            {chunk.filePath && (
+              <div className="bg-zinc-800/50 px-3 py-1.5">
+                <span className="truncate text-sm text-muted-foreground">{chunk.filePath}</span>
+              </div>
+            )}
+            <FileViewer filePath={filePath} content={chunkContent} startLine={chunk.startLine} hideHeader />
+          </div>
+        );
+      })}
+    </div>
+  );
+}

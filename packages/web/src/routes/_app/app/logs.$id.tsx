@@ -31,7 +31,7 @@ import {
   Users,
 } from "lucide-react";
 import { ClaudeCodeIcon, CodexIcon, GitHubIcon, MCPIcon, OpenCodeIcon } from "../../../components/icons/source-icons";
-import { CodeBlock, DiffViewer, FileViewer, ShellOutput } from "../../../components/diff-viewer";
+import { CodeBlock, DiffViewer, FileViewer, GrepContentViewer, ShellOutput } from "../../../components/diff-viewer";
 import { useEffect, useState } from "react";
 import { MarkdownRenderer } from "../../../components/markdown-renderer";
 import { useDebugMode } from "@/hooks/use-debug-mode";
@@ -628,6 +628,36 @@ function parseMCPToolName(toolName: string | null): { server: string; fn: string
   return { server: match[1], fn: match[2] };
 }
 
+// Build CLI-style args string for Grep tool (without the `rg` prefix)
+function buildGrepCliArgs(input: Record<string, unknown>): string {
+  const parts: string[] = [];
+
+  // Flags
+  if (input["-i"]) parts.push("-i");
+  if (input.multiline) parts.push("-U");
+
+  // Context
+  if (input["-A"]) parts.push(`-A ${input["-A"]}`);
+  if (input["-B"]) parts.push(`-B ${input["-B"]}`);
+  if (input["-C"]) parts.push(`-C ${input["-C"]}`);
+
+  // Output mode flags
+  if (input.output_mode === "files_with_matches") parts.push("-l");
+  else if (input.output_mode === "count") parts.push("-c");
+
+  // Filters
+  if (input.glob) parts.push(`--glob "${input.glob}"`);
+  if (input.type) parts.push(`--type ${input.type}`);
+
+  // Pattern (quoted)
+  if (input.pattern) parts.push(`"${input.pattern}"`);
+
+  // Path (strip ./ prefix)
+  if (input.path) parts.push(String(input.path).replace(/^\.\//, ""));
+
+  return parts.join(" ");
+}
+
 // Get icon for tool type
 function getToolIcon(toolName: string | null): React.ComponentType<{ className?: string }> {
   switch (toolName) {
@@ -667,7 +697,7 @@ function getToolDescription(toolName: string | null, input: unknown): string {
     case "Glob":
       return inputObj?.pattern ? String(inputObj.pattern) : "";
     case "Grep":
-      return inputObj?.pattern ? String(inputObj.pattern) : "";
+      return inputObj ? buildGrepCliArgs(inputObj) : "";
     case "Bash":
       return inputObj?.command ? String(inputObj.command) : "";
     case "Task":
@@ -882,7 +912,10 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, sho
   const isWriteWithContent = toolName === "Write" && !!inputObj?.file_path && !!inputObj?.content;
   const isReadWithContent = toolName === "Read" && !!inputObj?.file_path && !!fileObj?.content;
   const isBashWithCommand = toolName === "Bash" && !!inputObj?.command;
-  const isGrepWithFilenames = toolName === "Grep" && Array.isArray(outputObj?.filenames);
+  const isGrepWithContent =
+    toolName === "Grep" && outputObj?.mode === "content" && typeof outputObj?.content === "string";
+  const grepFilenames = outputObj?.filenames;
+  const isGrepWithFilenames = toolName === "Grep" && Array.isArray(grepFilenames) && grepFilenames.length > 0;
   const isGlobWithFilenames = toolName === "Glob" && Array.isArray(outputObj?.filenames);
   const isWebSearchWithResults = toolName === "WebSearch" && Array.isArray(outputObj?.results);
 
@@ -1005,7 +1038,43 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, sho
     );
   }
 
-  // For Grep results with filenames
+  // For Grep results with content (content mode)
+  if (isGrepWithContent) {
+    const grepContent = String(outputObj!.content);
+    const numLines = outputObj?.numLines ? Number(outputObj.numLines) : grepContent.split("\n").length;
+    const inputPath = inputObj?.path ? String(inputObj.path).replace(/^\.\//, "") : undefined;
+
+    return (
+      <Collapsible id={messageId} defaultOpen={false} className={collapsibleClassName}>
+        <CollapsibleTrigger className={triggerClassName}>
+          <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="text-sm font-medium">{displayName}</span>
+          <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{description}</span>
+          <span className="shrink-0 text-sm text-muted-foreground">{numLines} lines</span>
+          {(error || isError) && (
+            <span className="shrink-0 rounded bg-destructive/20 px-1.5 py-0.5 text-xs text-destructive">Error</span>
+          )}
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[open]:rotate-180" />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="p-3">
+            <GrepContentViewer content={grepContent} inputPath={inputPath} />
+            {error && (
+              <div className="mt-3">
+                <div className="mb-1.5 text-xs font-medium text-destructive">Error</div>
+                <pre className="overflow-x-auto rounded-md bg-destructive/10 p-3 font-mono text-xs whitespace-pre-wrap text-destructive">
+                  {error}
+                </pre>
+              </div>
+            )}
+            {showDebugInfo && <AdminDebugSection input={input} output={output} error={error} />}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    );
+  }
+
+  // For Grep results with filenames (files_with_matches mode)
   if (isGrepWithFilenames) {
     const filenames = outputObj!.filenames as string[];
 
