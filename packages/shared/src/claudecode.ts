@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { z } from "zod";
-import { formatCwdWithTilde, normalizeRelativeCwd } from "./paths";
+import { formatCwdWithTilde, normalizeRelativeCwd, relativizePaths } from "./paths";
 import type { LiteLLMModelPricing } from "./pricing";
 import {
   toolCallMessageWithShapesSchema,
@@ -2175,7 +2175,16 @@ function sanitizeToolCall(
     ...toolCall,
   };
 
-  if (inputChanged) {
+  // Apply generic path relativization to both input and output
+  // This catches any paths missed by tool-specific handling
+  if (sanitizedInput !== undefined) {
+    sanitizedInput = relativizePaths(sanitizedInput, cwd);
+  }
+  if (sanitizedOutput !== undefined) {
+    sanitizedOutput = relativizePaths(sanitizedOutput, cwd);
+  }
+
+  if (inputChanged || sanitizedInput !== input) {
     if (typeof sanitizedInput === "undefined") {
       delete nextCall.input;
     } else {
@@ -2183,7 +2192,7 @@ function sanitizeToolCall(
     }
   }
 
-  if (outputChanged) {
+  if (outputChanged || sanitizedOutput !== output) {
     if (typeof sanitizedOutput === "undefined") {
       delete nextCall.output;
     } else {

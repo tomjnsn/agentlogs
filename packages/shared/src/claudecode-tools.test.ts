@@ -260,7 +260,7 @@ describe("Tool Call Input/Output Processing", () => {
       {
         "id": "toolu_012tuX26pk8gokoCtkcQi6fh",
         "input": {
-          "command": "rm /Users/philipp/dev/vibeinsights/fixtures/claudecode/JOKE.md",
+          "command": "rm ./fixtures/claudecode/JOKE.md",
           "description": "Delete JOKE.md file",
         },
         "model": "claude-sonnet-4-5-20250929",
@@ -642,7 +642,7 @@ describe("Tool Call Input/Output Processing", () => {
         },
         "model": "claude-sonnet-4-5-20250929",
         "output": {
-          "content": "/Users/philipp/dev/vibeinsights/packages/web/src/routes/__root.tsx:43:  const { data: session, isPending } = authClient.useSession();\\n/Users/philipp/dev/vibeinsights/packages/web/src/routes/__root.tsx:116:            ) : isPending ? (",
+          "content": "./packages/web/src/routes/__root.tsx:43:  const { data: session, isPending } = authClient.useSession();\\n./packages/web/src/routes/__root.tsx:116:            ) : isPending ? (",
           "filenames": [],
           "mode": "content",
           "numLines": 2,
@@ -762,7 +762,7 @@ describe("Tool Call Input/Output Processing", () => {
       {
         "id": "toolu_01J69ocxnRTejAph2xtxpkg2",
         "input": {
-          "command": "cd /Users/philipp/dev/vibeinsights/packages/web && bun run dev",
+          "command": "cd ./packages/web && bun run dev",
           "description": "Start dev server to test fixes",
           "run_in_background": true,
           "timeout": 30000,

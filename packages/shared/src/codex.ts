@@ -9,7 +9,7 @@ import {
   type UnifiedTranscript,
   type UnifiedTranscriptMessage,
 } from "./claudecode";
-import { formatCwdWithTilde, normalizeRelativeCwd } from "./paths";
+import { formatCwdWithTilde, normalizeRelativeCwd, relativizePaths } from "./paths";
 import type { LiteLLMModelPricing } from "./pricing";
 import {
   unifiedGitContextSchema,
@@ -724,6 +724,12 @@ function sanitizeToolCall(
       }
       input = record;
     }
+  }
+
+  // Apply generic path relativization to catch any missed paths
+  if (cwd) {
+    input = relativizePaths(input, cwd);
+    output = relativizePaths(output, cwd);
   }
 
   return unifiedTranscriptMessageSchema.parse({

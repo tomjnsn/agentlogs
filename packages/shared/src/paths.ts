@@ -93,3 +93,51 @@ export function normalizeRelativeCwd(relativeCwd: string | null): string {
   }
   return relativeCwd;
 }
+
+/**
+ * Recursively relativizes all absolute paths in a value that start with the given cwd.
+ * Works on strings, arrays, and plain objects (recursive).
+ *
+ * @param value - The value to process (string, array, object, or primitive)
+ * @param cwd - The current working directory to relativize against
+ * @returns The value with all matching absolute paths converted to relative paths
+ */
+export function relativizePaths(value: unknown, cwd: string): unknown {
+  if (!cwd) {
+    return value;
+  }
+
+  // Normalize cwd to ensure it ends with /
+  const normalizedCwd = cwd.endsWith("/") ? cwd : `${cwd}/`;
+  const cwdWithoutSlash = normalizedCwd.slice(0, -1);
+
+  const isPlainObject = (v: unknown): v is Record<string, unknown> =>
+    typeof v === "object" && v !== null && !Array.isArray(v);
+
+  const processValue = (v: unknown): unknown => {
+    if (typeof v === "string") {
+      // Replace all occurrences of the cwd prefix in the string
+      if (v.includes(normalizedCwd)) {
+        return v.replaceAll(normalizedCwd, "./");
+      }
+      // Also handle the case where cwd appears without trailing slash (exact match or at end)
+      if (v.includes(cwdWithoutSlash)) {
+        return v.replaceAll(cwdWithoutSlash, ".");
+      }
+      return v;
+    }
+    if (Array.isArray(v)) {
+      return v.map(processValue);
+    }
+    if (isPlainObject(v)) {
+      const result: Record<string, unknown> = {};
+      for (const [k, val] of Object.entries(v)) {
+        result[k] = processValue(val);
+      }
+      return result;
+    }
+    return v;
+  };
+
+  return processValue(value);
+}

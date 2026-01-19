@@ -6,7 +6,7 @@ import {
   type UnifiedTranscript,
   type UnifiedTranscriptMessage,
 } from "./claudecode";
-import { formatCwdWithTilde } from "./paths";
+import { formatCwdWithTilde, relativizePaths } from "./paths";
 import type { LiteLLMModelPricing } from "./pricing";
 import {
   unifiedGitContextSchema,
@@ -457,38 +457,41 @@ function sanitizeToolInput(toolName: string, input: unknown, cwd: string | null)
     record.workdir = relativizePath(record.workdir, cwd);
   }
 
-  return record;
+  // Apply generic path relativization to catch any missed paths
+  return cwd ? relativizePaths(record, cwd) : record;
 }
 
 function sanitizeToolOutput(
   toolName: string,
   output: unknown,
   metadata: OpenCodeToolState["metadata"],
-  _cwd: string | null,
+  cwd: string | null,
 ): unknown {
+  let result: unknown = output;
+
   // For Bash, extract from metadata
   if (toolName === "Bash" && metadata) {
-    const result: Record<string, unknown> = {};
+    const bashResult: Record<string, unknown> = {};
     if (typeof metadata.output === "string") {
-      result.stdout = metadata.output;
+      bashResult.stdout = metadata.output;
     }
     if (typeof metadata.exit === "number") {
-      result.exitCode = metadata.exit;
+      bashResult.exitCode = metadata.exit;
     }
     if (typeof metadata.description === "string") {
-      result.description = metadata.description;
+      bashResult.description = metadata.description;
     }
-    return Object.keys(result).length > 0 ? result : output;
+    result = Object.keys(bashResult).length > 0 ? bashResult : output;
   }
 
   // For Read, extract content from metadata.preview or output
-  if (toolName === "Read" && metadata?.preview) {
-    return { content: metadata.preview };
+  else if (toolName === "Read" && metadata?.preview) {
+    result = { content: metadata.preview };
   }
 
   // For Edit, extract diff from metadata
-  if (toolName === "Edit" && metadata?.filediff) {
-    return {
+  else if (toolName === "Edit" && metadata?.filediff) {
+    result = {
       diff: metadata.diff,
       additions: metadata.filediff.additions,
       deletions: metadata.filediff.deletions,
@@ -496,11 +499,12 @@ function sanitizeToolOutput(
   }
 
   // For Write, check if file existed
-  if (toolName === "Write" && metadata) {
-    return { created: !metadata.exists };
+  else if (toolName === "Write" && metadata) {
+    result = { created: !metadata.exists };
   }
 
-  return output;
+  // Apply generic path relativization to catch any missed paths
+  return cwd ? relativizePaths(result, cwd) : result;
 }
 
 function relativizePath(target: string, cwd: string): string {

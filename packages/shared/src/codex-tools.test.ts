@@ -95,7 +95,7 @@ describe("Codex tool calls", () => {
         "output": {
           "durationSeconds": 0.12,
           "exitCode": 0,
-          "stdout": "/Users/philipp/dev/vibeinsights/fixtures",
+          "stdout": ".",
         },
         "timestamp": "2025-10-17T21:00:10.000Z",
         "toolName": "Bash",

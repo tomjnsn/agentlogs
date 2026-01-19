@@ -136,10 +136,10 @@ describe("convertOpenCodeTranscript", () => {
               "additions": 1,
               "deletions": 1,
               "diff": 
-      "Index: /Users/philipp/dev/agentlogs/JOKE.md
+      "Index: ./JOKE.md
       ===================================================================
-      --- /Users/philipp/dev/agentlogs/JOKE.md
-      +++ /Users/philipp/dev/agentlogs/JOKE.md
+      --- ./JOKE.md
+      +++ ./JOKE.md
       @@ -3,5 +3,5 @@
        Why did the elevator break up with the staircase?
        It felt the relationship was going nowhere fast.
@@ -160,7 +160,7 @@ describe("convertOpenCodeTranscript", () => {
             "error": undefined,
             "id": "call_POT8dJbvw37zVltWEQww460Q",
             "input": {
-              "command": "rm "/Users/philipp/dev/agentlogs/JOKE.md"",
+              "command": "rm "./JOKE.md"",
               "description": "Delete the JOKE.md file",
             },
             "isError": false,

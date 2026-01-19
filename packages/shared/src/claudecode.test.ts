@@ -581,7 +581,7 @@ describe("convertClaudeCodeFile", () => {
             {
               "id": "msg_019eSytZmTcXtB5z3wBAP41E",
               "input": {
-                "command": "rm /Users/philipp/dev/vibeinsights/fixtures/claudecode/JOKE.md",
+                "command": "rm ./JOKE.md",
                 "description": "Delete JOKE.md file",
               },
               "isError": false,
