@@ -664,7 +664,7 @@ function MessageBlock({ message, index, isAdmin }: MessageBlockProps) {
     return (
       <div id={messageId} className="flex min-w-0 scroll-mt-4 items-start gap-3">
         <div className="min-w-0 rounded-lg bg-secondary/60 px-4 py-2.5">
-          <p className="font-mono text-sm break-all whitespace-pre-wrap">{message.text}</p>
+          <p className="text-sm wrap-break-word whitespace-pre-wrap">{message.text}</p>
           <ImageGallery images={userImages} />
         </div>
       </div>
