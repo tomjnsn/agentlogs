@@ -2,7 +2,7 @@ import { createDrizzle } from "@/db";
 import { createFileRoute } from "@tanstack/react-router";
 import { env } from "cloudflare:workers";
 import { eq } from "drizzle-orm";
-import { canAccessBlob } from "../../db/queries";
+import { canAccessBlob, canAccessPublicBlob } from "../../db/queries";
 import { blobs } from "../../db/schema";
 import { createAuth } from "../../lib/auth";
 import { logger } from "../../lib/logger";
@@ -17,20 +17,20 @@ async function checkBlobAccess(request: Request, sha256: string): Promise<BlobAc
     headers: request.headers,
   });
 
-  if (!session?.user) {
-    logger.warn("Blob access denied: no authenticated user", {
-      sha256: sha256.slice(0, 8),
-    });
-    return { authorized: false, response: new Response(null, { status: 401 }) };
+  let hasAccess = false;
+
+  if (session?.user) {
+    // Authenticated user - check full access rules
+    hasAccess = await canAccessBlob(db, session.user.id, sha256);
+  } else {
+    // Unauthenticated user - only allow access to public blobs
+    hasAccess = await canAccessPublicBlob(db, sha256);
   }
 
-  // Check if user can access this blob via visibility rules
-  // (owns transcript with blob, public transcript, or team-shared transcript)
-  const hasAccess = await canAccessBlob(db, session.user.id, sha256);
   if (!hasAccess) {
     logger.warn("Blob access denied", {
       sha256: sha256.slice(0, 8),
-      userId: session.user.id,
+      userId: session?.user?.id ?? "anonymous",
     });
     return { authorized: false, response: new Response(null, { status: 404 }) };
   }

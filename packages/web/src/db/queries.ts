@@ -558,6 +558,53 @@ export async function getTranscriptWithAccess(db: DrizzleDB, viewerId: string, i
 }
 
 /**
+ * Get a public transcript by ID.
+ * Does NOT require authentication - only returns transcripts with visibility="public".
+ */
+export async function getPublicTranscript(db: DrizzleDB, id: string) {
+  const results = await db
+    .select({
+      id: transcripts.id,
+      repoId: transcripts.repoId,
+      userId: transcripts.userId,
+      sha256: transcripts.sha256,
+      transcriptId: transcripts.transcriptId,
+      source: transcripts.source,
+      createdAt: transcripts.createdAt,
+      preview: transcripts.preview,
+      summary: transcripts.summary,
+      model: transcripts.model,
+      costUsd: transcripts.costUsd,
+      blendedTokens: transcripts.blendedTokens,
+      messageCount: transcripts.messageCount,
+      inputTokens: transcripts.inputTokens,
+      cachedInputTokens: transcripts.cachedInputTokens,
+      outputTokens: transcripts.outputTokens,
+      reasoningOutputTokens: transcripts.reasoningOutputTokens,
+      totalTokens: transcripts.totalTokens,
+      relativeCwd: transcripts.relativeCwd,
+      branch: transcripts.branch,
+      cwd: transcripts.cwd,
+      updatedAt: transcripts.updatedAt,
+      visibility: transcripts.visibility,
+      sharedWithTeamId: transcripts.sharedWithTeamId,
+      linesAdded: transcripts.linesAdded,
+      linesRemoved: transcripts.linesRemoved,
+      linesModified: transcripts.linesModified,
+      userName: user.name,
+      userImage: user.image,
+      repoName: repos.repo,
+    })
+    .from(transcripts)
+    .leftJoin(user, eq(transcripts.userId, user.id))
+    .leftJoin(repos, eq(transcripts.repoId, repos.id))
+    .where(and(eq(transcripts.id, id), eq(transcripts.visibility, "public")))
+    .limit(1);
+
+  return results[0] ?? null;
+}
+
+/**
  * Get all transcripts visible to a user, sorted chronologically (newest first).
  * Includes: own transcripts, public transcripts, team-shared transcripts.
  */
@@ -661,6 +708,25 @@ export async function canAccessBlob(db: DrizzleDB, viewerId: string, blobSha256:
     LIMIT 1
   `)
     .bind(blobSha256, viewerId, viewerId)
+    .first();
+
+  return result !== null;
+}
+
+/**
+ * Check if a blob belongs to any public transcript.
+ * Used for unauthenticated access to blobs.
+ */
+export async function canAccessPublicBlob(db: DrizzleDB, blobSha256: string) {
+  const result = await db.$client
+    .prepare(`
+    SELECT 1 FROM transcript_blobs tb
+    INNER JOIN transcripts t ON tb.transcript_id = t.id
+    WHERE tb.sha256 = ?
+    AND t.visibility = 'public'
+    LIMIT 1
+  `)
+    .bind(blobSha256)
     .first();
 
   return result !== null;

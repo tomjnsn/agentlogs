@@ -174,21 +174,43 @@ export const getTranscriptsByCwd = createServerFn()
   });
 
 /**
+ * Try to get the current user's ID without throwing
+ * Returns null if not authenticated
+ */
+async function tryGetUserId(): Promise<string | null> {
+  try {
+    const auth = createAuth();
+    const headers = getRequestHeaders();
+    const session = await auth.api.getSession({ headers });
+    return session?.user?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Server function to fetch a single transcript (with access control)
  * Returns transcript if viewer owns it, it's public, or shared with viewer's team
+ * For unauthenticated users, only returns public transcripts
  */
 export const getTranscript = createServerFn({ method: "GET" })
   .inputValidator((id: string) => id)
   .handler(async ({ data: id }) => {
     const db = createDrizzle(env.DB);
-    const viewerId = await getAuthenticatedUserId();
+    const viewerId = await tryGetUserId();
 
-    // Check if viewer is admin
-    const viewerRole = await queries.getUserRole(db, viewerId);
-    const isAdmin = viewerRole === "admin";
+    let transcript;
+    let isAdmin = false;
 
-    // Use access-controlled query
-    const transcript = await queries.getTranscriptWithAccess(db, viewerId, id);
+    if (viewerId) {
+      // Authenticated user - use full access control
+      const viewerRole = await queries.getUserRole(db, viewerId);
+      isAdmin = viewerRole === "admin";
+      transcript = await queries.getTranscriptWithAccess(db, viewerId, id);
+    } else {
+      // Unauthenticated user - only allow public transcripts
+      transcript = await queries.getPublicTranscript(db, id);
+    }
 
     if (!transcript) {
       throw new Error("Transcript not found");
@@ -238,7 +260,7 @@ export const getTranscript = createServerFn({ method: "GET" })
       unifiedTranscript,
       userName: transcript.userName,
       userImage: transcript.userImage,
-      isOwner: transcript.userId === viewerId,
+      isOwner: viewerId ? transcript.userId === viewerId : false,
       isAdmin,
       linesAdded: transcript.linesAdded,
       linesRemoved: transcript.linesRemoved,
@@ -255,22 +277,27 @@ export const getTranscript = createServerFn({ method: "GET" })
   });
 
 /**
- * Server function to fetch a transcript by ID or transcriptId.
- * First tries to find by database ID (CUID2), then falls back to transcriptId lookup.
- * This supports both old session IDs and new client-generated IDs.
+ * Server function to fetch a transcript by ID and redirect to the detail page.
+ * For unauthenticated users, only returns public transcripts.
  */
 export const getTranscriptBySessionId = createServerFn({ method: "GET" })
-  .inputValidator((param: string) => param)
-  .handler(async ({ data: param }) => {
+  .inputValidator((id: string) => id)
+  .handler(async ({ data: id }) => {
     const db = createDrizzle(env.DB);
-    const userId = await getAuthenticatedUserId();
-    const transcript = await queries.getTranscriptByIdOrTranscriptId(db, userId, param);
+    const userId = await tryGetUserId();
+
+    let transcript;
+    if (userId) {
+      transcript = await queries.getTranscriptWithAccess(db, userId, id);
+    } else {
+      transcript = await queries.getPublicTranscript(db, id);
+    }
 
     if (!transcript) {
       throw new Error("Transcript not found");
     }
 
-    return transcript;
+    return { id: transcript.id };
   });
 
 /**

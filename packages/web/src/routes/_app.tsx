@@ -9,18 +9,25 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { createFileRoute, Link, Outlet, redirect, useRouter } from "@tanstack/react-router";
 import { ChevronDownIcon, LogOutIcon, LogsIcon, ShieldIcon, UsersIcon } from "lucide-react";
-import React from "react";
 import { authClient } from "../lib/auth-client";
 import { getSession } from "../lib/server-functions";
 
 export const Route = createFileRoute("/_app")({
-  beforeLoad: async () => {
+  beforeLoad: async ({ location }) => {
     const session = await getSession();
+
+    // Allow unauthenticated access to public transcript pages and redirects
+    const isPublicTranscriptRoute = location.pathname.startsWith("/app/logs/") || location.pathname.startsWith("/s/");
+
     if (!session) {
+      if (isPublicTranscriptRoute) {
+        // Allow access without session for public transcripts
+        return { session: null };
+      }
       throw redirect({ to: "/" });
     }
-    // Waitlist users can't access the app
-    if (session.user.role === "waitlist") {
+    // Waitlist users can't access the app (except public transcripts)
+    if (session.user.role === "waitlist" && !isPublicTranscriptRoute) {
       throw redirect({ to: "/waitlist" });
     }
     return { session };
@@ -31,15 +38,6 @@ export const Route = createFileRoute("/_app")({
 function AppLayout() {
   const { session } = Route.useRouteContext();
   const router = useRouter();
-  const [isSigningIn, setIsSigningIn] = React.useState(false);
-
-  const handleSignIn = async () => {
-    setIsSigningIn(true);
-    await authClient.signIn.social({
-      provider: "github",
-      callbackURL: "http://localhost:3000/app",
-    });
-  };
 
   const handleSignOut = async () => {
     await authClient.signOut({
@@ -63,19 +61,18 @@ function AppLayout() {
       <header className="flex h-12 items-center border-b border-white/10">
         {/* Logo */}
         <div className="flex items-center gap-2 px-4">
-          <Link to="/app" className="text-lg font-semibold text-white/90 transition-colors hover:text-white">
-            🔮
+          <Link
+            to="/app"
+            className="flex items-center gap-2 text-lg font-semibold text-white/90 transition-colors hover:text-white"
+          >
+            <span>🔮</span>
+            {!session && <span className="text-sm">AgentLogs</span>}
           </Link>
         </div>
 
         {/* Nav */}
         <nav className="ml-3 flex flex-1 items-center gap-3">
-          {isSigningIn ? (
-            <div className="flex items-center gap-2 text-sm text-white/90">
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white/80"></div>
-              <span>Redirecting to GitHub...</span>
-            </div>
-          ) : session ? (
+          {session && (
             <>
               <Link
                 to="/app"
@@ -102,15 +99,11 @@ function AppLayout() {
                 </Link>
               )}
             </>
-          ) : (
-            <Button onClick={handleSignIn} size="sm" disabled={isSigningIn}>
-              Sign in with GitHub
-            </Button>
           )}
         </nav>
 
-        {/* User menu */}
-        {session && (
+        {/* User menu or Sign in/Join buttons */}
+        {session ? (
           <div className="flex items-center gap-2 px-4">
             <DropdownMenu>
               <DropdownMenuTrigger className="flex cursor-pointer items-center gap-2 rounded-lg px-1.5 py-1 ring-offset-background transition-colors outline-none hover:bg-accent/15 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
@@ -139,6 +132,15 @@ function AppLayout() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 px-4">
+            <Button variant="ghost" size="sm" asChild>
+              <a href="/auth/github">Sign in</a>
+            </Button>
+            <Button size="sm" asChild>
+              <a href="/auth/github">Join waitlist</a>
+            </Button>
           </div>
         )}
       </header>
