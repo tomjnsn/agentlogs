@@ -220,18 +220,80 @@ function DiffStats({ added, removed, modified, isNew }: DiffStatsProps) {
 }
 
 /**
- * Simple file display for Write tool (new file creation)
+ * Convert file content to a context-only patch format (all lines as unchanged context)
+ * This allows displaying file content with correct line numbers starting at a specific offset
+ */
+function contentToContextPatch(filePath: string, content: string, startLine: number = 1): string {
+  const lines = content.split("\n");
+  const lineCount = lines.length;
+
+  // Convert all lines to context lines (prefixed with space)
+  const contextLines = lines.map((line) => ` ${line}`);
+
+  const patchLines: string[] = [
+    `--- a/${filePath}`,
+    `+++ b/${filePath}`,
+    `@@ -${startLine},${lineCount} +${startLine},${lineCount} @@`,
+    ...contextLines,
+  ];
+
+  return patchLines.join("\n") + "\n";
+}
+
+/**
+ * Simple file display for Write tool (new file creation) or Read tool (file viewing)
  * Uses the File component from @pierre/diffs for syntax highlighting
+ * When startLine > 1, uses PatchDiff with context lines to show correct line numbers
  */
 interface FileViewerProps {
   filePath: string;
   content: string;
   className?: string;
   hideHeader?: boolean;
+  startLine?: number;
 }
 
-export function FileViewer({ filePath, content, className, hideHeader }: FileViewerProps) {
+export function FileViewer({ filePath, content, className, hideHeader, startLine = 1 }: FileViewerProps) {
   const lineCount = content.split("\n").length;
+
+  // When there's an offset, use PatchDiff to render with correct line numbers
+  if (startLine > 1) {
+    const contextPatch = contentToContextPatch(filePath, content, startLine);
+
+    return (
+      <div className={className}>
+        {/* File header */}
+        {!hideHeader && (
+          <div className="flex items-center gap-2 rounded-t-lg bg-zinc-800 px-3 py-2">
+            <FilePlus className="h-4 w-4 shrink-0 text-green-500" />
+            <span className="min-w-0 flex-1 truncate text-sm font-medium">{getFileName(filePath)}</span>
+            <span className="text-xs font-medium text-green-500">+{lineCount}</span>
+          </div>
+        )}
+
+        {/* File content with offset line numbers */}
+        <div className={`file-viewer-container overflow-hidden ${hideHeader ? "rounded-lg" : "rounded-b-lg"}`}>
+          <DiffErrorBoundary
+            fallback={<pre className="overflow-x-auto bg-zinc-900 p-3 text-xs text-muted-foreground">{content}</pre>}
+          >
+            <PatchDiff
+              patch={contextPatch}
+              options={{
+                theme: "vitesse-dark",
+                diffStyle: "unified",
+                diffIndicators: "none",
+                disableFileHeader: true,
+                disableBackground: true,
+                overflow: "scroll",
+                unsafeCSS:
+                  ":host, [data-diffs], [data-line], [data-column-number] { --diffs-bg: transparent; } [data-column-number] { border-right: none !important; } pre { background: transparent !important; } [data-separator] { display: none !important; }",
+              }}
+            />
+          </DiffErrorBoundary>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={className}>

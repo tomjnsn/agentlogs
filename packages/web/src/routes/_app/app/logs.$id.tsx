@@ -923,15 +923,27 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, isA
   // For Read tool with file content
   if (isReadWithContent) {
     const fileContent = String(fileObj!.content);
-    const lineCount = fileObj?.numLines ? Number(fileObj.numLines) : fileContent.split("\n").length;
+    const numLines = fileObj?.numLines ? Number(fileObj.numLines) : fileContent.split("\n").length;
+    const startLine = fileObj?.startLine ? Number(fileObj.startLine) : 1;
+    const totalLines = fileObj?.totalLines ? Number(fileObj.totalLines) : numLines;
+    const endLine = startLine + numLines - 1;
+    const isPartialRead = startLine > 1 || numLines !== totalLines;
 
     return (
       <Collapsible id={messageId} defaultOpen={false} className={collapsibleClassName}>
         <CollapsibleTrigger className={triggerClassName}>
           <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
           <span className="text-sm font-medium">{displayName}</span>
-          <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{filePath}</span>
-          <span className="shrink-0 text-sm text-muted-foreground">{lineCount} lines</span>
+          <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
+            {filePath}
+            {isPartialRead && (
+              <span className="text-muted-foreground/50">
+                {" "}
+                ({startLine}:{endLine})
+              </span>
+            )}
+          </span>
+          <span className="shrink-0 text-sm text-muted-foreground">{numLines} lines</span>
           {(error || isError) && (
             <span className="shrink-0 rounded bg-destructive/20 px-1.5 py-0.5 text-xs text-destructive">Error</span>
           )}
@@ -939,7 +951,7 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, isA
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div>
-            <FileViewer filePath={filePath} content={fileContent} hideHeader />
+            <FileViewer filePath={filePath} content={fileContent} startLine={startLine} hideHeader />
             {(error || isError) && (
               <div className="m-3 rounded-lg bg-destructive/10 p-3">
                 <div className="mb-1.5 text-xs font-medium text-destructive">Error</div>
