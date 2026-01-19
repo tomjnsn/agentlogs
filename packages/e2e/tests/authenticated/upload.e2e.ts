@@ -69,10 +69,10 @@ function uploadWithHome(fixture: FixtureCase, homeDir: string): UploadResult {
   return { output, transcriptId, id };
 }
 
-async function assertTranscriptInUi(page: Page, transcriptId: string) {
-  // Navigate via the /s/ redirect route which looks up by transcriptId
+async function assertTranscriptInUi(page: Page, id: string) {
+  // Navigate via the /s/ redirect route which looks up by database ID
   // and redirects to the correct /app/logs/{id} URL
-  await page.goto(`/s/${transcriptId}`);
+  await page.goto(`/s/${id}`);
 
   // Wait for the page to load - verify we're on a valid transcript page
   // by checking for the presence of transcript content
@@ -89,9 +89,9 @@ test.describe("CLI Upload", () => {
     } satisfies FixtureCase;
     const result = uploadFixtureTranscript(fixture);
     expect(result.output).toContain("Upload complete");
-    expect(result.transcriptId).toBeTruthy();
+    expect(result.id).toBeTruthy();
 
-    await assertTranscriptInUi(page, result.transcriptId!);
+    await assertTranscriptInUi(page, result.id!);
   });
 
   test("uploads claudecode compact fixture and shows it in the UI", async ({ page }) => {
@@ -103,9 +103,9 @@ test.describe("CLI Upload", () => {
     } satisfies FixtureCase;
     const result = uploadFixtureTranscript(fixture);
     expect(result.output).toContain("Upload complete");
-    expect(result.transcriptId).toBeTruthy();
+    expect(result.id).toBeTruthy();
 
-    await assertTranscriptInUi(page, result.transcriptId!);
+    await assertTranscriptInUi(page, result.id!);
   });
 
   test("uploads claudecode images fixture and shows it in the UI", async ({ page }) => {
@@ -117,9 +117,9 @@ test.describe("CLI Upload", () => {
     } satisfies FixtureCase;
     const result = uploadFixtureTranscript(fixture);
     expect(result.output).toContain("Upload complete");
-    expect(result.transcriptId).toBeTruthy();
+    expect(result.id).toBeTruthy();
 
-    await assertTranscriptInUi(page, result.transcriptId!);
+    await assertTranscriptInUi(page, result.id!);
   });
 
   test("uploads claudecode subagent fixture and shows it in the UI", async ({ page }) => {
@@ -131,9 +131,9 @@ test.describe("CLI Upload", () => {
     } satisfies FixtureCase;
     const result = uploadFixtureTranscript(fixture);
     expect(result.output).toContain("Upload complete");
-    expect(result.transcriptId).toBeTruthy();
+    expect(result.id).toBeTruthy();
 
-    await assertTranscriptInUi(page, result.transcriptId!);
+    await assertTranscriptInUi(page, result.id!);
   });
 
   test("uploads claudecode todos fixture and shows it in the UI", async ({ page }) => {
@@ -145,9 +145,9 @@ test.describe("CLI Upload", () => {
     } satisfies FixtureCase;
     const result = uploadFixtureTranscript(fixture);
     expect(result.output).toContain("Upload complete");
-    expect(result.transcriptId).toBeTruthy();
+    expect(result.id).toBeTruthy();
 
-    await assertTranscriptInUi(page, result.transcriptId!);
+    await assertTranscriptInUi(page, result.id!);
   });
 
   test("uploads codex crud fixture and shows it in the UI", async ({ page }) => {
@@ -159,9 +159,9 @@ test.describe("CLI Upload", () => {
     } satisfies FixtureCase;
     const result = uploadFixtureTranscript(fixture);
     expect(result.output).toContain("Upload complete");
-    expect(result.transcriptId).toBeTruthy();
+    expect(result.id).toBeTruthy();
 
-    await assertTranscriptInUi(page, result.transcriptId!);
+    await assertTranscriptInUi(page, result.id!);
   });
 });
 
