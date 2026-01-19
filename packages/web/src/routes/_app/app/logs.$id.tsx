@@ -6,7 +6,12 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import type { UnifiedTranscriptMessage } from "@agentlogs/shared/claudecode";
 import { unifiedTranscriptSchema } from "@agentlogs/shared/schemas";
 import {
+  ArrowDownToLine,
+  ArrowUpFromLine,
   Asterisk,
+  Coins,
+  Database,
+  Hash,
   SquareCheck,
   ChevronDown,
   Clock,
@@ -29,6 +34,7 @@ import { ClaudeCodeIcon, CodexIcon, GitHubIcon, MCPIcon, OpenCodeIcon } from "..
 import { CodeBlock, DiffViewer, FileViewer, ShellOutput } from "../../../components/diff-viewer";
 import { useEffect, useState } from "react";
 import { MarkdownRenderer } from "../../../components/markdown-renderer";
+import { useDebugMode } from "@/hooks/use-debug-mode";
 
 import {
   extractImageReferences,
@@ -136,6 +142,7 @@ function getUserMessagesWithIndices(messages: UnifiedTranscriptMessage[]): Array
 
 function TranscriptDetailComponent() {
   const data = Route.useLoaderData();
+  const [debugMode] = useDebugMode();
 
   // Parse and validate the unified transcript
   const unifiedTranscript = unifiedTranscriptSchema.parse(data.unifiedTranscript);
@@ -144,6 +151,7 @@ function TranscriptDetailComponent() {
   const repoInfo = unifiedTranscript.git?.repo ? formatRepoName(unifiedTranscript.git.repo) : null;
 
   const pageTitle = data.summary || unifiedTranscript.preview || "Untitled Thread";
+  const showDebugInfo = data.isAdmin && debugMode;
 
   // Set document title
   useEffect(() => {
@@ -235,10 +243,38 @@ function TranscriptDetailComponent() {
           )}
         </div>
 
+        {/* Debug Info (admin only) */}
+        {showDebugInfo && (
+          <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-dashed border-yellow-500/30 bg-yellow-950/10 px-3 py-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-1.5">
+              <Hash className="h-4 w-4" />
+              <span className="font-mono text-xs">{data.transcriptId}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Coins className="h-4 w-4" />
+              <span>{data.costUsd != null ? `$${data.costUsd.toFixed(4)}` : "n/a"}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <ArrowDownToLine className="h-4 w-4" />
+              <span>{data.inputTokens?.toLocaleString() ?? 0} in</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <ArrowUpFromLine className="h-4 w-4" />
+              <span>{data.outputTokens?.toLocaleString() ?? 0} out</span>
+            </div>
+            {(data.cachedInputTokens ?? 0) > 0 && (
+              <div className="flex items-center gap-1.5">
+                <Database className="h-4 w-4" />
+                <span>{data.cachedInputTokens?.toLocaleString()} cached</span>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Messages */}
         <div className="space-y-4">
           {unifiedTranscript.messages.map((message, i) => (
-            <MessageBlock key={i} message={message} index={i} isAdmin={data.isAdmin} />
+            <MessageBlock key={i} message={message} index={i} showDebugInfo={showDebugInfo} />
           ))}
         </div>
       </div>
@@ -648,10 +684,10 @@ function getToolDescription(toolName: string | null, input: unknown): string {
 interface MessageBlockProps {
   message: UnifiedTranscriptMessage;
   index: number;
-  isAdmin?: boolean;
+  showDebugInfo?: boolean;
 }
 
-function MessageBlock({ message, index, isAdmin }: MessageBlockProps) {
+function MessageBlock({ message, index, showDebugInfo }: MessageBlockProps) {
   const messageId = `msg-${index + 1}`;
 
   // User message - dark pill with avatar
@@ -688,7 +724,7 @@ function MessageBlock({ message, index, isAdmin }: MessageBlockProps) {
         output={message.output}
         error={message.error}
         isError={message.isError}
-        isAdmin={isAdmin}
+        showDebugInfo={showDebugInfo}
       />
     );
   }
@@ -757,7 +793,7 @@ interface ToolCallBlockProps {
   output: unknown;
   error?: string;
   isError?: boolean | string;
-  isAdmin?: boolean;
+  showDebugInfo?: boolean;
 }
 
 // Parse diff to count additions, deletions, and modifications
@@ -788,7 +824,7 @@ function getToolDisplayName(toolName: string | null): string {
   return toolName || "Tool";
 }
 
-// Debug section for admins - shows raw JSON data
+// Debug section - shows raw JSON data (only shown when admin has debug mode enabled)
 function AdminDebugSection({ input, output, error }: { input: unknown; output: unknown; error?: string }) {
   return (
     <Collapsible
@@ -830,7 +866,7 @@ function AdminDebugSection({ input, output, error }: { input: unknown; output: u
   );
 }
 
-function ToolCallBlock({ messageId, toolName, input, output, error, isError, isAdmin }: ToolCallBlockProps) {
+function ToolCallBlock({ messageId, toolName, input, output, error, isError, showDebugInfo }: ToolCallBlockProps) {
   const Icon = getToolIcon(toolName);
   const description = getToolDescription(toolName, input);
   const displayName = getToolDisplayName(toolName);
@@ -917,7 +953,7 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, isA
                 <pre className="text-xs text-destructive">{error || "Operation failed"}</pre>
               </div>
             )}
-            {isAdmin && <AdminDebugSection input={input} output={output} error={error} />}
+            {showDebugInfo && <AdminDebugSection input={input} output={output} error={error} />}
           </div>
         </CollapsibleContent>
       </Collapsible>
@@ -962,7 +998,7 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, isA
                 <pre className="text-xs text-destructive">{error || "Operation failed"}</pre>
               </div>
             )}
-            {isAdmin && <AdminDebugSection input={input} output={output} error={error} />}
+            {showDebugInfo && <AdminDebugSection input={input} output={output} error={error} />}
           </div>
         </CollapsibleContent>
       </Collapsible>
@@ -1003,7 +1039,7 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, isA
                 </pre>
               </div>
             )}
-            {isAdmin && <AdminDebugSection input={input} output={output} error={error} />}
+            {showDebugInfo && <AdminDebugSection input={input} output={output} error={error} />}
           </div>
         </CollapsibleContent>
       </Collapsible>
@@ -1036,7 +1072,7 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, isA
                 </li>
               ))}
             </ul>
-            {isAdmin && <AdminDebugSection input={input} output={output} error={error} />}
+            {showDebugInfo && <AdminDebugSection input={input} output={output} error={error} />}
           </div>
         </CollapsibleContent>
       </Collapsible>
@@ -1063,7 +1099,7 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, isA
             {outputObj?.stderr ? <CodeBlock content={String(outputObj.stderr)} language="txt" /> : null}
             {error && <CodeBlock content={error} language="txt" />}
             {typeof output === "string" && output && <ShellOutput content={output} />}
-            {isAdmin && <AdminDebugSection input={input} output={output} error={error} />}
+            {showDebugInfo && <AdminDebugSection input={input} output={output} error={error} />}
           </div>
         </CollapsibleContent>
       </Collapsible>
@@ -1123,7 +1159,7 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, isA
               <pre className="text-xs text-destructive">{error || "Operation failed"}</pre>
             </div>
           )}
-          {isAdmin && <AdminDebugSection input={input} output={output} error={error} />}
+          {showDebugInfo && <AdminDebugSection input={input} output={output} error={error} />}
         </CollapsibleContent>
       </Collapsible>
     );
@@ -1213,7 +1249,7 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, isA
                 <pre className="overflow-x-auto rounded-md bg-destructive/10 p-3 text-xs text-destructive">{error}</pre>
               </div>
             )}
-            {isAdmin && <AdminDebugSection input={input} output={output} error={error} />}
+            {showDebugInfo && <AdminDebugSection input={input} output={output} error={error} />}
           </div>
         </CollapsibleContent>
       </Collapsible>
@@ -1284,7 +1320,7 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, isA
                   </pre>
                 </div>
               )}
-              {isAdmin && <AdminDebugSection input={input} output={output} error={error} />}
+              {showDebugInfo && <AdminDebugSection input={input} output={output} error={error} />}
             </div>
           </CollapsibleContent>
         </Collapsible>
@@ -1367,7 +1403,7 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, isA
                   </pre>
                 </div>
               )}
-              {isAdmin && <AdminDebugSection input={input} output={output} error={error} />}
+              {showDebugInfo && <AdminDebugSection input={input} output={output} error={error} />}
             </div>
           </CollapsibleContent>
         </Collapsible>
@@ -1422,7 +1458,7 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, isA
               <pre className="overflow-x-auto rounded-md bg-destructive/10 p-3 text-xs text-destructive">{error}</pre>
             </div>
           )}
-          {isAdmin && <AdminDebugSection input={input} output={output} error={error} />}
+          {showDebugInfo && <AdminDebugSection input={input} output={output} error={error} />}
         </div>
       </CollapsibleContent>
     </Collapsible>

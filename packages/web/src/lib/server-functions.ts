@@ -246,8 +246,12 @@ export const getTranscript = createServerFn({ method: "GET" })
     return {
       id: transcript.id,
       repoId: transcript.repoId,
-      // Only expose transcriptId to admins
+      // Only expose debug info to admins
       transcriptId: isAdmin ? transcript.transcriptId : undefined,
+      costUsd: isAdmin ? transcript.costUsd : undefined,
+      inputTokens: isAdmin ? transcript.inputTokens : undefined,
+      outputTokens: isAdmin ? transcript.outputTokens : undefined,
+      cachedInputTokens: isAdmin ? transcript.cachedInputTokens : undefined,
       source: transcript.source,
       preview: transcript.preview,
       summary: transcript.summary,

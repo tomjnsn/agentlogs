@@ -2,11 +2,13 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useDebugMode } from "@/hooks/use-debug-mode";
 import { createFileRoute, Link, Outlet, redirect, useRouter } from "@tanstack/react-router";
 import { ChevronDownIcon, LogOutIcon, LogsIcon, ShieldIcon, UsersIcon } from "lucide-react";
 import { Logo } from "@/components/icons/source-icons";
@@ -39,6 +41,7 @@ export const Route = createFileRoute("/_app")({
 function AppLayout() {
   const { session } = Route.useRouteContext();
   const router = useRouter();
+  const [debugMode, setDebugMode] = useDebugMode();
 
   const handleSignOut = async () => {
     await authClient.signOut({
@@ -127,6 +130,14 @@ function AppLayout() {
                   <div className="text-xs text-muted-foreground">{session.user.email}</div>
                 </div>
                 <DropdownMenuSeparator />
+                {session.user.role === "admin" && (
+                  <>
+                    <DropdownMenuCheckboxItem checked={debugMode} onCheckedChange={setDebugMode}>
+                      Debug Mode
+                    </DropdownMenuCheckboxItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
                 <DropdownMenuItem onClick={handleSignOut}>
                   <LogOutIcon className="size-4" />
                   Sign Out
