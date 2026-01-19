@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { createFileRoute, Link, Outlet, redirect, useRouter } from "@tanstack/react-router";
 import { ChevronDownIcon, LogOutIcon, LogsIcon, ShieldIcon, UsersIcon } from "lucide-react";
+import { Logo } from "@/components/icons/source-icons";
 import { authClient } from "../lib/auth-client";
 import { getSession } from "../lib/server-functions";
 
@@ -65,7 +66,7 @@ function AppLayout() {
             to="/app"
             className="flex items-center gap-2 text-lg font-semibold text-white/90 transition-colors hover:text-white"
           >
-            <span>🔮</span>
+            <Logo className="size-5" />
             {!session && <span className="text-sm">AgentLogs</span>}
           </Link>
         </div>

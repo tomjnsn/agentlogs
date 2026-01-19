@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { ClaudeCodeIcon, OpenCodeIcon } from "../components/icons/source-icons";
+import { ClaudeCodeIcon, Logo, OpenCodeIcon } from "../components/icons/source-icons";
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
@@ -41,9 +41,10 @@ function LandingPage() {
         {/* Header */}
         <header className="line-b flex h-16 items-center justify-between">
           <div className="flex items-center gap-2 p-4">
-            <span className="font-mono text-lg text-white/90">AgentLogs</span>
+            <Logo className="size-5" />
+            <span className="text-lg font-medium text-white/90">AgentLogs</span>
           </div>
-          <div className="flex h-full items-center font-mono text-white/90">
+          <div className="flex h-full items-center text-white/90">
             <a
               href="/auth/github"
               className="flex h-full items-center border-l border-white/10 px-6 py-2 hover:bg-white/5 hover:underline"
@@ -59,30 +60,30 @@ function LandingPage() {
             Prompts deserve git
           </h1>
 
-          <p className="mt-8 ml-4 max-w-xl text-center font-mono text-lg text-pretty text-white/80">
+          <p className="mt-8 ml-4 max-w-xl text-center text-lg text-pretty text-white/80">
             Prompt history for teams. Learn what works. Ship faster together.
           </p>
 
           <a
             href="/auth/github"
-            className="mt-16 ml-4 inline-block border border-white/20 bg-white/80 px-6 py-3 text-center font-mono text-lg text-neutral-950 shadow-[4px_4px_0_var(--color-neutral-600)] hover:bg-white/90 active:translate-x-[4px] active:translate-y-[4px] active:shadow-none"
+            className="mt-16 ml-4 inline-block border border-white/20 bg-white/80 px-6 py-3 text-center text-lg font-medium text-neutral-950 shadow-[4px_4px_0_var(--color-neutral-600)] hover:bg-white/90 active:translate-x-[4px] active:translate-y-[4px] active:shadow-none"
           >
             Join the waitlist
           </a>
 
-          <p className="mt-6 font-mono text-sm text-white/50">Free for open source</p>
+          <p className="mt-6 text-sm text-white/50">Free for open source</p>
 
           {/* Supported tools */}
           <div className="mt-12 flex items-center gap-6 text-white/60">
-            <span className="font-mono text-sm">Works with:</span>
+            <span className="text-sm">Works with:</span>
             <div className="flex items-center gap-2">
               <ClaudeCodeIcon className="size-4" />
-              <span className="font-mono text-sm">Claude Code</span>
+              <span className="text-sm">Claude Code</span>
             </div>
-            <span className="font-mono text-sm text-white/30">|</span>
+            <span className="text-sm text-white/30">|</span>
             <div className="flex items-center gap-2">
               <OpenCodeIcon className="size-4" />
-              <span className="font-mono text-sm">OpenCode</span>
+              <span className="text-sm">OpenCode</span>
             </div>
           </div>
         </section>
@@ -92,8 +93,8 @@ function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-3">
             {/* Feature 1: Every session captured */}
             <div className="flex min-h-[280px] flex-col border-b border-white/10 bg-transparent p-6 md:border-r">
-              <h3 className="mb-2 font-mono text-lg text-white/90">Every session, captured</h3>
-              <p className="font-mono text-sm leading-relaxed text-white/50">
+              <h3 className="mb-2 text-lg font-medium text-white/90">Every session, captured</h3>
+              <p className="text-sm leading-relaxed text-white/50">
                 AI sessions automatically uploaded when they end. No manual exports.
               </p>
               <div className="mt-auto flex flex-1 items-center justify-center pt-4">
@@ -153,8 +154,8 @@ function LandingPage() {
 
             {/* Feature 2: See what works */}
             <div className="flex min-h-[280px] flex-col border-b border-white/10 bg-transparent p-6 md:border-r">
-              <h3 className="mb-2 font-mono text-lg text-white/90">See what actually works</h3>
-              <p className="font-mono text-sm leading-relaxed text-white/50">
+              <h3 className="mb-2 text-lg font-medium text-white/90">See what actually works</h3>
+              <p className="text-sm leading-relaxed text-white/50">
                 Browse your team's prompts. Learn the patterns that ship features.
               </p>
               <div className="mt-auto flex items-center justify-center pt-4">
@@ -186,8 +187,8 @@ function LandingPage() {
 
             {/* Feature 3: Link to code */}
             <div className="flex min-h-[280px] flex-col border-b border-white/10 bg-transparent p-6">
-              <h3 className="mb-2 font-mono text-lg text-white/90">Link to the code</h3>
-              <p className="font-mono text-sm leading-relaxed text-white/50">
+              <h3 className="mb-2 text-lg font-medium text-white/90">Link to the code</h3>
+              <p className="text-sm leading-relaxed text-white/50">
                 Sessions linked to git commits. See exactly what AI produced.
               </p>
               <div className="mt-auto flex flex-1 items-center justify-center pt-4">
@@ -249,13 +250,13 @@ function LandingPage() {
                     style={{ animationDelay: "0.4s" }}
                   />
                   {/* Labels */}
-                  <text x="22" y="75" className="fill-white/30 font-mono text-[8px]" textAnchor="middle">
+                  <text x="22" y="75" className="fill-white/30 text-[8px]" textAnchor="middle">
                     session
                   </text>
-                  <text x="70" y="75" className="fill-white/30 font-mono text-[8px]" textAnchor="middle">
+                  <text x="70" y="75" className="fill-white/30 text-[8px]" textAnchor="middle">
                     commit
                   </text>
-                  <text x="118" y="75" className="fill-white/30 font-mono text-[8px]" textAnchor="middle">
+                  <text x="118" y="75" className="fill-white/30 text-[8px]" textAnchor="middle">
                     code
                   </text>
                   {/* Active dot */}
@@ -277,7 +278,7 @@ function LandingPage() {
 
         {/* Install */}
         <section className="line-b px-6 py-16">
-          <p className="mb-8 font-mono text-sm tracking-wide text-white/50 uppercase">Install</p>
+          <p className="mb-8 text-sm tracking-wide text-white/50 uppercase">Install</p>
 
           {/* Tabs */}
           <div className="mb-6 flex gap-1 border-b border-white/10">
@@ -285,7 +286,7 @@ function LandingPage() {
               <button
                 key={integration.id}
                 onClick={() => setActiveTab(integration.id)}
-                className={`-mb-px px-4 py-2.5 font-mono text-sm transition-colors ${
+                className={`-mb-px px-4 py-2.5 text-sm transition-colors ${
                   activeTab === integration.id
                     ? "border-b border-white/90 text-white/90"
                     : "text-white/50 hover:text-white/70"
@@ -303,15 +304,15 @@ function LandingPage() {
             </pre>
           </div>
 
-          <p className="mt-6 font-mono text-sm text-white/50">Transcripts auto-captured on session end.</p>
+          <p className="mt-6 text-sm text-white/50">Transcripts auto-captured on session end.</p>
         </section>
 
         {/* CTA */}
         <section className="bg-dot-pattern line-b py-20 text-center">
-          <p className="mb-8 font-mono text-white/60">Your best prompts shouldn't disappear into chat history.</p>
+          <p className="mb-8 text-white/60">Your best prompts shouldn't disappear into chat history.</p>
           <a
             href="/auth/github"
-            className="inline-block border border-white/20 px-6 py-3 font-mono text-sm text-white/90 hover:border-white/50 hover:text-white"
+            className="inline-block border border-white/20 px-6 py-3 text-sm text-white/90 hover:border-white/50 hover:text-white"
           >
             Get started →
           </a>
@@ -319,7 +320,7 @@ function LandingPage() {
 
         {/* Footer */}
         <footer className="bg-dot-pattern line-t flex min-h-20 items-center justify-center">
-          <p className="font-mono text-sm text-white/50">© 2025 AgentLogs. All rights reserved.</p>
+          <p className="text-sm text-white/50">© 2025 AgentLogs. All rights reserved.</p>
         </footer>
       </div>
     </main>

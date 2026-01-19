@@ -78,3 +78,22 @@ export function GitHubIcon({ className, ...props }: IconProps) {
     </svg>
   );
 }
+
+export function Logo({ className, ...props }: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={240}
+      height={240}
+      viewBox="0 0 240 240"
+      fill="none"
+      className={className}
+      {...props}
+    >
+      <path
+        fill="currentColor"
+        d="M210.638 193H28.868a2 2 0 0 1-1.878-2.691l7.36-20A2 2 0 0 1 36.227 169h167.061a2 2 0 0 1 1.877 1.31l7.35 20a2 2 0 0 1-1.877 2.69ZM188.24 132H51.289a2 2 0 0 1-1.88-2.684l7.285-20A2 2 0 0 1 58.572 108h122.36a2 2 0 0 1 1.879 1.314l7.306 20A2 2 0 0 1 188.24 132ZM165.836 71H73.694a2 2 0 0 1-1.878-2.688l7.323-20A2 2 0 0 1 81.017 47h77.422a2 2 0 0 1 1.876 1.306l7.397 20A2 2 0 0 1 165.836 71Z"
+      />
+    </svg>
+  );
+}
