@@ -1254,7 +1254,7 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, isA
               {taskDescription ?? (taskPrompt ? taskPrompt.slice(0, 80) : "")}
             </span>
             {durationMs != null && !error && !isError && (
-              <span className="shrink-0 text-xs text-muted-foreground">{formatDuration(durationMs)}</span>
+              <span className="shrink-0 text-sm text-muted-foreground">{formatDuration(durationMs)}</span>
             )}
             {(error || isError) && (
               <span className="shrink-0 rounded bg-destructive/20 px-1.5 py-0.5 text-xs text-destructive">Error</span>
