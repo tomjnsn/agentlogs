@@ -140,7 +140,7 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/blobs/$sha256': typeof ApiBlobsSha256Route
   '/api/transcripts/clear': typeof ApiTranscriptsClearRoute
-  '/app': typeof AppAppIndexRoute
+  '/app/': typeof AppAppIndexRoute
   '/app/logs/$id': typeof AppAppLogsIdRoute
   '/app/private/$cwd': typeof AppAppPrivateCwdRoute
 }
@@ -204,7 +204,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/blobs/$sha256'
     | '/api/transcripts/clear'
-    | '/app'
+    | '/app/'
     | '/app/logs/$id'
     | '/app/private/$cwd'
   fileRoutesByTo: FileRoutesByTo
@@ -275,7 +275,7 @@ declare module '@tanstack/react-router' {
     '/_app': {
       id: '/_app'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -324,7 +324,7 @@ declare module '@tanstack/react-router' {
     '/_app/app/': {
       id: '/_app/app/'
       path: '/app'
-      fullPath: '/app'
+      fullPath: '/app/'
       preLoaderRoute: typeof AppAppIndexRouteImport
       parentRoute: typeof AppRoute
     }
