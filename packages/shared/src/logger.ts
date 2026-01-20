@@ -86,20 +86,19 @@ class Logger {
 
     // Default: logs/dev.log in monorepo root
     // Only compute path if we're in Node.js and going to use it
-    try {
-      if (isNodeEnvironment && this.logToFile) {
-        this.logFilePath = options.logFilePath ?? getDevLogPath();
+    if (isNodeEnvironment && this.logToFile) {
+      const defaultPath = getDevLogPath();
+      const resolvedPath = options.logFilePath ?? defaultPath;
+      if (resolvedPath) {
+        this.logFilePath = resolvedPath;
       } else {
-        this.logFilePath = "";
+        // No repo root found (e.g., prod CLI, Cloudflare Workers) - disable file logging
         this.logToFile = false;
+        this.logFilePath = "";
       }
-    } catch (err) {
-      // If we can't find the repo root (e.g., in Cloudflare Workers), disable file logging
-      this.logToFile = false;
+    } else {
       this.logFilePath = "";
-      if (process.env.DEBUG) {
-        console.warn(`[${this.component}] Could not initialize file logging:`, err);
-      }
+      this.logToFile = false;
     }
 
     // Debug: log configuration on first instantiation

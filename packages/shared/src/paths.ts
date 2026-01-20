@@ -3,14 +3,24 @@ import { homedir } from "os";
 import { dirname, resolve } from "path";
 
 /**
- * Finds the root directory of the monorepo by traversing up from current directory
- * looking for package.json with "workspaces" field
+ * Finds the root directory of the monorepo by traversing up looking for
+ * package.json with "workspaces" field.
  *
- * @returns Absolute path to the monorepo root
- * @throws Error if monorepo root cannot be found
+ * Search order:
+ * 1. If VI_CLI_PATH is set (dev mode), search from that path
+ * 2. Otherwise, search from process.cwd()
+ *
+ * @returns Absolute path to the monorepo root, or null if not found
  */
-export function getRepoRoot(): string {
-  let currentDir = process.cwd();
+export function getRepoRoot(): string | null {
+  // In dev mode, VI_CLI_PATH points to the CLI entry point in the monorepo
+  // It may be a command string like "bun /path/to/index.ts" - extract the path
+  const viCliPath = process.env.VI_CLI_PATH;
+  let startPath = viCliPath;
+  if (startPath?.startsWith("bun ")) {
+    startPath = startPath.slice(4);
+  }
+  let currentDir = startPath ? dirname(startPath) : process.cwd();
   const maxDepth = 10; // Prevent infinite loops
   let depth = 0;
 
@@ -39,25 +49,27 @@ export function getRepoRoot(): string {
     depth++;
   }
 
-  throw new Error("Could not find monorepo root (no package.json with workspaces field found)");
+  return null;
 }
 
 /**
  * Gets the path to the logs directory in the monorepo root
  *
- * @returns Absolute path to logs directory
+ * @returns Absolute path to logs directory, or null if not in monorepo
  */
-export function getLogsDir(): string {
-  return resolve(getRepoRoot(), "logs");
+export function getLogsDir(): string | null {
+  const root = getRepoRoot();
+  return root ? resolve(root, "logs") : null;
 }
 
 /**
  * Gets the path to the dev.log file in the monorepo root
  *
- * @returns Absolute path to dev.log file
+ * @returns Absolute path to dev.log file, or null if not in monorepo
  */
-export function getDevLogPath(): string {
-  return resolve(getLogsDir(), "dev.log");
+export function getDevLogPath(): string | null {
+  const logsDir = getLogsDir();
+  return logsDir ? resolve(logsDir, "dev.log") : null;
 }
 
 /**

@@ -5,9 +5,14 @@ import { performUploadToAllEnvs } from "../lib/perform-upload";
 import { getOrCreateTranscriptId } from "../local-store";
 
 // Create logger for CLI hook commands
-// Uses shared getDevLogPath() which finds the monorepo root by looking for package.json with workspaces
+// In dev mode (VI_CLI_PATH set), logs to <monorepo>/logs/dev.log
+// In prod mode, file logging is disabled (logPath is null)
 const logPath = getDevLogPath();
-const logger = createLogger("cli", { logFilePath: logPath, logToFile: true, disableConsole: true });
+const logger = createLogger("cli", {
+  logFilePath: logPath ?? undefined,
+  logToFile: logPath !== null,
+  disableConsole: true,
+});
 
 interface ClaudeHookInput {
   session_id?: string;
