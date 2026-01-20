@@ -732,7 +732,7 @@ function MessageBlock({ message, index, showDebugInfo }: MessageBlockProps) {
     return (
       <div id={messageId} className="flex min-w-0 scroll-mt-4 items-start gap-3">
         <div className="min-w-0 rounded-lg bg-secondary/60 px-4 py-2.5">
-          <p className="text-sm wrap-break-word whitespace-pre-wrap">{message.text}</p>
+          <TruncatedUserMessage text={message.text} />
           <ImageGallery images={userImages} />
         </div>
       </div>
@@ -798,6 +798,32 @@ function MessageBlock({ message, index, showDebugInfo }: MessageBlockProps) {
   }
 
   return null;
+}
+
+function TruncatedUserMessage({ text }: { text: string }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  // Rough heuristic: long content threshold
+  const lineCount = text.split("\n").length;
+  const isLong = text.length > 1600 || lineCount > 20;
+
+  if (!isLong) {
+    return <p className="text-sm wrap-break-word whitespace-pre-wrap">{text}</p>;
+  }
+
+  return (
+    <div>
+      <p className={`text-sm wrap-break-word whitespace-pre-wrap ${!isExpanded ? "line-clamp-[20]" : ""}`}>
+        {isExpanded ? text : text.trimEnd()}
+      </p>
+      <button
+        type="button"
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="mt-1 text-xs text-muted-foreground hover:text-foreground"
+      >
+        {isExpanded ? "Show less" : "Show more"}
+      </button>
+    </div>
+  );
 }
 
 function ThinkingBlock({ messageId, text }: { messageId: string; text: string }) {
