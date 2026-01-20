@@ -6,8 +6,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Globe, Loader2, Lock, MessageSquare, Search, Terminal } from "lucide-react";
 import { ClaudeCodeIcon, CodexIcon, GitHubIcon, OpenCodeIcon } from "../../../components/icons/source-icons";
-import { useCallback, useMemo, useState } from "react";
-import { getDailyActivity, getTranscriptsPaginated } from "../../../lib/server-functions";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { getDailyActivity, getRepos, getTranscriptsPaginated } from "../../../lib/server-functions";
 import { useInfiniteScroll } from "../../../hooks/use-infinite-scroll";
 import { ClientOnly } from "../../../components/client-only";
 
@@ -88,11 +88,12 @@ function ActivityChart({ data }: { data: DailyCount[] }) {
 export const Route = createFileRoute("/_app/app/")({
   loader: async () => {
     try {
-      const [initialData, dailyActivity] = await Promise.all([
+      const [initialData, dailyActivity, repos] = await Promise.all([
         getTranscriptsPaginated({ data: {} }),
         getDailyActivity(),
+        getRepos(),
       ]);
-      return { initialData, dailyActivity };
+      return { initialData, dailyActivity, repos };
     } catch (error) {
       console.error("Failed to load data:", error);
       throw error;
@@ -177,26 +178,67 @@ function VisibilityBadge({ visibility }: { visibility: string }) {
 }
 
 function HomeComponent() {
-  const { initialData, dailyActivity } = Route.useLoaderData();
+  const { initialData, dailyActivity, repos } = Route.useLoaderData();
   const [transcripts, setTranscripts] = useState(initialData.items);
   const [cursor, setCursor] = useState(initialData.nextCursor);
   const [hasMore, setHasMore] = useState(initialData.hasMore);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedRepo, setSelectedRepo] = useState<string>("all");
+  const isInitialMount = useRef(true);
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Get filter params for API calls
+  const getFilterParams = useCallback(() => {
+    const params: { search?: string; repoId?: string | null } = {};
+    if (debouncedSearch) params.search = debouncedSearch;
+    if (selectedRepo === "private") params.repoId = null;
+    else if (selectedRepo !== "all") params.repoId = selectedRepo;
+    return params;
+  }, [debouncedSearch, selectedRepo]);
+
+  // Refetch when filters change
+  useEffect(() => {
+    // Skip initial mount since we already have data from loader
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    const refetch = async () => {
+      setIsLoading(true);
+      try {
+        const result = await getTranscriptsPaginated({ data: getFilterParams() });
+        setTranscripts(result.items);
+        setCursor(result.nextCursor);
+        setHasMore(result.hasMore);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    refetch();
+  }, [debouncedSearch, selectedRepo, getFilterParams]);
 
   const fetchNextPage = useCallback(async () => {
     if (!cursor || isLoading) return;
     setIsLoading(true);
     try {
-      const result = await getTranscriptsPaginated({ data: { cursor } });
+      const result = await getTranscriptsPaginated({ data: { cursor, ...getFilterParams() } });
       setTranscripts((prev) => [...prev, ...result.items]);
       setCursor(result.nextCursor);
       setHasMore(result.hasMore);
     } finally {
       setIsLoading(false);
     }
-  }, [cursor, isLoading]);
+  }, [cursor, isLoading, getFilterParams]);
 
   const { sentinelRef } = useInfiniteScroll({
     onLoadMore: fetchNextPage,
@@ -204,40 +246,8 @@ function HomeComponent() {
     isLoading,
   });
 
-  // Get unique repos from transcripts for the filter
-  const repoOptions = useMemo(() => {
-    const uniqueRepos = new Map<string, string>();
-    for (const t of transcripts) {
-      if (t.repoName && t.repoId) {
-        uniqueRepos.set(t.repoId, t.repoName);
-      }
-    }
-    return Array.from(uniqueRepos.entries()).map(([id, name]) => ({ id, name }));
-  }, [transcripts]);
-
-  // Filter transcripts based on search and repo selection
-  const filteredTranscripts = useMemo(() => {
-    return transcripts.filter((t) => {
-      // Search filter
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        const matchesPreview = t.preview?.toLowerCase().includes(query);
-        const matchesRepo = t.repoName?.toLowerCase().includes(query);
-        if (!matchesPreview && !matchesRepo) return false;
-      }
-
-      // Repo filter
-      if (selectedRepo !== "all") {
-        if (selectedRepo === "private") {
-          if (t.repoId) return false;
-        } else {
-          if (t.repoId !== selectedRepo) return false;
-        }
-      }
-
-      return true;
-    });
-  }, [transcripts, searchQuery, selectedRepo]);
+  // Build repo options from fetched repos
+  const repoOptions = repos.map((r) => ({ id: r.id, name: r.repo }));
 
   return (
     <div className="space-y-6">
@@ -295,15 +305,15 @@ function HomeComponent() {
       </div>
 
       {/* Transcript List */}
-      {filteredTranscripts.length === 0 && !isLoading ? (
+      {transcripts.length === 0 && !isLoading ? (
         <p className="py-8 text-center text-muted-foreground">
-          {transcripts.length === 0
-            ? "No transcripts yet. Start capturing transcripts!"
-            : "No transcripts match your filters."}
+          {debouncedSearch || selectedRepo !== "all"
+            ? "No transcripts match your filters."
+            : "No transcripts yet. Start capturing transcripts!"}
         </p>
       ) : (
         <div className="space-y-4">
-          {filteredTranscripts.map((transcript) => (
+          {transcripts.map((transcript) => (
             <TranscriptItem key={transcript.id} transcript={transcript} />
           ))}
 

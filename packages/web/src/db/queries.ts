@@ -1,4 +1,4 @@
-import { and, count, desc, eq, exists, isNull, lt, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, exists, isNull, like, lt, or, sql } from "drizzle-orm";
 import type { DrizzleDB } from ".";
 import { repos, teamInvites, teamMembers, teams, transcripts, user, type UserRole } from "./schema";
 
@@ -220,6 +220,8 @@ export async function getAllTranscripts(db: DrizzleDB, userId: string) {
 export interface PaginatedTranscriptsParams {
   cursor?: { createdAt: Date; id: string };
   limit: number;
+  search?: string;
+  repoId?: string | null; // null = private only (no repo), undefined = all
 }
 
 export interface PaginatedTranscriptsResult {
@@ -236,7 +238,7 @@ export async function getTranscriptsPaginated(
   userId: string,
   params: PaginatedTranscriptsParams,
 ): Promise<PaginatedTranscriptsResult> {
-  const { cursor, limit } = params;
+  const { cursor, limit, search, repoId } = params;
 
   // Build conditions - use visibility-based access control
   const conditions = [buildVisibilityCondition(userId)];
@@ -250,6 +252,21 @@ export async function getTranscriptsPaginated(
         and(eq(transcripts.createdAt, cursor.createdAt), lt(transcripts.id, cursor.id)),
       )!,
     );
+  }
+
+  // Search filter - searches summary and preview (first prompt)
+  if (search) {
+    const searchPattern = `%${search}%`;
+    conditions.push(or(like(transcripts.summary, searchPattern), like(transcripts.preview, searchPattern))!);
+  }
+
+  // Repo filter - null means private only, undefined means all
+  if (repoId !== undefined) {
+    if (repoId === null) {
+      conditions.push(isNull(transcripts.repoId));
+    } else {
+      conditions.push(eq(transcripts.repoId, repoId));
+    }
   }
 
   const items = await db

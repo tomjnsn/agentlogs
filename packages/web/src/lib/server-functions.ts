@@ -368,11 +368,20 @@ export const getDailyActivity = createServerFn({ method: "GET" }).handler(async 
  * Server function to fetch transcripts with cursor-based pagination
  */
 export const getTranscriptsPaginated = createServerFn({ method: "GET" })
-  .inputValidator((data: { cursor?: { createdAt: string; id: string } | null; limit?: number }) => {
-    const cursor = data.cursor ? { createdAt: new Date(data.cursor.createdAt), id: data.cursor.id } : undefined;
-    const limit = Math.min(Math.max(data.limit ?? PAGE_SIZE, 1), 100);
-    return { cursor, limit };
-  })
+  .inputValidator(
+    (data: {
+      cursor?: { createdAt: string; id: string } | null;
+      limit?: number;
+      search?: string;
+      repoId?: string | null; // null = private only, undefined = all
+    }) => {
+      const cursor = data.cursor ? { createdAt: new Date(data.cursor.createdAt), id: data.cursor.id } : undefined;
+      const limit = Math.min(Math.max(data.limit ?? PAGE_SIZE, 1), 100);
+      const search = data.search?.trim() || undefined;
+      const repoId = data.repoId;
+      return { cursor, limit, search, repoId };
+    },
+  )
   .handler(async ({ data }) => {
     const db = createDrizzle(env.DB);
     const userId = await getAuthenticatedUserId();
