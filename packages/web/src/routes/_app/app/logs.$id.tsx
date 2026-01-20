@@ -931,7 +931,6 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, sho
       ? String(inputObj.description)
       : String(inputObj!.command)
     : "";
-  const isBackgroundTask = !!inputObj?.run_in_background;
 
   // Determine file path for file-based tools (strip ./ prefix for cleaner display)
   const filePath = inputObj?.file_path ? String(inputObj.file_path).replace(/^\.\//, "") : "";
@@ -1154,14 +1153,9 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, sho
     return (
       <Collapsible id={messageId} defaultOpen={false} className={collapsibleClassName}>
         <CollapsibleTrigger className={triggerClassName}>
-          <SquareTerminal className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
           <span className="text-sm font-medium">{displayName}</span>
           <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{bashDescription}</span>
-          {isBackgroundTask && (
-            <span className="shrink-0 rounded bg-secondary px-1.5 py-0.5 text-xs text-muted-foreground">
-              background
-            </span>
-          )}
           {(error || isError) && (
             <span className="shrink-0 rounded bg-destructive/20 px-1.5 py-0.5 text-xs text-destructive">Error</span>
           )}
