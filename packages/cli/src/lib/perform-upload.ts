@@ -127,7 +127,7 @@ export async function performUpload(
   const sha256 = createHash("sha256").update(redactedRawContent).digest("hex");
 
   // Generate stable client ID for this transcript
-  const clientId = getOrCreateTranscriptId(finalSessionId);
+  const clientId = await getOrCreateTranscriptId(finalSessionId);
 
   // Convert Map<sha256, TranscriptBlob> to UploadBlob[]
   const uploadBlobs: UploadBlob[] = [];
@@ -151,7 +151,7 @@ export async function performUpload(
 
   // Cache the server's returned ID (handles case where server returns existing ID)
   if (result.success && result.id) {
-    cacheTranscriptId(finalSessionId, result.id);
+    await cacheTranscriptId(finalSessionId, result.id);
   }
 
   return {

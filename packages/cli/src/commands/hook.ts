@@ -134,7 +134,7 @@ async function handlePreToolUse(hookInput: ClaudeHookInput): Promise<void> {
   if (isBashTool && command && containsGitCommit(command)) {
     shouldTrack = true;
     // Use client-generated ID for stable commit links
-    const clientId = getOrCreateTranscriptId(sessionId);
+    const clientId = await getOrCreateTranscriptId(sessionId);
     const updatedCommand = appendTranscriptLink(command, clientId);
     if (updatedCommand !== command) {
       updateCommand(updatedCommand);

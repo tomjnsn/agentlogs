@@ -23,7 +23,7 @@
   },
   "scripts": {
     "start": "bun run src/index.ts",
-    "build": "bun build ./src/index.ts --outdir ./dist --target node --external @napi-rs/keyring --production --define '__NODE_ENV__=\"production\"' --define 'process.env.SERVER_URL=\"https://agentlogs.ai\"'",
+    "build": "bun build ./src/index.ts --outdir ./dist --target node --external @napi-rs/keyring --external better-sqlite3 --production --define '__NODE_ENV__=\"production\"' --define 'process.env.SERVER_URL=\"https://agentlogs.ai\"'",
     "prepublishOnly": "bun run build",
     "test:e2e": "bun test ./test/e2e/*.e2e.ts",
     "check": "tsgo --project tsconfig.json"
@@ -31,10 +31,12 @@
   "dependencies": {
     "@napi-rs/keyring": "^1.2.0",
     "@paralleldrive/cuid2": "^2.3.0",
+    "better-sqlite3": "^12.6.2",
     "commander": "^14.0.2"
   },
   "devDependencies": {
     "@agentlogs/shared": "workspace:*",
+    "@types/better-sqlite3": "^7.6.13",
     "better-auth": "^1.4.13",
     "open": "^11.0.0"
   }
