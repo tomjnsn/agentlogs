@@ -264,7 +264,7 @@ export interface MultiEnvUploadResult {
  * Each environment is uploaded independently - failures in one don't affect others.
  */
 export async function performUploadToAllEnvs(params: PerformUploadParams): Promise<MultiEnvUploadResult> {
-  const authenticatedEnvs = getAuthenticatedEnvironments();
+  const authenticatedEnvs = await getAuthenticatedEnvironments();
 
   if (authenticatedEnvs.length === 0) {
     throw new Error("No authenticated environments found. Run `agentlogs login` first.");

@@ -276,7 +276,7 @@ async function handleSessionEnd(hookInput: ClaudeHookInput): Promise<void> {
     return;
   }
 
-  const authenticatedEnvs = getAuthenticatedEnvironments();
+  const authenticatedEnvs = await getAuthenticatedEnvironments();
   if (authenticatedEnvs.length === 0) {
     logger.error("SessionEnd: no authenticated environments found. Run the CLI login flow first.", { sessionId });
     return;
@@ -325,7 +325,7 @@ async function handleStop(hookInput: ClaudeHookInput): Promise<void> {
     return;
   }
 
-  const authenticatedEnvs = getAuthenticatedEnvironments();
+  const authenticatedEnvs = await getAuthenticatedEnvironments();
   if (authenticatedEnvs.length === 0) {
     logger.error("Stop: no authenticated environments found. Run the CLI login flow first.", { sessionId });
     return;
@@ -475,7 +475,7 @@ async function trackCommit(payload: {
   commitTitle?: string;
   branch?: string;
 }): Promise<void> {
-  const authenticatedEnvs = getAuthenticatedEnvironments();
+  const authenticatedEnvs = await getAuthenticatedEnvironments();
   if (authenticatedEnvs.length === 0) {
     logger.warn("Commit tracking skipped: no authenticated environments. Run 'agentlogs login' first.", {
       transcriptId: payload.transcriptId.substring(0, 8),
@@ -549,7 +549,7 @@ async function uploadPartialTranscript(payload: {
     return;
   }
 
-  const authenticatedEnvs = getAuthenticatedEnvironments();
+  const authenticatedEnvs = await getAuthenticatedEnvironments();
   if (authenticatedEnvs.length === 0) {
     logger.warn(
       "Commit tracking transcript upload skipped: no authenticated environments. Run 'agentlogs login' first.",

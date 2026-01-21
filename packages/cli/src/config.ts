@@ -1,11 +1,10 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { homedir } from "os";
 import { join } from "path";
-import { Entry } from "@napi-rs/keyring";
+import { getLocalStore } from "./local-store";
 
 const CONFIG_DIR = join(homedir(), ".config", "agentlogs");
 const CONFIG_FILE = join(CONFIG_DIR, "config.json");
-const KEYRING_SERVICE = "agentlogs-cli";
 
 export type EnvName = "dev" | "prod";
 
@@ -85,16 +84,16 @@ export function getEnvironment(envName: EnvName): Environment | undefined {
 }
 
 /**
- * Get the keyring account name for an environment
+ * Get the local store key for a token
  */
-function getKeychainAccount(envName: EnvName, email: string): string {
-  return `${envName}:${email}`;
+function getTokenKey(envName: EnvName): string {
+  return `auth.token.${envName}`;
 }
 
 /**
- * Get the access token for a specific environment from the OS keychain
+ * Get the access token for a specific environment from the local SQLite store
  */
-export function getTokenForEnv(envName: EnvName): string | null {
+export async function getTokenForEnv(envName: EnvName): Promise<string | null> {
   // Check for environment variable override
   const envToken = process.env.AGENTLOGS_AUTH_TOKEN?.trim();
   if (envToken) {
@@ -107,41 +106,34 @@ export function getTokenForEnv(envName: EnvName): string | null {
       return null;
     }
 
-    const account = getKeychainAccount(envName, env.user.email);
-    const entry = new Entry(KEYRING_SERVICE, account);
-    return entry.getPassword();
+    const store = getLocalStore();
+    const token = await store.get<string>(getTokenKey(envName));
+    return token ?? null;
   } catch {
     return null;
   }
 }
 
 /**
- * Set the access token for a specific environment in the OS keychain
+ * Set the access token for a specific environment in the local SQLite store
  */
-export function setTokenForEnv(envName: EnvName, email: string, token: string): void {
+export async function setTokenForEnv(envName: EnvName, _email: string, token: string): Promise<void> {
   try {
-    const account = getKeychainAccount(envName, email);
-    const entry = new Entry(KEYRING_SERVICE, account);
-    entry.setPassword(token);
+    const store = getLocalStore();
+    await store.set(getTokenKey(envName), token);
   } catch (error) {
-    console.error("Failed to store token in keychain:", error);
+    console.error("Failed to store token:", error);
     throw error;
   }
 }
 
 /**
- * Delete the access token for a specific environment from the OS keychain
+ * Delete the access token for a specific environment from the local SQLite store
  */
-export function deleteTokenForEnv(envName: EnvName): void {
+export async function deleteTokenForEnv(envName: EnvName): Promise<void> {
   try {
-    const env = getEnvironment(envName);
-    if (!env?.user?.email) {
-      return;
-    }
-
-    const account = getKeychainAccount(envName, env.user.email);
-    const entry = new Entry(KEYRING_SERVICE, account);
-    entry.deletePassword();
+    const store = getLocalStore();
+    await store.delete(getTokenKey(envName));
   } catch {
     // Token doesn't exist or couldn't be deleted - that's okay
   }
@@ -174,15 +166,15 @@ export function removeEnvironment(envName: EnvName): void {
 
 /**
  * Get environments with valid auth tokens
- * Returns environments that have both config and a valid keyring token
+ * Returns environments that have both config and a valid local store token
  * Also supports CI mode via AGENTLOGS_AUTH_TOKEN environment variable
  */
-export function getAuthenticatedEnvironments(): Array<Environment & { token: string }> {
+export async function getAuthenticatedEnvironments(): Promise<Array<Environment & { token: string }>> {
   const environments = getEnvironments();
   const result: Array<Environment & { token: string }> = [];
 
   for (const env of environments) {
-    const token = getTokenForEnv(env.name);
+    const token = await getTokenForEnv(env.name);
     if (token) {
       result.push({ ...env, token });
     }

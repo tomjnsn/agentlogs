@@ -26,7 +26,7 @@ export interface SyncCommandOptions {
 export async function syncCommand(options: SyncCommandOptions = {}): Promise<void> {
   const { repoFilter, claudeDir } = options;
 
-  const authenticatedEnvs = getAuthenticatedEnvironments();
+  const authenticatedEnvs = await getAuthenticatedEnvironments();
   if (authenticatedEnvs.length === 0) {
     console.error("You must be logged in to sync transcripts.");
     console.error("Run `agentlogs login` to authenticate");

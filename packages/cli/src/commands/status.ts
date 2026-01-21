@@ -15,12 +15,12 @@ export async function statusCommand(): Promise<void> {
   let hasValidAuth = false;
 
   for (const env of environments) {
-    const token = getTokenForEnv(env.name);
+    const token = await getTokenForEnv(env.name);
     const envLabel = env.name === "dev" ? "Development" : "Production";
 
     if (!token) {
       console.log(`${envLabel} (${env.baseURL})`);
-      console.log(`  ❌ Token not found in keychain`);
+      console.log(`  ❌ Token not found`);
       console.log(`  📧 Was: ${env.user.email}`);
       console.log("");
       continue;

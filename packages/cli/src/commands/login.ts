@@ -85,8 +85,8 @@ async function pollForToken(
           });
 
           if (session?.user) {
-            // Store token in keyring for this environment
-            setTokenForEnv(envName, session.user.email, data.access_token);
+            // Store token in local store for this environment
+            await setTokenForEnv(envName, session.user.email, data.access_token);
 
             // Store environment info in config
             upsertEnvironment({

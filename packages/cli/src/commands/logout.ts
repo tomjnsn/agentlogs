@@ -4,7 +4,7 @@ export interface LogoutCommandOptions {
   dev?: boolean;
 }
 
-export function logoutCommand(options: LogoutCommandOptions = {}): void {
+export async function logoutCommand(options: LogoutCommandOptions = {}): Promise<void> {
   const isDev = options.dev ?? false;
   const envName: EnvName = isDev ? "dev" : "prod";
 
@@ -17,8 +17,8 @@ export function logoutCommand(options: LogoutCommandOptions = {}): void {
   }
 
   try {
-    // Delete token from keyring
-    deleteTokenForEnv(envName);
+    // Delete token from local store
+    await deleteTokenForEnv(envName);
 
     // Remove environment from config
     removeEnvironment(envName);
