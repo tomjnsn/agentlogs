@@ -1,13 +1,21 @@
 import { existsSync, mkdirSync } from "fs";
 import { homedir } from "os";
 import { join } from "path";
-import { Database } from "bun:sqlite";
 import { init } from "@paralleldrive/cuid2";
 
 const CONFIG_DIR = join(homedir(), ".config", "agentlogs");
 const DB_FILE = join(CONFIG_DIR, "local.db");
 
-let db: Database | null = null;
+const isBun = typeof globalThis.Bun !== "undefined";
+
+interface DbWrapper {
+  exec(sql: string): void;
+  get(sql: string, ...params: unknown[]): unknown;
+  run(sql: string, ...params: unknown[]): void;
+  all(sql: string, ...params: unknown[]): unknown[];
+}
+
+let db: DbWrapper | null = null;
 let cuidGenerator: (() => string) | null = null;
 
 /**
@@ -32,16 +40,37 @@ function ensureConfigDir(): void {
 /**
  * Get or create the SQLite database connection
  */
-function getDb(): Database {
+async function getDb(): Promise<DbWrapper> {
   if (db) {
     return db;
   }
 
   ensureConfigDir();
-  db = new Database(DB_FILE);
+
+  if (isBun) {
+    // Use bun:sqlite
+    const { Database } = await import("bun:sqlite");
+    const bunDb = new Database(DB_FILE);
+    db = {
+      exec: (sql) => bunDb.run(sql),
+      get: (sql, ...params) => bunDb.query(sql).get(...(params as (string | number | boolean | null)[])),
+      run: (sql, ...params) => bunDb.run(sql, params as (string | number | boolean | null)[]),
+      all: (sql, ...params) => bunDb.query(sql).all(...(params as (string | number | boolean | null)[])),
+    };
+  } else {
+    // Use better-sqlite3
+    const BetterSqlite3 = (await import("better-sqlite3")).default;
+    const nodeDb = new BetterSqlite3(DB_FILE);
+    db = {
+      exec: (sql) => nodeDb.exec(sql),
+      get: (sql, ...params) => nodeDb.prepare(sql).get(...params),
+      run: (sql, ...params) => nodeDb.prepare(sql).run(...params),
+      all: (sql, ...params) => nodeDb.prepare(sql).all(...params),
+    };
+  }
 
   // Create KV table if it doesn't exist
-  db.run(`
+  db.exec(`
     CREATE TABLE IF NOT EXISTS kv (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
@@ -55,11 +84,11 @@ function getDb(): Database {
  * Memento-style local store interface
  */
 export interface LocalStore {
-  get<T>(key: string): T | undefined;
-  get<T>(key: string, defaultValue: T): T;
-  set<T>(key: string, value: T): void;
-  delete(key: string): void;
-  keys(prefix?: string): string[];
+  get<T>(key: string): Promise<T | undefined>;
+  get<T>(key: string, defaultValue: T): Promise<T>;
+  set<T>(key: string, value: T): Promise<void>;
+  delete(key: string): Promise<void>;
+  keys(prefix?: string): Promise<string[]>;
 }
 
 /**
@@ -67,9 +96,9 @@ export interface LocalStore {
  */
 export function getLocalStore(): LocalStore {
   return {
-    get<T>(key: string, defaultValue?: T): T | undefined {
-      const database = getDb();
-      const row = database.query("SELECT value FROM kv WHERE key = ?").get(key) as { value: string } | null;
+    async get<T>(key: string, defaultValue?: T): Promise<T | undefined> {
+      const database = await getDb();
+      const row = database.get("SELECT value FROM kv WHERE key = ?", key) as { value: string } | undefined;
       if (!row) {
         return defaultValue;
       }
@@ -80,26 +109,26 @@ export function getLocalStore(): LocalStore {
       }
     },
 
-    set<T>(key: string, value: T): void {
-      const database = getDb();
+    async set<T>(key: string, value: T): Promise<void> {
+      const database = await getDb();
       const jsonValue = JSON.stringify(value);
-      database.run("INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)", [key, jsonValue]);
+      database.run("INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)", key, jsonValue);
     },
 
-    delete(key: string): void {
-      const database = getDb();
-      database.run("DELETE FROM kv WHERE key = ?", [key]);
+    async delete(key: string): Promise<void> {
+      const database = await getDb();
+      database.run("DELETE FROM kv WHERE key = ?", key);
     },
 
-    keys(prefix?: string): string[] {
-      const database = getDb();
+    async keys(prefix?: string): Promise<string[]> {
+      const database = await getDb();
       if (prefix) {
-        const rows = database.query("SELECT key FROM kv WHERE key LIKE ?").all(`${prefix}%`) as {
+        const rows = database.all("SELECT key FROM kv WHERE key LIKE ?", `${prefix}%`) as {
           key: string;
         }[];
         return rows.map((r) => r.key);
       }
-      const rows = database.query("SELECT key FROM kv").all() as { key: string }[];
+      const rows = database.all("SELECT key FROM kv") as { key: string }[];
       return rows.map((r) => r.key);
     },
   };
@@ -110,25 +139,25 @@ export function getLocalStore(): LocalStore {
  * If we've seen this transcriptId before, returns the cached ID.
  * Otherwise, generates a new ID and caches it.
  */
-export function getOrCreateTranscriptId(transcriptId: string): string {
+export async function getOrCreateTranscriptId(transcriptId: string): Promise<string> {
   const store = getLocalStore();
   const key = `transcript.${transcriptId}.id`;
 
-  const existingId = store.get<string>(key);
+  const existingId = await store.get<string>(key);
   if (existingId) {
     return existingId;
   }
 
   const newId = getCuidGenerator()();
-  store.set(key, newId);
+  await store.set(key, newId);
   return newId;
 }
 
 /**
  * Cache a transcript ID mapping (used when server returns an existing ID)
  */
-export function cacheTranscriptId(transcriptId: string, id: string): void {
+export async function cacheTranscriptId(transcriptId: string, id: string): Promise<void> {
   const store = getLocalStore();
   const key = `transcript.${transcriptId}.id`;
-  store.set(key, id);
+  await store.set(key, id);
 }
