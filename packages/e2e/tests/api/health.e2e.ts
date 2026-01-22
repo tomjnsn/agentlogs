@@ -5,7 +5,7 @@ test.describe("API Health", () => {
     const response = await request.get("/");
     expect(response.ok()).toBe(true);
     const text = await response.text();
-    expect(text).toContain("agentlogs");
+    expect(text).toContain("AgentLogs");
   });
 
   test("static assets are served", async ({ request }) => {
