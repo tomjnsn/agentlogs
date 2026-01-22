@@ -11,7 +11,7 @@ import {
 import { useDebugMode } from "@/hooks/use-debug-mode";
 import { createFileRoute, Link, Outlet, redirect, useRouter } from "@tanstack/react-router";
 import { ChevronDownIcon, LogOutIcon, LogsIcon, ShieldIcon, UsersIcon } from "lucide-react";
-import { Logo } from "@/components/icons/source-icons";
+import { DiscordIcon, Logo } from "@/components/icons/source-icons";
 import { authClient } from "../lib/auth-client";
 import { getSession } from "../lib/server-functions";
 
@@ -138,6 +138,11 @@ function AppLayout() {
                     <DropdownMenuSeparator />
                   </>
                 )}
+                <DropdownMenuItem onClick={() => window.open("https://discord.gg/yG4TNv3mjG", "_blank")}>
+                  <DiscordIcon className="size-4" />
+                  Support
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut}>
                   <LogOutIcon className="size-4" />
                   Sign Out
