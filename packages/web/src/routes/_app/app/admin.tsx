@@ -1,12 +1,19 @@
 import { useState } from "react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { Check, Loader2, TrendingUp, TrendingDown } from "lucide-react";
+import { Check, Loader2, Mail, TrendingUp, TrendingDown } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getAdminStats, getAdminUsers, getSession, updateUserRole } from "../../../lib/server-functions";
+import {
+  getAdminStats,
+  getAdminUsers,
+  getSession,
+  sendWelcomeEmail,
+  updateUserRole,
+} from "../../../lib/server-functions";
 import { userRoles, type UserRole } from "../../../db/schema";
 
 export const Route = createFileRoute("/_app/app/admin")({
@@ -103,6 +110,41 @@ function UserRoleSelect({ userId, initialRole }: { userId: string; initialRole: 
   );
 }
 
+function WelcomeEmailButton({ userId, initialSentAt }: { userId: string; initialSentAt: Date | string | null }) {
+  const [sentAt, setSentAt] = useState<Date | string | null>(initialSentAt);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSend() {
+    setIsLoading(true);
+    setError(null);
+    try {
+      await sendWelcomeEmail({ data: { userId } });
+      setSentAt(new Date());
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error("Failed to send welcome email:", message);
+      setError(message);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  const alreadySent = !!sentAt;
+  const date = sentAt ? (typeof sentAt === "string" ? new Date(sentAt) : sentAt) : null;
+
+  return (
+    <div className="flex flex-col items-start gap-1">
+      <Button variant="outline" size="sm" onClick={handleSend} disabled={isLoading} className="gap-1.5">
+        {isLoading ? <Loader2 className="size-3 animate-spin" /> : <Mail className="size-3" />}
+        {alreadySent ? "Resend" : "Send Welcome"}
+      </Button>
+      {alreadySent && date && <span className="text-xs text-muted-foreground">Sent {date.toLocaleDateString()}</span>}
+      {error && <span className="text-xs text-red-500">{error}</span>}
+    </div>
+  );
+}
+
 function AdminPage() {
   const { stats, users } = Route.useLoaderData();
 
@@ -167,6 +209,7 @@ function AdminPage() {
                 <TableHead className="w-[250px]">User</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
+                <TableHead>Welcome Email</TableHead>
                 <TableHead className="text-right">Transcripts</TableHead>
                 <TableHead className="text-right">Total Cost</TableHead>
                 <TableHead className="text-right">Joined</TableHead>
@@ -187,6 +230,9 @@ function AdminPage() {
                   <TableCell className="text-muted-foreground">{user.email}</TableCell>
                   <TableCell>
                     <UserRoleSelect userId={user.id} initialRole={user.role as UserRole} />
+                  </TableCell>
+                  <TableCell>
+                    <WelcomeEmailButton userId={user.id} initialSentAt={user.welcomeEmailSentAt ?? null} />
                   </TableCell>
                   <TableCell className="text-right font-mono">{user.transcriptCount}</TableCell>
                   <TableCell className="text-right font-mono">{formatCost(user.totalCost ?? 0)}</TableCell>

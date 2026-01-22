@@ -483,6 +483,40 @@ export const updateUserRole = createServerFn({ method: "POST" })
     return { success: true };
   });
 
+/**
+ * Send welcome email to a user (admin only)
+ */
+export const sendWelcomeEmail = createServerFn({ method: "POST" })
+  .inputValidator((data: { userId: string }) => {
+    if (!data.userId || typeof data.userId !== "string") {
+      throw new Error("Invalid userId");
+    }
+    return data;
+  })
+  .handler(async ({ data }) => {
+    await requireAdmin();
+    const db = createDrizzle(env.DB);
+
+    // Get user info
+    const targetUser = await queries.getUserById(db, data.userId);
+    if (!targetUser) {
+      throw new Error("User not found");
+    }
+
+    // Send email
+    const { sendWelcomePreviewEmail } = await import("./email/send");
+    const result = await sendWelcomePreviewEmail(targetUser.email, targetUser.name);
+
+    if (!result.success) {
+      throw new Error(result.error ?? "Failed to send email");
+    }
+
+    // Mark as sent
+    await queries.markWelcomeEmailSent(db, data.userId);
+
+    return { success: true };
+  });
+
 // =============================================================================
 // Team Server Functions
 // =============================================================================

@@ -361,6 +361,7 @@ export async function getAdminUserStats(db: DrizzleDB) {
       image: user.image,
       role: user.role,
       createdAt: user.createdAt,
+      welcomeEmailSentAt: user.welcomeEmailSentAt,
       transcriptCount: sql<number>`CAST(COUNT(${transcripts.id}) AS INTEGER)`.as("transcript_count"),
       totalCost: sql<number>`COALESCE(SUM(${transcripts.costUsd}), 0)`.as("total_cost"),
     })
@@ -368,6 +369,13 @@ export async function getAdminUserStats(db: DrizzleDB) {
     .leftJoin(transcripts, eq(transcripts.userId, user.id))
     .groupBy(user.id)
     .orderBy(desc(user.createdAt));
+}
+
+/**
+ * Mark welcome email as sent for a user
+ */
+export async function markWelcomeEmailSent(db: DrizzleDB, userId: string): Promise<void> {
+  await db.update(user).set({ welcomeEmailSentAt: new Date() }).where(eq(user.id, userId));
 }
 
 /**

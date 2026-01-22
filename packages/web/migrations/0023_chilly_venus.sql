@@ -1,0 +1,1 @@
+ALTER TABLE `user` ADD `welcome_email_sent_at` integer;

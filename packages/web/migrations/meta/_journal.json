@@ -162,6 +162,13 @@
       "when": 1768776409463,
       "tag": "0022_light_nehzno",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "6",
+      "when": 1769078281921,
+      "tag": "0023_chilly_venus",
+      "breakpoints": true
     }
   ]
 }
