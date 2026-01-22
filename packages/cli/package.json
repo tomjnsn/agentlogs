@@ -23,7 +23,7 @@
   },
   "scripts": {
     "start": "bun run src/index.ts",
-    "build": "bun build ./src/index.ts --outdir ./dist --target node --external better-sqlite3 --production --define '__NODE_ENV__=\"production\"' --define 'process.env.SERVER_URL=\"https://agentlogs.ai\"'",
+    "build": "bun build ./src/index.ts --outdir ./dist --target node --external better-sqlite3 --external jsonc-parser --production --define '__NODE_ENV__=\"production\"' --define 'process.env.SERVER_URL=\"https://agentlogs.ai\"'",
     "prepublishOnly": "bun run build",
     "test:e2e": "bun test ./test/e2e/*.e2e.ts",
     "check": "tsgo --project tsconfig.json"
@@ -32,7 +32,8 @@
     "@paralleldrive/cuid2": "^2.3.0",
     "aywson": "^0.0.3",
     "better-sqlite3": "^12.6.2",
-    "commander": "^14.0.2"
+    "commander": "^14.0.2",
+    "jsonc-parser": "^3.3.1"
   },
   "devDependencies": {
     "@agentlogs/shared": "workspace:*",
