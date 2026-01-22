@@ -79,6 +79,10 @@ export async function uploadTranscript(
   }
   formData.set("sha256", payload.sha256);
   formData.set("unifiedTranscript", JSON.stringify(payload.unifiedTranscript));
+  // Include visibility override if provided
+  if (payload.visibility) {
+    formData.set("visibility", payload.visibility);
+  }
   formData.set(
     "transcript",
     new Blob([payload.rawTranscript], {

@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "@paralleldrive/cuid2": "^2.3.0",
+    "aywson": "^0.0.3",
     "better-sqlite3": "^12.6.2",
     "commander": "^14.0.2"
   },

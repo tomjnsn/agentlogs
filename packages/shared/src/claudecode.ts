@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { z } from "zod";
+import { locateGitRoot, getRepoIdFromGitRoot, readGitBranch } from "./git";
 import { formatCwdWithTilde, normalizeRelativeCwd, relativizePaths } from "./paths";
 import type { LiteLLMModelPricing } from "./pricing";
 import {
@@ -879,92 +880,14 @@ export async function resolveGitContext(
   }
 
   const relativeCwd = path.relative(repoRoot, cwd) || ".";
-  const branch = gitBranch ?? (await readGitHead(repoRoot));
-  const repo = await readGitRemoteRepo(repoRoot);
+  const branch = gitBranch ?? (await readGitBranch(repoRoot));
+  const repo = await getRepoIdFromGitRoot(repoRoot);
 
   return unifiedGitContextSchema.parse({
     relativeCwd: normalizeRelativeCwd(relativeCwd),
     branch,
     repo,
   });
-}
-
-async function locateGitRoot(start: string): Promise<string | null> {
-  let current = path.resolve(start);
-  const { root } = path.parse(current);
-
-  while (true) {
-    const gitDir = path.join(current, ".git");
-    try {
-      const stats = await fs.stat(gitDir);
-      if (stats.isDirectory() || stats.isFile()) {
-        return current;
-      }
-    } catch {
-      // continue
-    }
-
-    if (current === root) {
-      return null;
-    }
-
-    const parent = path.dirname(current);
-    if (parent === current) {
-      return null;
-    }
-    current = parent;
-  }
-}
-
-async function readGitHead(repoRoot: string, fallbackBranch?: string): Promise<string | null> {
-  try {
-    const headPath = path.join(repoRoot, ".git", "HEAD");
-    const headContent = await fs.readFile(headPath, "utf8");
-    const trimmed = headContent.trim();
-    if (trimmed.startsWith("ref:")) {
-      const ref = trimmed.slice(4).trim();
-      const parts = ref.split("/");
-      return parts[parts.length - 1] ?? fallbackBranch ?? null;
-    }
-    return trimmed || fallbackBranch || null;
-  } catch {
-    return fallbackBranch ?? null;
-  }
-}
-
-async function readGitRemoteRepo(repoRoot: string): Promise<string | null> {
-  try {
-    const configPath = path.join(repoRoot, ".git", "config");
-    const configContent = await fs.readFile(configPath, "utf8");
-
-    // Look for remote "origin" url
-    const remoteMatch = configContent.match(/\[remote "origin"\]\s+url\s*=\s*(.+)/i);
-    if (!remoteMatch || !remoteMatch[1]) {
-      return null;
-    }
-
-    const url = remoteMatch[1].trim();
-
-    // Parse GitHub/GitLab URLs
-    // Formats: git@github.com:owner/repo.git, https://github.com/owner/repo.git, etc.
-    const sshMatch = url.match(/git@([^:]+):(.+?)(?:\.git)?$/);
-    if (sshMatch) {
-      const host = sshMatch[1];
-      const path = sshMatch[2];
-      return `${host}/${path}`;
-    }
-
-    const httpsMatch = url.match(/https?:\/\/([^/]+)\/(.+?)(?:\.git)?$/);
-    if (httpsMatch) {
-      const host = httpsMatch[1];
-      const path = httpsMatch[2];
-      return `${host}/${path}`;
-    }
-
-    return null;
-  } catch {
-    return null;
-  }
 }
 
 function findSessionId(transcript: ClaudeMessageRecord[]): string | null {

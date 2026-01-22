@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 import { Command } from "commander";
+import { allowCommand } from "./commands/allow";
+import { denyCommand } from "./commands/deny";
 import { hookCommand } from "./commands/hook";
 import { loginCommand } from "./commands/login";
 import { logoutCommand } from "./commands/logout";
+import { settingsCommand } from "./commands/settings";
 import { statusCommand } from "./commands/status";
 import { syncCommand } from "./commands/sync";
 import { uploadCommand } from "./commands/upload";
@@ -73,6 +76,32 @@ claudecode
       claudeDir,
       repoFilter: options.repo,
     });
+  });
+
+program
+  .command("settings")
+  .description("View and modify AgentLogs settings")
+  .option("--allowMode <mode>", "Set allow mode: 'allowlist' or 'denylist'")
+  .action(async (options: { allowMode?: string }) => {
+    await settingsCommand({ allowMode: options.allowMode });
+  });
+
+program
+  .command("allow")
+  .description("Allow capture for the current repository")
+  .option("--visibility <visibility>", "Set visibility: 'public', 'team', or 'private'")
+  .option("--public", "Set visibility to public")
+  .option("--team", "Set visibility to team")
+  .option("--private", "Set visibility to private")
+  .action(async (options: { visibility?: string; public?: boolean; team?: boolean; private?: boolean }) => {
+    await allowCommand(options);
+  });
+
+program
+  .command("deny")
+  .description("Deny capture for the current repository")
+  .action(async () => {
+    await denyCommand();
   });
 
 program.showHelpAfterError("(add --help for additional information)");

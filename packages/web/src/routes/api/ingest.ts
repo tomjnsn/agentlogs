@@ -52,6 +52,14 @@ export const Route = createFileRoute("/api/ingest")({
           // clientId is optional for backwards compatibility
           const providedId = typeof clientId === "string" && clientId.length > 0 ? clientId : null;
 
+          // Visibility override from client (if user configured it for this repo)
+          const visibilityOverride = formData.get("visibility");
+          const clientVisibility =
+            typeof visibilityOverride === "string" &&
+            (visibilityOverride === "private" || visibilityOverride === "team" || visibilityOverride === "public")
+              ? (visibilityOverride as VisibilityOption)
+              : null;
+
           const transcriptContent =
             typeof transcriptPart === "string" ? transcriptPart : await (transcriptPart as File).text();
 
@@ -353,9 +361,11 @@ export const Route = createFileRoute("/api/ingest")({
           // Wait for summary and R2 uploads to complete
           const [summary] = await Promise.all([summaryPromise, r2UploadsPromise, blobUploadsPromise]);
 
-          // Determine default visibility for new transcripts
-          // (only set on creation, not on update - user may have changed it)
-          const defaultVisibility = await getDefaultVisibility(db, repoDbId, repoId, userId);
+          // Determine visibility: client override takes precedence, otherwise use default logic
+          // Skip expensive default logic if client provided visibility
+          const finalVisibility: DefaultSharingSettings = clientVisibility
+            ? { visibility: clientVisibility, sharedWithTeamId: null }
+            : await getDefaultVisibility(db, repoDbId, repoId, userId);
 
           // Extract first user message's first image for preview thumbnail
           const firstUserWithImage = unifiedTranscript.messages.find(
@@ -391,7 +401,6 @@ export const Route = createFileRoute("/api/ingest")({
           };
 
           // Insert transcript with summary and visibility included
-          // Note: visibility is only set on creation, not on update (user may have changed it)
           // Use client-provided ID if available, otherwise let the database generate one
           const insertedTranscript = await Sentry.startSpan({ name: "db.insertTranscript", op: "db.query" }, () =>
             db
@@ -403,8 +412,8 @@ export const Route = createFileRoute("/api/ingest")({
                 sha256,
                 transcriptId,
                 source: unifiedTranscript.source,
-                visibility: defaultVisibility.visibility,
-                sharedWithTeamId: defaultVisibility.sharedWithTeamId,
+                visibility: finalVisibility.visibility,
+                sharedWithTeamId: finalVisibility.sharedWithTeamId,
                 ...metadata,
               })
               .onConflictDoUpdate({
@@ -412,8 +421,8 @@ export const Route = createFileRoute("/api/ingest")({
                 set: {
                   sha256,
                   repoId: repoDbId,
-                  // Note: visibility and sharedWithTeamId are NOT updated on conflict
-                  // to preserve user's manual changes
+                  // Note: visibility is only set on creation, not on update
+                  // User can change it manually in the UI
                   ...metadata,
                 },
               })

@@ -1,7 +1,7 @@
 import { createHash } from "crypto";
 import { existsSync, readFileSync } from "fs";
 import { dirname, isAbsolute, resolve } from "path";
-import type { TranscriptSource, UploadBlob, UploadPayload } from "@agentlogs/shared";
+import type { TranscriptSource, TranscriptVisibility, UploadBlob, UploadPayload } from "@agentlogs/shared";
 import { convertClaudeCodeTranscript, resolveGitContext, type UnifiedTranscript } from "@agentlogs/shared/claudecode";
 import { convertCodexTranscript } from "@agentlogs/shared/codex";
 import { redactSecretsDeep, redactSecretsPreserveLength } from "@agentlogs/shared/redact";
@@ -16,6 +16,8 @@ export interface PerformUploadParams {
   sessionId?: string;
   cwdOverride?: string;
   source?: TranscriptSource;
+  /** Visibility override - if not set, server decides based on repo visibility */
+  visibility?: TranscriptVisibility;
 }
 
 export interface PerformUploadResult {
@@ -145,6 +147,7 @@ export async function performUpload(
     rawTranscript: redactedRawContent,
     unifiedTranscript,
     blobs: uploadBlobs.length > 0 ? uploadBlobs : undefined,
+    visibility: params.visibility,
   };
 
   const result = await uploadTranscript(payload, options);

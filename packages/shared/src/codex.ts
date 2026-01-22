@@ -9,6 +9,7 @@ import {
   type UnifiedTranscript,
   type UnifiedTranscriptMessage,
 } from "./claudecode";
+import { parseGitRemoteUrl } from "./git";
 import { formatCwdWithTilde, normalizeRelativeCwd, relativizePaths } from "./paths";
 import type { LiteLLMModelPricing } from "./pricing";
 import {
@@ -886,7 +887,7 @@ function buildGitContext(sessionMeta: CodexSessionMeta | null, cwd: string | nul
     });
   }
 
-  const repo = parseRepositoryUrl(sessionMeta.git.repositoryUrl);
+  const repo = sessionMeta.git.repositoryUrl ? parseGitRemoteUrl(sessionMeta.git.repositoryUrl) : null;
   const branch = sessionMeta.git.branch;
   const repoName = repo ? (repo.split("/").pop() ?? null) : null;
   const relativeCwd = deriveRelativeCwd(localCwd, repoName);
@@ -896,24 +897,6 @@ function buildGitContext(sessionMeta: CodexSessionMeta | null, cwd: string | nul
     branch,
     relativeCwd: normalizeRelativeCwd(relativeCwd),
   });
-}
-
-function parseRepositoryUrl(value: string | null): string | null {
-  if (!value) {
-    return null;
-  }
-
-  const sshMatch = value.match(/git@([^:]+):(.+?)(?:\.git)?$/);
-  if (sshMatch) {
-    return `${sshMatch[1]}/${sshMatch[2]}`.replace(/\\/g, "/");
-  }
-
-  const httpsMatch = value.match(/https?:\/\/([^/]+)\/(.+?)(?:\.git)?$/);
-  if (httpsMatch) {
-    return `${httpsMatch[1]}/${httpsMatch[2]}`.replace(/\\/g, "/");
-  }
-
-  return null;
 }
 
 function deriveRelativeCwd(cwd: string | null, repoName: string | null): string | null {

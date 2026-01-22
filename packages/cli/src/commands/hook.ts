@@ -3,6 +3,7 @@ import { getDevLogPath } from "@agentlogs/shared/paths";
 import { getAuthenticatedEnvironments } from "../config";
 import { performUploadToAllEnvs } from "../lib/perform-upload";
 import { getOrCreateTranscriptId } from "../local-store";
+import { getRepoIdFromCwd, getRepoVisibility, isRepoAllowed } from "../settings";
 
 // Create logger for CLI hook commands
 // In dev mode (VI_CLI_PATH set), logs to <monorepo>/logs/dev.log
@@ -131,7 +132,12 @@ async function handlePreToolUse(hookInput: ClaudeHookInput): Promise<void> {
   const toolName = typeof hookInput.tool_name === "string" ? hookInput.tool_name : hookInput.tool;
   const isBashTool = toolName ? toolName.toLowerCase() === "bash" : Boolean(command);
 
-  if (isBashTool && command && containsGitCommit(command)) {
+  // Check if repo is allowed before adding transcript links
+  const cwd = typeof hookInput.cwd === "string" ? hookInput.cwd : undefined;
+  const repoId = await getRepoIdFromCwd(cwd);
+  const repoAllowed = isRepoAllowed(repoId);
+
+  if (isBashTool && command && containsGitCommit(command) && repoAllowed) {
     shouldTrack = true;
     // Use client-generated ID for stable commit links
     const clientId = await getOrCreateTranscriptId(sessionId);
@@ -276,17 +282,29 @@ async function handleSessionEnd(hookInput: ClaudeHookInput): Promise<void> {
     return;
   }
 
+  // Check if repo is allowed for capture
+  const cwd = typeof hookInput.cwd === "string" ? hookInput.cwd : undefined;
+  const repoId = await getRepoIdFromCwd(cwd);
+  if (!isRepoAllowed(repoId)) {
+    logger.info(`SessionEnd: upload skipped, repo not allowed`, { sessionId, repoId });
+    return;
+  }
+
   const authenticatedEnvs = await getAuthenticatedEnvironments();
   if (authenticatedEnvs.length === 0) {
     logger.error("SessionEnd: no authenticated environments found. Run the CLI login flow first.", { sessionId });
     return;
   }
 
+  // Get visibility setting for this repo (if configured)
+  const visibility = getRepoVisibility(repoId);
+
   try {
     const result = await performUploadToAllEnvs({
       transcriptPath,
       sessionId: hookInput.session_id,
       cwdOverride: hookInput.cwd,
+      visibility,
     });
 
     for (const envResult of result.results) {
@@ -325,17 +343,29 @@ async function handleStop(hookInput: ClaudeHookInput): Promise<void> {
     return;
   }
 
+  // Check if repo is allowed for capture
+  const cwd = typeof hookInput.cwd === "string" ? hookInput.cwd : undefined;
+  const repoId = await getRepoIdFromCwd(cwd);
+  if (!isRepoAllowed(repoId)) {
+    logger.info(`Stop: upload skipped, repo not allowed`, { sessionId, repoId });
+    return;
+  }
+
   const authenticatedEnvs = await getAuthenticatedEnvironments();
   if (authenticatedEnvs.length === 0) {
     logger.error("Stop: no authenticated environments found. Run the CLI login flow first.", { sessionId });
     return;
   }
 
+  // Get visibility setting for this repo (if configured)
+  const visibility = getRepoVisibility(repoId);
+
   try {
     const result = await performUploadToAllEnvs({
       transcriptPath,
       sessionId: hookInput.session_id,
       cwdOverride: hookInput.cwd,
+      visibility,
     });
 
     for (const envResult of result.results) {
@@ -549,6 +579,16 @@ async function uploadPartialTranscript(payload: {
     return;
   }
 
+  // Check if repo is allowed for capture
+  const repoId = await getRepoIdFromCwd(payload.cwd);
+  if (!isRepoAllowed(repoId)) {
+    logger.info(`Commit tracking transcript upload skipped: repo not allowed`, {
+      sessionId: payload.sessionId.substring(0, 8),
+      repoId,
+    });
+    return;
+  }
+
   const authenticatedEnvs = await getAuthenticatedEnvironments();
   if (authenticatedEnvs.length === 0) {
     logger.warn(
@@ -560,11 +600,15 @@ async function uploadPartialTranscript(payload: {
     return;
   }
 
+  // Get visibility setting for this repo (if configured)
+  const visibility = getRepoVisibility(repoId);
+
   try {
     const result = await performUploadToAllEnvs({
       transcriptPath: payload.transcriptPath,
       sessionId: payload.sessionId,
       cwdOverride: payload.cwd,
+      visibility,
     });
 
     for (const envResult of result.results) {
