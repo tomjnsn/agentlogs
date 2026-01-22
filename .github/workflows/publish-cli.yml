@@ -1,6 +1,7 @@
 name: Publish CLI to npm
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - "cli-v*"
