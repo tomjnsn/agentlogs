@@ -40,3 +40,9 @@
 - NEVER manually create shadcn components. Always use the shadcn CLI to download them.
 - Run from packages/web: `bunx shadcn@latest add <component-name>`
 - Example: `bunx shadcn@latest add data-table`
+
+## Releasing the CLI
+
+1. Bump version in `packages/cli/package.json` and commit: `cli: Release version X.Y.Z`
+2. Push to main
+3. Create and push a tag: `git tag cli-vX.Y.Z && git push origin cli-vX.Y.Z`
