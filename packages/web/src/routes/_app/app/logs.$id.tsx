@@ -11,6 +11,7 @@ import {
   Asterisk,
   Coins,
   Database,
+  Download,
   Hash,
   SquareCheck,
   ChevronDown,
@@ -284,6 +285,26 @@ function TranscriptDetailComponent() {
                 <span>{data.cachedInputTokens?.toLocaleString()} cached</span>
               </div>
             )}
+            <div className="ml-auto flex items-center gap-2">
+              <a
+                href={`/api/admin/transcript-unified/${data.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 rounded bg-yellow-500/20 px-2 py-1 text-xs font-medium text-yellow-500 transition-colors hover:bg-yellow-500/30"
+              >
+                <Download className="h-3 w-3" />
+                Unified
+              </a>
+              <a
+                href={`/api/admin/transcript-raw/${data.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 rounded bg-yellow-500/20 px-2 py-1 text-xs font-medium text-yellow-500 transition-colors hover:bg-yellow-500/30"
+              >
+                <Download className="h-3 w-3" />
+                Raw
+              </a>
+            </div>
           </div>
         )}
 
@@ -778,7 +799,7 @@ function MessageBlock({ message, index, showDebugInfo }: MessageBlockProps) {
   // Agent response - rendered text
   if (message.type === "agent") {
     return (
-      <div id={messageId} className="prose prose-invert prose-sm max-w-none scroll-mt-4">
+      <div id={messageId} className="prose-invert prose-sm prose max-w-none scroll-mt-4">
         <MarkdownRenderer className="text-sm">{message.text}</MarkdownRenderer>
       </div>
     );
@@ -851,7 +872,7 @@ function ThinkingBlock({ messageId, text }: { messageId: string; text: string })
       </CollapsibleTrigger>
       <CollapsibleContent>
         <div className="mt-2 rounded-lg border border-border/50 bg-muted/30 p-4 text-muted-foreground">
-          <MarkdownRenderer className="prose prose-invert prose-sm max-w-none">{text}</MarkdownRenderer>
+          <MarkdownRenderer className="prose-invert prose-sm prose max-w-none">{text}</MarkdownRenderer>
         </div>
       </CollapsibleContent>
     </Collapsible>
@@ -1328,7 +1349,7 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, sho
           <div className="space-y-3 p-3">
             {/* Markdown summary first */}
             {markdownTexts.length > 0 && (
-              <div className="prose prose-sm prose-invert max-w-none">
+              <div className="prose-sm prose-invert prose max-w-none">
                 <MarkdownRenderer>{markdownTexts.join("\n\n")}</MarkdownRenderer>
               </div>
             )}
@@ -1412,13 +1433,13 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, sho
             <div className="space-y-3 p-3">
               {/* Prompt rendered as markdown */}
               {taskPrompt && (
-                <div className="prose prose-sm prose-invert max-w-none rounded-md bg-secondary/60 p-3">
+                <div className="prose-sm prose-invert prose max-w-none rounded-md bg-secondary/60 p-3">
                   <MarkdownRenderer>{taskPrompt}</MarkdownRenderer>
                 </div>
               )}
               {/* Output text rendered as markdown */}
               {textContents.length > 0 && (
-                <div className="prose prose-sm prose-invert max-w-none">
+                <div className="prose-sm prose-invert prose max-w-none">
                   <MarkdownRenderer>{textContents.join("\n\n")}</MarkdownRenderer>
                 </div>
               )}
@@ -1500,7 +1521,7 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, sho
               {textContents.length > 0 && (
                 <div>
                   <div className="mb-1.5 text-xs font-medium text-muted-foreground">Output</div>
-                  <div className="prose prose-sm prose-invert max-w-none">
+                  <div className="prose-sm prose-invert prose max-w-none">
                     <MarkdownRenderer>{textContents.join("\n\n")}</MarkdownRenderer>
                   </div>
                 </div>
