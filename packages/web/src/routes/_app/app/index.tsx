@@ -1,4 +1,3 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -132,16 +131,6 @@ function formatTimeAgo(date: Date): string {
   if (diffHours > 0) return `${diffHours}h ago`;
   if (diffMinutes > 0) return `${diffMinutes}m ago`;
   return "just now";
-}
-
-function getInitials(name: string | null): string {
-  if (!name) return "?";
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
 }
 
 function getSourceIcon(source: string, className?: string) {
@@ -348,10 +337,11 @@ function TranscriptItem({ transcript }: { transcript: TranscriptData }) {
     <Link to="/app/logs/$id" params={{ id: transcript.id }} className="group block">
       <div className="flex gap-3 rounded-lg px-2 py-3 transition-colors hover:bg-accent/15 sm:gap-4">
         {/* Avatar */}
-        <Avatar className="h-8 w-8 shrink-0 self-start sm:h-10 sm:w-10 sm:self-center">
-          <AvatarImage src={transcript.userImage || undefined} alt={transcript.userName || "User"} />
-          <AvatarFallback className="text-xs sm:text-sm">{getInitials(transcript.userName)}</AvatarFallback>
-        </Avatar>
+        <img
+          src={transcript.userImage || undefined}
+          alt={transcript.userName || "User"}
+          className="h-8 w-8 shrink-0 self-start rounded-full sm:h-10 sm:w-10 sm:self-center"
+        />
 
         {/* Content */}
         <div className="min-w-0 flex-1 space-y-1.5">
@@ -409,7 +399,7 @@ function TranscriptItem({ transcript }: { transcript: TranscriptData }) {
           <img
             src={`/api/blobs/${transcript.previewBlobSha256}`}
             alt=""
-            className="hidden w-auto max-w-40 shrink-0 self-stretch rounded-md border border-border object-contain md:block"
+            className="hidden max-h-22 w-auto max-w-40 shrink-0 rounded-md border border-border object-contain md:block"
             loading="lazy"
           />
         )}
