@@ -23,10 +23,11 @@ import { Route as ApiBlobsSha256RouteImport } from './routes/api/blobs.$sha256'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth.$'
 import { Route as AppSSessionIdRouteImport } from './routes/_app/s.$sessionId'
 import { Route as AppJoinCodeRouteImport } from './routes/_app/join.$code'
-import { Route as AppAppTeamRouteImport } from './routes/_app/app/team'
 import { Route as AppAppDeviceRouteImport } from './routes/_app/app/device'
 import { Route as AppAppAdminRouteImport } from './routes/_app/app/admin'
+import { Route as AppAppTeamIndexRouteImport } from './routes/_app/app/team/index'
 import { Route as ApiAdminTranscriptUnifiedIdRouteImport } from './routes/api/admin/transcript-unified.$id'
+import { Route as AppAppTeamDashboardRouteImport } from './routes/_app/app/team/dashboard'
 import { Route as AppAppPrivateCwdRouteImport } from './routes/_app/app/private.$cwd'
 import { Route as AppAppLogsIdRouteImport } from './routes/_app/app/logs.$id'
 
@@ -99,11 +100,6 @@ const AppJoinCodeRoute = AppJoinCodeRouteImport.update({
   path: '/join/$code',
   getParentRoute: () => AppRoute,
 } as any)
-const AppAppTeamRoute = AppAppTeamRouteImport.update({
-  id: '/app/team',
-  path: '/app/team',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppAppDeviceRoute = AppAppDeviceRouteImport.update({
   id: '/app/device',
   path: '/app/device',
@@ -114,12 +110,22 @@ const AppAppAdminRoute = AppAppAdminRouteImport.update({
   path: '/app/admin',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAppTeamIndexRoute = AppAppTeamIndexRouteImport.update({
+  id: '/app/team/',
+  path: '/app/team/',
+  getParentRoute: () => AppRoute,
+} as any)
 const ApiAdminTranscriptUnifiedIdRoute =
   ApiAdminTranscriptUnifiedIdRouteImport.update({
     id: '/api/admin/transcript-unified/$id',
     path: '/api/admin/transcript-unified/$id',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AppAppTeamDashboardRoute = AppAppTeamDashboardRouteImport.update({
+  id: '/app/team/dashboard',
+  path: '/app/team/dashboard',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAppPrivateCwdRoute = AppAppPrivateCwdRouteImport.update({
   id: '/app/private/$cwd',
   path: '/app/private/$cwd',
@@ -141,7 +147,6 @@ export interface FileRoutesByFullPath {
   '/auth/$': typeof AuthSplatRoute
   '/app/admin': typeof AppAppAdminRoute
   '/app/device': typeof AppAppDeviceRoute
-  '/app/team': typeof AppAppTeamRoute
   '/join/$code': typeof AppJoinCodeRoute
   '/s/$sessionId': typeof AppSSessionIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -150,7 +155,9 @@ export interface FileRoutesByFullPath {
   '/app/': typeof AppAppIndexRoute
   '/app/logs/$id': typeof AppAppLogsIdRoute
   '/app/private/$cwd': typeof AppAppPrivateCwdRoute
+  '/app/team/dashboard': typeof AppAppTeamDashboardRoute
   '/api/admin/transcript-unified/$id': typeof ApiAdminTranscriptUnifiedIdRoute
+  '/app/team/': typeof AppAppTeamIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -162,7 +169,6 @@ export interface FileRoutesByTo {
   '/auth/$': typeof AuthSplatRoute
   '/app/admin': typeof AppAppAdminRoute
   '/app/device': typeof AppAppDeviceRoute
-  '/app/team': typeof AppAppTeamRoute
   '/join/$code': typeof AppJoinCodeRoute
   '/s/$sessionId': typeof AppSSessionIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -171,7 +177,9 @@ export interface FileRoutesByTo {
   '/app': typeof AppAppIndexRoute
   '/app/logs/$id': typeof AppAppLogsIdRoute
   '/app/private/$cwd': typeof AppAppPrivateCwdRoute
+  '/app/team/dashboard': typeof AppAppTeamDashboardRoute
   '/api/admin/transcript-unified/$id': typeof ApiAdminTranscriptUnifiedIdRoute
+  '/app/team': typeof AppAppTeamIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -185,7 +193,6 @@ export interface FileRoutesById {
   '/auth/$': typeof AuthSplatRoute
   '/_app/app/admin': typeof AppAppAdminRoute
   '/_app/app/device': typeof AppAppDeviceRoute
-  '/_app/app/team': typeof AppAppTeamRoute
   '/_app/join/$code': typeof AppJoinCodeRoute
   '/_app/s/$sessionId': typeof AppSSessionIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -194,7 +201,9 @@ export interface FileRoutesById {
   '/_app/app/': typeof AppAppIndexRoute
   '/_app/app/logs/$id': typeof AppAppLogsIdRoute
   '/_app/app/private/$cwd': typeof AppAppPrivateCwdRoute
+  '/_app/app/team/dashboard': typeof AppAppTeamDashboardRoute
   '/api/admin/transcript-unified/$id': typeof ApiAdminTranscriptUnifiedIdRoute
+  '/_app/app/team/': typeof AppAppTeamIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -208,7 +217,6 @@ export interface FileRouteTypes {
     | '/auth/$'
     | '/app/admin'
     | '/app/device'
-    | '/app/team'
     | '/join/$code'
     | '/s/$sessionId'
     | '/api/auth/$'
@@ -217,7 +225,9 @@ export interface FileRouteTypes {
     | '/app/'
     | '/app/logs/$id'
     | '/app/private/$cwd'
+    | '/app/team/dashboard'
     | '/api/admin/transcript-unified/$id'
+    | '/app/team/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -229,7 +239,6 @@ export interface FileRouteTypes {
     | '/auth/$'
     | '/app/admin'
     | '/app/device'
-    | '/app/team'
     | '/join/$code'
     | '/s/$sessionId'
     | '/api/auth/$'
@@ -238,7 +247,9 @@ export interface FileRouteTypes {
     | '/app'
     | '/app/logs/$id'
     | '/app/private/$cwd'
+    | '/app/team/dashboard'
     | '/api/admin/transcript-unified/$id'
+    | '/app/team'
   id:
     | '__root__'
     | '/'
@@ -251,7 +262,6 @@ export interface FileRouteTypes {
     | '/auth/$'
     | '/_app/app/admin'
     | '/_app/app/device'
-    | '/_app/app/team'
     | '/_app/join/$code'
     | '/_app/s/$sessionId'
     | '/api/auth/$'
@@ -260,7 +270,9 @@ export interface FileRouteTypes {
     | '/_app/app/'
     | '/_app/app/logs/$id'
     | '/_app/app/private/$cwd'
+    | '/_app/app/team/dashboard'
     | '/api/admin/transcript-unified/$id'
+    | '/_app/app/team/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -377,13 +389,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppJoinCodeRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/app/team': {
-      id: '/_app/app/team'
-      path: '/app/team'
-      fullPath: '/app/team'
-      preLoaderRoute: typeof AppAppTeamRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/app/device': {
       id: '/_app/app/device'
       path: '/app/device'
@@ -398,12 +403,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAppAdminRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/app/team/': {
+      id: '/_app/app/team/'
+      path: '/app/team'
+      fullPath: '/app/team/'
+      preLoaderRoute: typeof AppAppTeamIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/api/admin/transcript-unified/$id': {
       id: '/api/admin/transcript-unified/$id'
       path: '/api/admin/transcript-unified/$id'
       fullPath: '/api/admin/transcript-unified/$id'
       preLoaderRoute: typeof ApiAdminTranscriptUnifiedIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_app/app/team/dashboard': {
+      id: '/_app/app/team/dashboard'
+      path: '/app/team/dashboard'
+      fullPath: '/app/team/dashboard'
+      preLoaderRoute: typeof AppAppTeamDashboardRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/app/private/$cwd': {
       id: '/_app/app/private/$cwd'
@@ -425,23 +444,25 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppAppAdminRoute: typeof AppAppAdminRoute
   AppAppDeviceRoute: typeof AppAppDeviceRoute
-  AppAppTeamRoute: typeof AppAppTeamRoute
   AppJoinCodeRoute: typeof AppJoinCodeRoute
   AppSSessionIdRoute: typeof AppSSessionIdRoute
   AppAppIndexRoute: typeof AppAppIndexRoute
   AppAppLogsIdRoute: typeof AppAppLogsIdRoute
   AppAppPrivateCwdRoute: typeof AppAppPrivateCwdRoute
+  AppAppTeamDashboardRoute: typeof AppAppTeamDashboardRoute
+  AppAppTeamIndexRoute: typeof AppAppTeamIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppAppAdminRoute: AppAppAdminRoute,
   AppAppDeviceRoute: AppAppDeviceRoute,
-  AppAppTeamRoute: AppAppTeamRoute,
   AppJoinCodeRoute: AppJoinCodeRoute,
   AppSSessionIdRoute: AppSSessionIdRoute,
   AppAppIndexRoute: AppAppIndexRoute,
   AppAppLogsIdRoute: AppAppLogsIdRoute,
   AppAppPrivateCwdRoute: AppAppPrivateCwdRoute,
+  AppAppTeamDashboardRoute: AppAppTeamDashboardRoute,
+  AppAppTeamIndexRoute: AppAppTeamIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

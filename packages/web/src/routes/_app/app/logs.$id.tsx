@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
+import { getModelDisplayName } from "@/lib/formatters";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import type { UnifiedTranscriptMessage } from "@agentlogs/shared/claudecode";
@@ -106,25 +107,6 @@ function getSourceIcon(source: string, className?: string) {
     default:
       return <Terminal className={className} />;
   }
-}
-
-function getModelDisplayName(model: string | null): string {
-  if (!model) return "Unknown";
-
-  // Parse model strings like:
-  // - claude-opus-4-5-20251101 → Claude Opus 4.5
-  // - claude-sonnet-4-20250514 → Claude Sonnet 4
-  // - claude-3-5-haiku-20241022 → Claude Haiku 3.5
-  const match = model.match(/^claude-(?:(\d+)-(\d+)-)?(opus|sonnet|haiku)(?:-(\d+)(?:-(\d+))?)?-\d{8}$/);
-  if (!match) return model;
-
-  const [, oldMajor, oldMinor, family, newMajor, newMinor] = match;
-  const major = newMajor ?? oldMajor;
-  const minor = newMinor ?? oldMinor;
-  const version = minor ? `${major}.${minor}` : major;
-  const familyName = family.charAt(0).toUpperCase() + family.slice(1);
-
-  return `Claude ${familyName} ${version}`;
 }
 
 function formatRepoName(repo: string): { label: string; isGitHub: boolean } {

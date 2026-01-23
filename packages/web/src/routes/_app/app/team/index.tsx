@@ -21,9 +21,9 @@ import {
   getTeam,
   leaveTeam,
   removeMember,
-} from "../../../lib/server-functions";
+} from "@/lib/server-functions";
 
-export const Route = createFileRoute("/_app/app/team")({
+export const Route = createFileRoute("/_app/app/team/")({
   loader: async () => {
     const [team, session] = await Promise.all([getTeam(), getSession()]);
     return { team, session };
