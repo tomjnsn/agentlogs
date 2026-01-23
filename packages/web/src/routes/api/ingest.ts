@@ -6,6 +6,7 @@ import { unifiedTranscriptSchema } from "@agentlogs/shared/schemas";
 import * as Sentry from "@sentry/cloudflare";
 import { env } from "cloudflare:workers";
 import { and, eq } from "drizzle-orm";
+import { canAccessBlob } from "../../db/queries";
 import { blobs, repos, teamMembers, transcriptBlobs, transcripts, type VisibilityOption } from "../../db/schema";
 import { createAuth } from "../../lib/auth";
 import { generateSummary } from "../../lib/ai/summarizer";
@@ -265,7 +266,63 @@ export const Route = createFileRoute("/api/ingest")({
           // because backend might be in different environment (e.g., Cloudflare Workers)
           const existingSummary = existingTranscript?.transcripts?.[0]?.summary ?? null;
 
-          // Upload to R2
+          // Process blobs (validate SHA256 before any uploads)
+          const blobEntries = [...formData.entries()]
+            .filter(([key, value]) => key.startsWith("blob:") && typeof value !== "string")
+            .map(([key, value]) => ({
+              sha256: key.slice(5), // Remove "blob:" prefix
+              blob: value as unknown as File,
+            }));
+
+          // Validate all blob SHA256s first (can't do this in parallel since we need to fail fast)
+          const validatedBlobs: Array<{ sha256: string; data: ArrayBuffer; mediaType: string; size: number }> = [];
+          for (const { sha256: claimedSha256, blob } of blobEntries) {
+            const blobData = await blob.arrayBuffer();
+            const actualSha256 = await sha256HexBuffer(blobData);
+            if (actualSha256 !== claimedSha256) {
+              logger.warn("Blob SHA256 mismatch", {
+                userId,
+                transcriptId,
+                claimed: claimedSha256,
+                actual: actualSha256,
+              });
+              return json(
+                { error: `Blob SHA256 mismatch: claimed ${claimedSha256}, actual ${actualSha256}` },
+                { status: 400 },
+              );
+            }
+            validatedBlobs.push({
+              sha256: actualSha256,
+              data: blobData,
+              mediaType: blob.type || "application/octet-stream",
+              size: blob.size,
+            });
+          }
+
+          // Validate that all referenced blobs are either uploaded or already accessible
+          // This prevents users from referencing blobs they don't have access to
+          const referencedSha256s = extractBlobReferences(unifiedTranscript);
+          const uploadedSha256s = new Set(validatedBlobs.map((b) => b.sha256));
+
+          for (const sha256 of referencedSha256s) {
+            if (!uploadedSha256s.has(sha256)) {
+              // Blob not uploaded in this request - must have existing access
+              const hasAccess = await canAccessBlob(db, userId, sha256);
+              if (!hasAccess) {
+                logger.warn("Blob access denied: referenced blob not uploaded and not accessible", {
+                  userId,
+                  transcriptId,
+                  sha256: sha256.slice(0, 8),
+                });
+                return json(
+                  { error: `Access denied: you must upload blob ${sha256.slice(0, 8)}... to reference it` },
+                  { status: 403 },
+                );
+              }
+            }
+          }
+
+          // All validations passed - now start uploads to R2
           const r2Bucket = env.BUCKET;
           // For private transcripts (no repo), use "private/<userId>" as prefix
           const r2KeyPrefix = repoId ? `${repoId}/${transcriptId}` : `private/${userId}/${transcriptId}`;
@@ -300,39 +357,6 @@ export const Route = createFileRoute("/api/ingest")({
               unifiedSize: unifiedJson.length,
             });
           });
-
-          // Process blobs (validate SHA256 before parallel uploads)
-          const blobEntries = [...formData.entries()]
-            .filter(([key, value]) => key.startsWith("blob:") && typeof value !== "string")
-            .map(([key, value]) => ({
-              sha256: key.slice(5), // Remove "blob:" prefix
-              blob: value as unknown as File,
-            }));
-
-          // Validate all blob SHA256s first (can't do this in parallel since we need to fail fast)
-          const validatedBlobs: Array<{ sha256: string; data: ArrayBuffer; mediaType: string; size: number }> = [];
-          for (const { sha256: claimedSha256, blob } of blobEntries) {
-            const blobData = await blob.arrayBuffer();
-            const actualSha256 = await sha256HexBuffer(blobData);
-            if (actualSha256 !== claimedSha256) {
-              logger.warn("Blob SHA256 mismatch", {
-                userId,
-                transcriptId,
-                claimed: claimedSha256,
-                actual: actualSha256,
-              });
-              return json(
-                { error: `Blob SHA256 mismatch: claimed ${claimedSha256}, actual ${actualSha256}` },
-                { status: 400 },
-              );
-            }
-            validatedBlobs.push({
-              sha256: actualSha256,
-              data: blobData,
-              mediaType: blob.type || "application/octet-stream",
-              size: blob.size,
-            });
-          }
 
           // Upload validated blobs to R2 in parallel
           const blobUploadsPromise =
@@ -566,4 +590,22 @@ async function getDefaultVisibility(
   // 3. Default to private (no repo, or repo but not in team)
   logger.debug("Defaulting to private visibility", { repoFullName });
   return { visibility: "private", sharedWithTeamId: null };
+}
+
+/**
+ * Extract all blob SHA256 references from a unified transcript.
+ * Currently only user messages can contain image references.
+ */
+function extractBlobReferences(transcript: {
+  messages: Array<{ type: string; images?: Array<{ sha256: string }> }>;
+}): string[] {
+  const sha256s: string[] = [];
+  for (const message of transcript.messages) {
+    if (message.type === "user" && message.images) {
+      for (const image of message.images) {
+        sha256s.push(image.sha256);
+      }
+    }
+  }
+  return sha256s;
 }
