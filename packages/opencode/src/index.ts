@@ -1,214 +1,298 @@
 /**
  * AgentLogs OpenCode Plugin
  *
- * Automatically captures and uploads transcripts from OpenCode sessions.
- * Also enhances git commits with transcript links.
+ * Lightweight plugin that captures OpenCode session data and uploads via the agentlogs CLI.
+ * No external dependencies - all heavy lifting is done by the CLI.
  *
  * @example
  * // opencode.json
- * {
- *   "plugin": ["@agentlogs/opencode-plugin"]
- * }
- *
- * @example
- * // Environment variables
- * VI_AUTH_TOKEN=your_auth_token
- * VI_SERVER_URL=https://agentlogs.ai  // optional
+ * { "plugin": ["@agentlogs/opencode"] }
  */
 
-import type { OpenCodeExport, OpenCodeMessage, OpenCodePart, OpenCodeSessionInfo } from "@agentlogs/shared";
-import { appendTranscriptLinkToCommit, extractGitContext, isGitCommitCommand, type PluginContext } from "./git";
-import { buildTranscriptUrl, uploadOpenCodeTranscript } from "./upload";
+import { appendFileSync } from "node:fs";
+import { spawn } from "node:child_process";
 
 // ============================================================================
-// Types
+// Debug Logging
 // ============================================================================
 
-/**
- * OpenCode plugin interface (based on @opencode-ai/plugin)
- */
-export interface Plugin {
-  (ctx: OpenCodePluginContext): Promise<PluginHooks>;
-}
+const LOG_FILE = "/tmp/agentlogs-opencode.log";
 
-export interface OpenCodePluginContext extends PluginContext {
-  project?: {
-    id: string;
-    path: string;
-  };
-  client?: OpenCodeClient;
-}
-
-/**
- * OpenCode client SDK interface
- */
-export interface OpenCodeClient {
-  session: {
-    get: (args: { path: { id: string } }) => Promise<OpenCodeSessionInfo | null>;
-    messages: (args: { path: { id: string } }) => Promise<OpenCodeMessage[]>;
-  };
-}
-
-export interface PluginHooks {
-  event?: (event: PluginEvent) => Promise<void>;
-  tool?: {
-    execute?: {
-      before?: (args: ToolExecuteArgs) => Promise<ToolExecuteArgs>;
-      after?: (args: ToolExecuteArgs, result: unknown) => Promise<unknown>;
-    };
-  };
-}
-
-/**
- * Session created event from OpenCode
- */
-export interface SessionCreatedEvent {
-  type: "session.created";
-  properties: {
-    info: OpenCodeSessionInfo;
-  };
-}
-
-/**
- * Message updated event from OpenCode
- */
-export interface MessageUpdatedEvent {
-  type: "message.updated";
-  properties: {
-    info: OpenCodeMessage["info"];
-  };
-}
-
-/**
- * Message part updated event from OpenCode
- */
-export interface MessagePartUpdatedEvent {
-  type: "message.part.updated";
-  properties: {
-    part: OpenCodePart & { messageID: string };
-  };
-}
-
-/**
- * Session idle event from OpenCode
- */
-export interface SessionIdleEvent {
-  type: "session.idle";
-  properties: {
-    sessionID: string;
-  };
-}
-
-/**
- * Generic plugin event
- */
-export interface PluginEvent {
-  type: string;
-  properties?: unknown;
-}
-
-export interface ToolExecuteArgs {
-  name: string;
-  input: unknown;
-  [key: string]: unknown;
+function log(message: string, data?: unknown): void {
+  const timestamp = new Date().toISOString();
+  const logLine = data
+    ? `[${timestamp}] ${message}\n${JSON.stringify(data, null, 2)}\n`
+    : `[${timestamp}] ${message}\n`;
+  try {
+    appendFileSync(LOG_FILE, logLine);
+  } catch {
+    // Ignore write errors
+  }
 }
 
 // ============================================================================
-// Plugin State
+// Types (minimal, no external deps)
 // ============================================================================
 
-interface CollectedMessage {
-  info: OpenCodeMessage["info"];
-  parts: OpenCodePart[];
+interface PluginContext {
+  directory: string;
+  worktree?: string;
+  project?: { id: string; path: string };
+}
+
+interface SessionInfo {
+  isSubagent: boolean;
+  transcriptUrl: string | null;
 }
 
 interface PluginState {
-  pendingTranscriptId: string | null;
-  isUploading: boolean;
-  // Event collection state
-  sessionInfo: OpenCodeSessionInfo | null;
-  messagesById: Map<string, CollectedMessage>;
+  // Track sessions: sessionId → info
+  sessions: Map<string, SessionInfo>;
+  // Currently uploading session IDs (to prevent concurrent uploads)
+  uploading: Set<string>;
+}
+
+// ============================================================================
+// CLI Integration
+// ============================================================================
+
+interface UploadResult {
+  success: boolean;
+  transcriptId?: string;
+  transcriptUrl?: string;
+  error?: string;
+}
+
+/**
+ * Upload transcript by shelling out to the agentlogs CLI.
+ * Passes session ID - CLI reads directly from OpenCode storage.
+ * Uses $VI_CLI_PATH if set, otherwise falls back to npx.
+ */
+async function uploadViaCli(sessionId: string, cwd: string): Promise<UploadResult> {
+  // Use VI_CLI_PATH if set, otherwise fall back to npx
+  // VI_CLI_PATH can be "bun /path/to/cli.ts" or just "/path/to/agentlogs"
+  const cliPath = process.env.VI_CLI_PATH;
+
+  let command: string;
+  let args: string[];
+
+  if (cliPath) {
+    const parts = cliPath.split(" ");
+    command = parts[0];
+    args = [...parts.slice(1), "opencode", "upload", sessionId];
+  } else {
+    command = "npx";
+    args = ["-y", "agentlogs@latest", "opencode", "upload", sessionId];
+  }
+
+  log("Spawning CLI", { command, args, sessionId });
+
+  return new Promise((resolve) => {
+    const proc = spawn(command, args, {
+      cwd,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    let stdout = "";
+    let stderr = "";
+
+    proc.stdout.on("data", (data) => {
+      stdout += data.toString();
+    });
+    proc.stderr.on("data", (data) => {
+      stderr += data.toString();
+    });
+
+    proc.on("close", (code) => {
+      log("CLI process exited", { code, stdout, stderr });
+
+      if (code === 0) {
+        // Parse JSON output from CLI
+        try {
+          const result = JSON.parse(stdout.trim());
+          resolve({
+            success: true,
+            transcriptId: result.transcriptId,
+            transcriptUrl: result.transcriptUrl,
+          });
+        } catch {
+          resolve({
+            success: true,
+            error: "Failed to parse CLI output",
+          });
+        }
+      } else {
+        resolve({
+          success: false,
+          error: stderr || `CLI exited with code ${code}`,
+        });
+      }
+    });
+
+    proc.on("error", (err) => {
+      log("CLI spawn error", { error: String(err) });
+      resolve({
+        success: false,
+        error: `Failed to spawn agentlogs CLI: ${err.message}`,
+      });
+    });
+  });
+}
+
+// ============================================================================
+// Git Utilities
+// ============================================================================
+
+function isGitCommitCommand(input: unknown): boolean {
+  if (!input || typeof input !== "object") return false;
+  const record = input as Record<string, unknown>;
+
+  const cmd = Array.isArray(record.command)
+    ? record.command.join(" ")
+    : typeof record.command === "string"
+      ? record.command
+      : "";
+
+  return /\bgit\s+commit\b/.test(cmd);
+}
+
+function appendTranscriptLinkToCommit(input: unknown, transcriptUrl: string): Record<string, unknown> | null {
+  if (!input || typeof input !== "object") return null;
+  const record = { ...(input as Record<string, unknown>) };
+
+  let cmdString: string;
+  if (Array.isArray(record.command)) {
+    cmdString = record.command.join(" ");
+  } else if (typeof record.command === "string") {
+    cmdString = record.command;
+  } else {
+    return null;
+  }
+
+  // Extract existing message
+  const messageMatch = cmdString.match(/-m\s+(?:"([^"]+)"|'([^']+)'|(\S+))/);
+  const existingMessage = messageMatch?.[1] || messageMatch?.[2] || messageMatch?.[3];
+  if (!existingMessage) return null;
+
+  const newMessage = `${existingMessage}\n\nTranscript: ${transcriptUrl}`;
+
+  if (Array.isArray(record.command)) {
+    const cmdArray = [...(record.command as string[])];
+    for (let i = 0; i < cmdArray.length; i++) {
+      if (cmdArray[i] === "-m" && i + 1 < cmdArray.length) {
+        cmdArray[i + 1] = newMessage;
+        break;
+      }
+    }
+    record.command = cmdArray;
+  } else {
+    record.command = cmdString.replace(/-m\s+(?:"[^"]+"|'[^']+'|\S+)/, `-m "${newMessage.replace(/"/g, '\\"')}"`);
+  }
+
+  return record;
 }
 
 // ============================================================================
 // Main Plugin
 // ============================================================================
 
-/**
- * AgentLogs plugin for OpenCode.
- *
- * Features:
- * - Automatically uploads transcripts when sessions become idle
- * - Enhances git commits with transcript links
- * - Collects transcript data via events (no subprocess needed)
- */
-export const agentLogsPlugin: Plugin = async (ctx) => {
-  // Initialize state
+export const agentLogsPlugin = async (ctx: PluginContext) => {
   const state: PluginState = {
-    pendingTranscriptId: null,
-    isUploading: false,
-    sessionInfo: null,
-    messagesById: new Map(),
+    sessions: new Map(),
+    uploading: new Set(),
   };
 
-  // Log plugin initialization
-  console.log("[agentlogs] Plugin initialized");
+  log("Plugin initialized", {
+    directory: ctx.directory,
+    projectId: ctx.project?.id,
+  });
 
   return {
-    /**
-     * Handle OpenCode events
-     */
-    event: async (event) => {
-      try {
-        switch (event.type) {
-          case "session.created":
-            handleSessionCreated(state, event as SessionCreatedEvent);
-            break;
+    event: async (rawEvent: any) => {
+      // OpenCode wraps events: { event: { type, properties } }
+      const event = rawEvent?.event ?? rawEvent;
+      const eventType = event?.type;
+      const properties = event?.properties;
 
-          case "message.updated":
-            handleMessageUpdated(state, event as MessageUpdatedEvent);
-            break;
+      log(`Event: ${eventType}`, properties);
 
-          case "message.part.updated":
-            handleMessagePartUpdated(state, event as MessagePartUpdatedEvent);
-            break;
+      if (eventType === "session.created") {
+        const sessionId = properties?.info?.id;
+        const parentId = properties?.info?.parentID;
+        const isSubagent = !!parentId;
 
-          case "session.idle":
-            await handleSessionIdle(state, ctx, event as SessionIdleEvent);
-            break;
+        if (sessionId) {
+          state.sessions.set(sessionId, {
+            isSubagent,
+            transcriptUrl: null,
+          });
+          log("Session created", { sessionId, isSubagent, parentId });
         }
-      } catch (error) {
-        console.error("[agentlogs] Event handler error:", error);
+      }
+
+      if (eventType === "session.idle") {
+        // Use session ID from the event, not from state
+        const sessionId = properties?.sessionID;
+        if (!sessionId) return;
+
+        const session = state.sessions.get(sessionId);
+
+        // Skip subagent sessions
+        if (session?.isSubagent) {
+          log("Skipping subagent session", { sessionId });
+          return;
+        }
+
+        // Skip if already uploading this session
+        if (state.uploading.has(sessionId)) {
+          log("Already uploading session", { sessionId });
+          return;
+        }
+
+        state.uploading.add(sessionId);
+        log("Session idle, uploading", { sessionId });
+
+        try {
+          // Upload via CLI - it reads directly from OpenCode storage
+          const result = await uploadViaCli(sessionId, ctx.directory);
+
+          if (result.success && result.transcriptUrl) {
+            // Store transcript URL for this session (for git commit linking)
+            if (session) {
+              session.transcriptUrl = result.transcriptUrl;
+            }
+            log("Upload success", { sessionId, url: result.transcriptUrl });
+          } else {
+            log("Upload failed", { sessionId, error: result.error });
+          }
+        } catch (error) {
+          log("Session idle error", { sessionId, error: String(error) });
+        } finally {
+          state.uploading.delete(sessionId);
+        }
       }
     },
 
-    /**
-     * Intercept tool execution
-     */
     tool: {
       execute: {
-        /**
-         * Before tool execution - intercept git commits to add transcript link
-         */
-        before: async (args) => {
-          try {
-            // Check if this is a shell/bash tool with git commit
-            if ((args.name === "shell" || args.name === "bash") && isGitCommitCommand(args.input)) {
-              // If we have a pending transcript, add the link
-              if (state.pendingTranscriptId) {
-                const transcriptUrl = buildTranscriptUrl(state.pendingTranscriptId);
-                const modifiedInput = appendTranscriptLinkToCommit(args.input, transcriptUrl);
-
-                if (modifiedInput) {
-                  console.log("[agentlogs] Added transcript link to commit message");
-                  return { ...args, input: modifiedInput };
-                }
-              }
+        before: async (args: { name: string; input: unknown }) => {
+          // Intercept git commits to add transcript link
+          // Use the most recent non-subagent session's transcript URL
+          let transcriptUrl: string | null = null;
+          for (const [, session] of state.sessions) {
+            if (!session.isSubagent && session.transcriptUrl) {
+              transcriptUrl = session.transcriptUrl;
             }
-          } catch (error) {
-            console.error("[agentlogs] tool.execute.before error:", error);
           }
 
+          if ((args.name === "shell" || args.name === "bash") && isGitCommitCommand(args.input) && transcriptUrl) {
+            log("Intercepting git commit", { transcriptUrl });
+            const modified = appendTranscriptLinkToCommit(args.input, transcriptUrl);
+            if (modified) {
+              log("Added transcript link to commit");
+              return { ...args, input: modified };
+            }
+          }
           return args;
         },
       },
@@ -216,134 +300,4 @@ export const agentLogsPlugin: Plugin = async (ctx) => {
   };
 };
 
-// ============================================================================
-// Event Handlers
-// ============================================================================
-
-function handleSessionCreated(state: PluginState, event: SessionCreatedEvent): void {
-  state.sessionInfo = event.properties.info;
-  // Clear any previous message collection
-  state.messagesById.clear();
-}
-
-function handleMessageUpdated(state: PluginState, event: MessageUpdatedEvent): void {
-  const info = event.properties.info;
-  if (!info?.id) return;
-
-  const existing = state.messagesById.get(info.id);
-  if (existing) {
-    // Update existing message info
-    existing.info = info;
-  } else {
-    // Create new message entry
-    state.messagesById.set(info.id, { info, parts: [] });
-  }
-}
-
-function handleMessagePartUpdated(state: PluginState, event: MessagePartUpdatedEvent): void {
-  const part = event.properties.part;
-  if (!part?.messageID) return;
-
-  const message = state.messagesById.get(part.messageID);
-  if (!message) return;
-
-  // Extract the part without messageID for storage
-  const { messageID: _msgId, ...partData } = part;
-
-  // Find existing part by id and update, or add new part
-  const existingIdx = message.parts.findIndex((p: any) => p.id === partData.id);
-  if (existingIdx >= 0) {
-    message.parts[existingIdx] = partData as OpenCodePart;
-  } else {
-    message.parts.push(partData as OpenCodePart);
-  }
-}
-
-async function handleSessionIdle(
-  state: PluginState,
-  ctx: OpenCodePluginContext,
-  event: SessionIdleEvent,
-): Promise<void> {
-  // Don't upload if already uploading
-  if (state.isUploading) {
-    return;
-  }
-
-  const sessionID = event.properties.sessionID;
-
-  console.log(`[agentlogs] Session idle, uploading transcript...`);
-
-  state.isUploading = true;
-
-  try {
-    let exportData: OpenCodeExport | null = null;
-
-    // Try client API first (recommended approach)
-    if (ctx.client?.session) {
-      try {
-        const [sessionInfo, messages] = await Promise.all([
-          ctx.client.session.get({ path: { id: sessionID } }),
-          ctx.client.session.messages({ path: { id: sessionID } }),
-        ]);
-
-        if (sessionInfo && Array.isArray(messages) && messages.length > 0) {
-          exportData = {
-            info: sessionInfo,
-            messages,
-          };
-          console.log(`[agentlogs] Got transcript via client API (${messages.length} messages)`);
-        }
-      } catch (apiError) {
-        console.error("[agentlogs] Client API error, falling back to events:", apiError);
-      }
-    }
-
-    // Fallback to event-based collection
-    if (!exportData && state.sessionInfo && state.messagesById.size > 0) {
-      const messages: OpenCodeMessage[] = Array.from(state.messagesById.values()).map(({ info, parts }) => ({
-        info,
-        parts,
-      }));
-
-      exportData = {
-        info: state.sessionInfo,
-        messages,
-      };
-      console.log(`[agentlogs] Using event-based collection (${messages.length} messages)`);
-    }
-
-    if (!exportData) {
-      console.log("[agentlogs] No transcript data available, skipping upload");
-      return;
-    }
-
-    // Extract git context
-    const gitContext = await extractGitContext(ctx);
-
-    // Upload transcript
-    const uploadResult = await uploadOpenCodeTranscript({
-      exportData,
-      gitContext,
-      cwd: ctx.directory,
-    });
-
-    if (uploadResult.success && uploadResult.transcriptId) {
-      state.pendingTranscriptId = uploadResult.transcriptId;
-      console.log(`[agentlogs] Transcript uploaded: ${uploadResult.transcriptUrl}`);
-    } else if (uploadResult.error) {
-      console.error(`[agentlogs] Upload failed: ${uploadResult.error}`);
-    }
-  } catch (error) {
-    console.error("[agentlogs] Session idle handler error:", error);
-  } finally {
-    state.isUploading = false;
-  }
-}
-
-// ============================================================================
-// Exports
-// ============================================================================
-
 export default agentLogsPlugin;
-export { extractGitContext, isGitCommitCommand } from "./git";
-export { uploadOpenCodeTranscript, buildTranscriptUrl } from "./upload";

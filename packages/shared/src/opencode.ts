@@ -29,6 +29,7 @@ export type OpenCodeSessionInfo = {
   version?: string;
   projectID?: string;
   directory?: string;
+  parentID?: string; // Set for subagent sessions
   title?: string;
   time: {
     created: number; // milliseconds since epoch
@@ -103,10 +104,35 @@ export type OpenCodeToolState = {
       additions?: number;
       deletions?: number;
     };
+    // apply_patch tool uses files[] array
+    files?: Array<{
+      filePath?: string;
+      relativePath?: string;
+      type?: "add" | "update" | "delete";
+      diff?: string;
+      before?: string;
+      after?: string;
+      additions?: number;
+      deletions?: number;
+    }>;
     preview?: string;
     output?: string;
     exit?: number;
     description?: string;
+    // Glob metadata
+    count?: number;
+    // Grep metadata
+    matches?: number;
+    // TodoWrite/TodoRead metadata
+    todos?: Array<{
+      id?: string;
+      content?: string;
+      status?: string;
+      priority?: string;
+    }>;
+    // Skill metadata
+    name?: string;
+    dir?: string;
   };
   time?: {
     start?: number;
@@ -150,17 +176,31 @@ const TOOL_NAME_MAP: Record<string, string> = {
   // OpenCode built-in tools → Unified names
   shell: "Bash",
   bash: "Bash",
+  execute: "Bash",
   read_file: "Read",
   read: "Read",
   write_file: "Write",
   write: "Write",
   edit_file: "Edit",
   edit: "Edit",
+  apply_patch: "Edit",
+  multiedit: "Edit",
   glob: "Glob",
   grep: "Grep",
   find: "Glob",
   list_files: "Glob",
-  // MCP and other tools keep their names
+  ls: "Glob",
+  webfetch: "WebFetch",
+  websearch: "WebSearch",
+  task: "Task",
+  explore: "Explore",
+  skill: "Skill",
+  todowrite: "TodoWrite",
+  todoread: "TodoRead",
+  question: "Question",
+  plan: "Plan",
+  codesearch: "CodeSearch",
+  lsp: "LSP",
 };
 
 // ============================================================================
@@ -287,11 +327,22 @@ export function convertOpenCodeTranscript(
         }
 
         case "tool": {
-          const toolName = normalizeToolName(part.tool);
           const state = part.state ?? {};
+          const input = state.input as Record<string, unknown> | undefined;
 
-          const sanitizedInput = sanitizeToolInput(toolName, state.input, cwd);
-          const sanitizedOutput = sanitizeToolOutput(toolName, state.output, state.metadata, cwd);
+          // Skip TodoRead - it's redundant with TodoWrite
+          if (part.tool === "todoread") {
+            break;
+          }
+
+          // For Task tool with subagent_type, use the subagent type as the tool name
+          let toolName = normalizeToolName(part.tool);
+          if (toolName === "Task" && input?.subagent_type && typeof input.subagent_type === "string") {
+            toolName = capitalizeToolName(input.subagent_type);
+          }
+
+          const sanitizedInput = sanitizeToolInput(toolName, state.input, cwd, state.metadata);
+          const sanitizedOutput = sanitizeToolOutput(part.tool, toolName, state.output, state.metadata, cwd);
 
           unifiedMessages.push(
             unifiedTranscriptMessageSchema.parse({
@@ -382,6 +433,16 @@ function normalizeToolName(name: string): string {
   return TOOL_NAME_MAP[lower] ?? name;
 }
 
+function capitalizeToolName(name: string): string {
+  // Check if already in the map
+  const lower = name.toLowerCase();
+  if (TOOL_NAME_MAP[lower]) {
+    return TOOL_NAME_MAP[lower];
+  }
+  // Capitalize first letter
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
 /**
  * Compute the model identifier from message info.
  * Returns `${providerID}/${modelID}` when both are available.
@@ -438,10 +499,94 @@ function derivePreview(userTexts: string[]): string | null {
 // Tool Input/Output Sanitization
 // ============================================================================
 
-function sanitizeToolInput(toolName: string, input: unknown, cwd: string | null): unknown {
+/**
+ * Strip the <file>...</file> wrapper and line numbers from Read output.
+ */
+function stripFileWrapper(output: string): string {
+  let content = output;
+
+  // Remove <file> wrapper
+  const fileMatch = content.match(/<file>\n?([\s\S]*?)\n?<\/file>/);
+  if (fileMatch) {
+    content = fileMatch[1];
+  }
+
+  // Remove "(End of file - total N lines)" footer
+  content = content.replace(/\n?\(End of file - total \d+ lines\)\n?$/, "");
+
+  // Remove line numbers (format: "00001| content")
+  const lines = content.split("\n");
+  const strippedLines = lines.map((line) => {
+    const match = line.match(/^\d+\| (.*)$/);
+    return match ? match[1] : line;
+  });
+
+  return strippedLines.join("\n");
+}
+
+/**
+ * Strip the unified diff header (Index, ===, ---, +++) and keep only the hunks.
+ * The header is redundant since we already have file_path and type separately.
+ */
+function stripUnifiedDiffHeader(diff: string | undefined): string | undefined {
+  if (!diff) return diff;
+
+  const lines = diff.split("\n");
+  const resultLines: string[] = [];
+  let inHunk = false;
+
+  for (const line of lines) {
+    // Skip header lines
+    if (line.startsWith("Index: ") || line.startsWith("===") || line.startsWith("--- ") || line.startsWith("+++ ")) {
+      continue;
+    }
+    // Start capturing from @@ hunk headers
+    if (line.startsWith("@@")) {
+      inHunk = true;
+      continue; // Skip the @@ line itself too since it's metadata
+    }
+    if (inHunk) {
+      resultLines.push(line);
+    }
+  }
+
+  return resultLines.join("\n").trim() || undefined;
+}
+
+function sanitizeToolInput(
+  toolName: string,
+  input: unknown,
+  cwd: string | null,
+  metadata?: OpenCodeToolState["metadata"],
+): unknown {
   if (!input || typeof input !== "object") return input;
 
   const record = { ...(input as Record<string, unknown>) };
+
+  // Handle apply_patch: extract file info and diff from metadata
+  // The diff represents what the agent is requesting to do (input), not the result
+  if (toolName === "Edit" && typeof record.patchText === "string" && metadata?.files) {
+    const files = metadata.files;
+    if (files.length === 1) {
+      // Single file edit - include the diff in input
+      const file = files[0];
+      const filePath = file.relativePath ?? (cwd && file.filePath ? relativizePath(file.filePath, cwd) : file.filePath);
+      return {
+        file_path: filePath,
+        diff: stripUnifiedDiffHeader(file.diff),
+        type: file.type,
+      };
+    } else if (files.length > 1) {
+      // Multiple files - list them with diffs
+      return {
+        files: files.map((f) => ({
+          file_path: f.relativePath ?? (cwd && f.filePath ? relativizePath(f.filePath, cwd) : f.filePath),
+          type: f.type,
+          diff: stripUnifiedDiffHeader(f.diff),
+        })),
+      };
+    }
+  }
 
   // Normalize filePath → file_path (OpenCode uses camelCase, unified format uses snake_case)
   if (typeof record.filePath === "string") {
@@ -451,10 +596,20 @@ function sanitizeToolInput(toolName: string, input: unknown, cwd: string | null)
     record.file_path = relativizePath(record.file_path, cwd);
   }
 
-  // Relativize other path fields
-  if (typeof record.path === "string" && cwd) {
+  // Normalize include → glob for Grep (Claude Code uses 'glob')
+  if (toolName === "Grep" && typeof record.include === "string") {
+    record.glob = record.include;
+    delete record.include;
+  }
+
+  // Relativize path fields but rename 'path' to remove it (we show pattern for Glob/Grep)
+  if ((toolName === "Glob" || toolName === "Grep") && typeof record.path === "string") {
+    // Remove the path field - it's redundant with cwd context
+    delete record.path;
+  } else if (typeof record.path === "string" && cwd) {
     record.path = relativizePath(record.path, cwd);
   }
+
   if (typeof record.workdir === "string" && cwd) {
     record.workdir = relativizePath(record.workdir, cwd);
   }
@@ -464,7 +619,8 @@ function sanitizeToolInput(toolName: string, input: unknown, cwd: string | null)
 }
 
 function sanitizeToolOutput(
-  toolName: string,
+  originalToolName: string,
+  normalizedToolName: string,
   output: unknown,
   metadata: OpenCodeToolState["metadata"],
   cwd: string | null,
@@ -472,7 +628,7 @@ function sanitizeToolOutput(
   let result: unknown = output;
 
   // For Bash, extract from metadata
-  if (toolName === "Bash" && metadata) {
+  if (normalizedToolName === "Bash" && metadata) {
     const bashResult: Record<string, unknown> = {};
     if (typeof metadata.output === "string") {
       bashResult.stdout = metadata.output;
@@ -486,13 +642,75 @@ function sanitizeToolOutput(
     result = Object.keys(bashResult).length > 0 ? bashResult : output;
   }
 
-  // For Read, extract content from metadata.preview or output
-  else if (toolName === "Read" && metadata?.preview) {
-    result = { content: metadata.preview };
+  // For Read, format as Claude Code expects: { file: { filePath, content, numLines, ... } }
+  else if (normalizedToolName === "Read") {
+    const content = metadata?.preview ?? (typeof output === "string" ? stripFileWrapper(output) : null);
+    if (content) {
+      const numLines = content.split("\n").length;
+      result = {
+        file: {
+          content,
+          numLines,
+          totalLines: numLines,
+        },
+      };
+    }
+  }
+
+  // For Glob, format as Claude Code expects: { filenames: [...], numFiles }
+  else if (normalizedToolName === "Glob") {
+    const outputStr = typeof output === "string" ? output : "";
+    const filenames = outputStr
+      .split("\n")
+      .map((f) => f.trim())
+      .filter(Boolean)
+      .map((f) => (cwd ? relativizePath(f, cwd) : f));
+    result = {
+      filenames,
+      numFiles: metadata?.count ?? filenames.length,
+    };
+  }
+
+  // For Grep, format as Claude Code expects: { mode, content/filenames, numLines/numFiles }
+  else if (normalizedToolName === "Grep") {
+    const outputStr = typeof output === "string" ? output : "";
+    // Parse the output - it starts with "Found X matches" then lists files
+    const lines = outputStr.split("\n");
+    const matchCount = metadata?.matches ?? 0;
+
+    // Extract the actual content lines (skip the "Found X matches" header)
+    const contentLines = lines.slice(1).filter((l) => l.trim());
+
+    result = {
+      mode: "content",
+      content: contentLines.join("\n"),
+      numMatches: matchCount,
+      numLines: contentLines.length,
+    };
+  }
+
+  // For apply_patch (mapped to Edit), just show success and stats (diff is in input)
+  else if (originalToolName === "apply_patch" && metadata?.files) {
+    const files = metadata.files;
+    if (files.length === 1) {
+      const file = files[0];
+      result = {
+        additions: file.additions,
+        deletions: file.deletions,
+      };
+    } else {
+      result = {
+        files: files.map((f) => ({
+          file_path: f.relativePath ?? (cwd && f.filePath ? relativizePath(f.filePath, cwd) : f.filePath),
+          additions: f.additions,
+          deletions: f.deletions,
+        })),
+      };
+    }
   }
 
   // For Edit, extract diff from metadata
-  else if (toolName === "Edit" && metadata?.filediff) {
+  else if (normalizedToolName === "Edit" && metadata?.filediff) {
     result = {
       diff: metadata.diff,
       additions: metadata.filediff.additions,
@@ -501,8 +719,34 @@ function sanitizeToolOutput(
   }
 
   // For Write, check if file existed
-  else if (toolName === "Write" && metadata) {
+  else if (normalizedToolName === "Write" && metadata) {
     result = { created: !metadata.exists };
+  }
+
+  // For Explore (Task subagent), clean up the output by removing task metadata
+  else if (normalizedToolName === "Explore") {
+    const outputStr = typeof output === "string" ? output : "";
+    // Remove <task_metadata>...</task_metadata> section
+    const cleanOutput = outputStr.replace(/<task_metadata>[\s\S]*?<\/task_metadata>/g, "").trim();
+    result = { content: cleanOutput };
+  }
+
+  // For Skill, format as markdown content
+  else if (normalizedToolName === "Skill") {
+    const outputStr = typeof output === "string" ? output : "";
+    result = { content: outputStr };
+  }
+
+  // For WebFetch, format as markdown content
+  else if (normalizedToolName === "WebFetch") {
+    const outputStr = typeof output === "string" ? output : "";
+    result = { content: outputStr };
+  }
+
+  // For TodoWrite/TodoRead, extract todos from metadata or parse output
+  else if (normalizedToolName === "TodoWrite" || normalizedToolName === "TodoRead") {
+    const todos = metadata?.todos ?? [];
+    result = { todos };
   }
 
   // Apply generic path relativization to catch any missed paths

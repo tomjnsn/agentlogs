@@ -9,6 +9,7 @@ import { settingsCommand } from "./commands/settings";
 import { statusCommand } from "./commands/status";
 import { syncCommand } from "./commands/sync";
 import { uploadCommand } from "./commands/upload";
+import { opencodeUploadCommand } from "./commands/opencode-upload";
 
 const program = new Command();
 
@@ -64,6 +65,16 @@ codex
   .description("Upload a Codex transcript JSONL file to AgentLogs")
   .action(async (transcript: string) => {
     await uploadCommand(transcript, "codex");
+  });
+
+const opencode = program.command("opencode").description("OpenCode transcript utilities for AgentLogs");
+
+opencode
+  .command("upload")
+  .argument("<sessionId>", "OpenCode session ID to upload")
+  .description("Upload an OpenCode session transcript to AgentLogs")
+  .action(async (sessionId: string) => {
+    await opencodeUploadCommand(sessionId);
   });
 
 claudecode

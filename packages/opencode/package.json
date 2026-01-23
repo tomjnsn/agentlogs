@@ -1,6 +1,7 @@
 {
   "name": "@agentlogs/opencode",
   "version": "0.0.1",
+  "description": "AgentLogs plugin for OpenCode - automatically captures and uploads AI coding session transcripts",
   "keywords": [
     "agentlogs",
     "ai-coding",
@@ -27,12 +28,9 @@
     "types": "dist/index.d.ts"
   },
   "scripts": {
-    "build": "bun build ./src/index.ts --outdir ./dist --target node --external @agentlogs/shared",
+    "build": "bun build ./src/index.ts --outdir ./dist --target node",
     "prepublishOnly": "bun run build",
     "check": "tsgo --project tsconfig.json"
-  },
-  "dependencies": {
-    "@agentlogs/shared": "workspace:*"
   },
   "peerDependencies": {
     "bun": ">=1.0.0"

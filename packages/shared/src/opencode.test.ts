@@ -46,6 +46,59 @@ function serializeTranscript(transcript: NonNullable<ReturnType<typeof convertOp
 }
 
 describe("convertOpenCodeTranscript", () => {
+  test("all-tools.json - apply_patch conversion", async () => {
+    const data = await loadFixture("all-tools.json");
+    const transcript = convertOpenCodeTranscript(data, {
+      now: TEST_NOW,
+      pricing: TEST_PRICING,
+      gitContext: TEST_GIT_CONTEXT,
+      cwd: "/Users/philipp/dev/agentlogs",
+    });
+
+    expect(transcript).not.toBeNull();
+
+    // Find apply_patch calls (should be converted to Edit)
+    const editCalls = transcript!.messages.filter((m) => m.type === "tool-call" && m.toolName === "Edit");
+
+    expect(editCalls.length).toBe(2);
+
+    // First apply_patch: Add File
+    // Diff is in input (what the agent is requesting to do)
+    const addFile = editCalls[0];
+    expect(addFile.type).toBe("tool-call");
+    if (addFile.type === "tool-call") {
+      expect(addFile.toolName).toBe("Edit");
+      expect(addFile.input).toEqual({
+        file_path: "temp-tool-usage.txt",
+        type: "add",
+        diff: expect.stringContaining("+temporary tool usage marker"),
+      });
+      // Output just shows stats
+      expect(addFile.output).toEqual({
+        additions: 1,
+        deletions: 0,
+      });
+    }
+
+    // Second apply_patch: Delete File
+    // Diff is in input (what the agent is requesting to do)
+    const deleteFile = editCalls[1];
+    expect(deleteFile.type).toBe("tool-call");
+    if (deleteFile.type === "tool-call") {
+      expect(deleteFile.toolName).toBe("Edit");
+      expect(deleteFile.input).toEqual({
+        file_path: "temp-tool-usage.txt",
+        type: "delete",
+        diff: expect.stringContaining("-temporary tool usage marker"),
+      });
+      // Output just shows stats
+      expect(deleteFile.output).toEqual({
+        additions: 0,
+        deletions: 2,
+      });
+    }
+  });
+
   test("crud.json", async () => {
     const transcript = await loadAndConvert("crud.json");
     expect(transcript).not.toBeNull();
@@ -109,7 +162,8 @@ describe("convertOpenCodeTranscript", () => {
             "isError": false,
             "model": "openai/gpt-5.2-codex",
             "output": {
-              "content": 
+              "file": {
+                "content": 
       "# The Elevator
 
       Why did the elevator break up with the staircase?
@@ -118,6 +172,9 @@ describe("convertOpenCodeTranscript", () => {
       ---
       Just a random footer line."
       ,
+                "numLines": 7,
+                "totalLines": 7,
+              },
             },
             "timestamp": "2026-01-11T22:59:17.149Z",
             "toolName": "Read",

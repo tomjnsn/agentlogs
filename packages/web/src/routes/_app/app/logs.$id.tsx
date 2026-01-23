@@ -705,7 +705,10 @@ function getToolIcon(toolName: string | null): React.ComponentType<{ className?:
     case "WebFetch":
       return Globe;
     case "Task":
+    case "Explore":
       return Sparkles;
+    case "Skill":
+      return Terminal;
     default:
       return Terminal;
   }
@@ -734,6 +737,10 @@ function getToolDescription(toolName: string | null, input: unknown): string {
       return inputObj?.url ? String(inputObj.url) : "";
     case "WebSearch":
       return inputObj?.query ? String(inputObj.query) : "";
+    case "Skill":
+      return inputObj?.name ? String(inputObj.name) : inputObj?.skill ? String(inputObj.skill) : "";
+    case "Explore":
+      return inputObj?.description ? String(inputObj.description) : inputObj?.prompt ? String(inputObj.prompt) : "";
     default:
       return "";
   }
@@ -790,8 +797,8 @@ function MessageBlock({ message, index, showDebugInfo }: MessageBlockProps) {
   // Agent response - rendered text
   if (message.type === "agent") {
     return (
-      <div id={messageId} className="prose-invert prose-sm prose max-w-none scroll-mt-4">
-        <MarkdownRenderer className="text-sm">{message.text}</MarkdownRenderer>
+      <div id={messageId} className="scroll-mt-4">
+        <MarkdownRenderer className="prose-invert prose-sm prose max-w-none text-sm">{message.text}</MarkdownRenderer>
       </div>
     );
   }
@@ -1095,7 +1102,7 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, sho
   // For Grep results with content (content mode)
   if (isGrepWithContent) {
     const grepContent = String(outputObj!.content);
-    const numLines = outputObj?.numLines ? Number(outputObj.numLines) : grepContent.split("\n").length;
+    const numMatches = outputObj?.numMatches ? Number(outputObj.numMatches) : grepContent.split("\n").length;
     const inputPath = inputObj?.path ? String(inputObj.path).replace(/^\.\//, "") : undefined;
 
     return (
@@ -1104,7 +1111,7 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, sho
           <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
           <span className="text-sm font-medium">{displayName}</span>
           <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{description}</span>
-          <span className="shrink-0 text-sm text-muted-foreground">{numLines} lines</span>
+          <span className="shrink-0 text-sm text-muted-foreground">{numMatches} matches</span>
           {(error || isError) && (
             <span className="shrink-0 rounded bg-destructive/20 px-1.5 py-0.5 text-xs text-destructive">Error</span>
           )}
@@ -1340,9 +1347,9 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, sho
           <div className="space-y-3 p-3">
             {/* Markdown summary first */}
             {markdownTexts.length > 0 && (
-              <div className="prose-sm prose-invert prose max-w-none">
-                <MarkdownRenderer>{markdownTexts.join("\n\n")}</MarkdownRenderer>
-              </div>
+              <MarkdownRenderer className="prose-sm prose-invert prose max-w-none">
+                {markdownTexts.join("\n\n")}
+              </MarkdownRenderer>
             )}
             {/* Links list */}
             {links.length > 0 && (
@@ -1424,15 +1431,15 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, sho
             <div className="space-y-3 p-3">
               {/* Prompt rendered as markdown */}
               {taskPrompt && (
-                <div className="prose-sm prose-invert prose max-w-none rounded-md bg-secondary/60 p-3">
-                  <MarkdownRenderer>{taskPrompt}</MarkdownRenderer>
+                <div className="rounded-md bg-secondary/60 p-3">
+                  <MarkdownRenderer className="prose-sm prose-invert prose max-w-none">{taskPrompt}</MarkdownRenderer>
                 </div>
               )}
               {/* Output text rendered as markdown */}
               {textContents.length > 0 && (
-                <div className="prose-sm prose-invert prose max-w-none">
-                  <MarkdownRenderer>{textContents.join("\n\n")}</MarkdownRenderer>
-                </div>
+                <MarkdownRenderer className="prose-sm prose-invert prose max-w-none">
+                  {textContents.join("\n\n")}
+                </MarkdownRenderer>
               )}
               {/* Error display */}
               {error && (
@@ -1512,9 +1519,9 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, sho
               {textContents.length > 0 && (
                 <div>
                   <div className="mb-1.5 text-xs font-medium text-muted-foreground">Output</div>
-                  <div className="prose-sm prose-invert prose max-w-none">
-                    <MarkdownRenderer>{textContents.join("\n\n")}</MarkdownRenderer>
-                  </div>
+                  <MarkdownRenderer className="prose-sm prose-invert prose max-w-none">
+                    {textContents.join("\n\n")}
+                  </MarkdownRenderer>
                 </div>
               )}
               {/* Error display */}
@@ -1540,6 +1547,108 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, sho
           </a>
         )}
       </div>
+    );
+  }
+
+  // WebFetch tool - render content as markdown
+  if (toolName === "WebFetch") {
+    const content = outputObj?.content ? String(outputObj.content) : null;
+    const url = inputObj?.url ? String(inputObj.url) : "";
+
+    return (
+      <Collapsible id={messageId} defaultOpen={false} className={collapsibleClassName}>
+        <CollapsibleTrigger className={triggerClassName}>
+          <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="text-sm font-medium">{displayName}</span>
+          <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{url}</span>
+          {(error || isError) && (
+            <span className="shrink-0 rounded bg-destructive/20 px-1.5 py-0.5 text-xs text-destructive">Error</span>
+          )}
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[open]:rotate-180" />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="space-y-3 p-3">
+            {content && (
+              <MarkdownRenderer className="prose-sm prose-invert prose max-w-none">{content}</MarkdownRenderer>
+            )}
+            {(error || isError) && (
+              <div className="rounded-lg bg-destructive/10 p-3">
+                <div className="mb-1.5 text-xs font-medium text-destructive">Error</div>
+                <pre className="text-xs text-destructive">{error || "Operation failed"}</pre>
+              </div>
+            )}
+            {showDebugInfo && <AdminDebugSection input={input} output={output} error={error} />}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    );
+  }
+
+  // Skill tool - render content as markdown with skill name
+  if (toolName === "Skill") {
+    const content = outputObj?.content ? String(outputObj.content) : null;
+    const skillName = inputObj?.name ? String(inputObj.name) : inputObj?.skill ? String(inputObj.skill) : "";
+
+    return (
+      <Collapsible id={messageId} defaultOpen={false} className={collapsibleClassName}>
+        <CollapsibleTrigger className={triggerClassName}>
+          <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="text-sm font-medium">{displayName}</span>
+          <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{skillName}</span>
+          {(error || isError) && (
+            <span className="shrink-0 rounded bg-destructive/20 px-1.5 py-0.5 text-xs text-destructive">Error</span>
+          )}
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[open]:rotate-180" />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="space-y-3 p-3">
+            {content && (
+              <MarkdownRenderer className="prose-sm prose-invert prose max-w-none">{content}</MarkdownRenderer>
+            )}
+            {(error || isError) && (
+              <div className="rounded-lg bg-destructive/10 p-3">
+                <div className="mb-1.5 text-xs font-medium text-destructive">Error</div>
+                <pre className="text-xs text-destructive">{error || "Operation failed"}</pre>
+              </div>
+            )}
+            {showDebugInfo && <AdminDebugSection input={input} output={output} error={error} />}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    );
+  }
+
+  // Explore tool - render content as markdown
+  if (toolName === "Explore") {
+    const content = outputObj?.content ? String(outputObj.content) : null;
+    const exploreDescription = inputObj?.description ? String(inputObj.description) : "";
+
+    return (
+      <Collapsible id={messageId} defaultOpen={false} className={collapsibleClassName}>
+        <CollapsibleTrigger className={triggerClassName}>
+          <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="text-sm font-medium">{displayName}</span>
+          <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{exploreDescription}</span>
+          {(error || isError) && (
+            <span className="shrink-0 rounded bg-destructive/20 px-1.5 py-0.5 text-xs text-destructive">Error</span>
+          )}
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[open]:rotate-180" />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="space-y-3 p-3">
+            {content && (
+              <MarkdownRenderer className="prose-sm prose-invert prose max-w-none">{content}</MarkdownRenderer>
+            )}
+            {(error || isError) && (
+              <div className="rounded-lg bg-destructive/10 p-3">
+                <div className="mb-1.5 text-xs font-medium text-destructive">Error</div>
+                <pre className="text-xs text-destructive">{error || "Operation failed"}</pre>
+              </div>
+            )}
+            {showDebugInfo && <AdminDebugSection input={input} output={output} error={error} />}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
     );
   }
 
