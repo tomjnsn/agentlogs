@@ -126,7 +126,9 @@ export async function performUpload(
   }
 
   const eventCount = records.length;
-  const sha256 = createHash("sha256").update(redactedRawContent).digest("hex");
+  // Compute sha256 from unified transcript (not raw) so conversion changes are detected
+  const unifiedJson = JSON.stringify(unifiedTranscript);
+  const sha256 = createHash("sha256").update(unifiedJson).digest("hex");
 
   // Generate stable client ID for this transcript
   const clientId = await getOrCreateTranscriptId(finalSessionId);

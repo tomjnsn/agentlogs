@@ -3,7 +3,9 @@ import { promises as fs } from "fs";
 import { homedir } from "os";
 import { basename, extname, join, relative, resolve } from "path";
 import { fetchTranscriptMetadata, getRepoMetadata } from "@agentlogs/shared";
-import { redactSecretsPreserveLength } from "@agentlogs/shared/redact";
+import { convertClaudeCodeTranscript, resolveGitContext } from "@agentlogs/shared/claudecode";
+import { LiteLLMPricingFetcher } from "@agentlogs/shared/pricing";
+import { redactSecretsDeep } from "@agentlogs/shared/redact";
 import { getAuthenticatedEnvironments, type Environment } from "../config";
 import { performUpload } from "../lib/perform-upload";
 
@@ -165,6 +167,11 @@ async function discoverLocalTranscripts(projectsRoot: string): Promise<LocalTran
   const projectEntries = await fs.readdir(projectsRoot, { withFileTypes: true });
   const collected: LocalTranscriptInfo[] = [];
 
+  // Fetch pricing data once for all transcripts
+  const pricingFetcher = new LiteLLMPricingFetcher();
+  const pricingData = await pricingFetcher.fetchModelPricing();
+  const pricing = Object.fromEntries(pricingData);
+
   for (const projectEntry of projectEntries) {
     if (!projectEntry.isDirectory()) {
       continue;
@@ -183,10 +190,28 @@ async function discoverLocalTranscripts(projectsRoot: string): Promise<LocalTran
 
       try {
         const raw = await fs.readFile(filePath, "utf8");
-        const redactedRaw = redactSecretsPreserveLength(raw);
-        const sha256 = createHash("sha256").update(redactedRaw).digest("hex");
         const cwd = extractCwdFromTranscript(raw);
         const repoId = await resolveRepoIdFromCwd(cwd);
+
+        // Parse records and convert to unified format for sha256 computation
+        const records = parseTranscriptRecords(raw);
+        const gitBranch = extractGitBranchFromRecords(records);
+        const gitContext = cwd ? await resolveGitContext(cwd, gitBranch) : null;
+
+        const conversionResult = convertClaudeCodeTranscript(records, {
+          pricing,
+          gitContext,
+        });
+
+        if (!conversionResult) {
+          console.warn(`Skipped transcript at ${filePath}: Could not convert to unified format`);
+          continue;
+        }
+
+        // Compute sha256 from unified transcript (not raw) so conversion changes are detected
+        const unifiedTranscript = redactSecretsDeep(conversionResult.transcript);
+        const unifiedJson = JSON.stringify(unifiedTranscript);
+        const sha256 = createHash("sha256").update(unifiedJson).digest("hex");
 
         collected.push({
           transcriptId,
@@ -214,6 +239,29 @@ async function isDirectory(path: string): Promise<boolean> {
   }
 }
 
+function parseTranscriptRecords(rawTranscript: string): Record<string, unknown>[] {
+  const lines = rawTranscript.split(/\r?\n/);
+  const records: Record<string, unknown>[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      continue;
+    }
+
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (typeof parsed === "object" && parsed !== null) {
+        records.push(parsed as Record<string, unknown>);
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return records;
+}
+
 function extractCwdFromTranscript(rawTranscript: string): string | null {
   const lines = rawTranscript.split(/\r?\n/);
   for (const line of lines) {
@@ -233,6 +281,16 @@ function extractCwdFromTranscript(rawTranscript: string): string | null {
     }
   }
   return null;
+}
+
+function extractGitBranchFromRecords(records: Record<string, unknown>[]): string | undefined {
+  for (const record of records) {
+    const gitBranch = typeof record.gitBranch === "string" ? record.gitBranch.trim() : "";
+    if (gitBranch) {
+      return gitBranch;
+    }
+  }
+  return undefined;
 }
 
 async function resolveRepoIdFromCwd(cwd: string | null): Promise<string | null> {

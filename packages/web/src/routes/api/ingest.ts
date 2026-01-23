@@ -64,9 +64,9 @@ export const Route = createFileRoute("/api/ingest")({
           const transcriptContent =
             typeof transcriptPart === "string" ? transcriptPart : await (transcriptPart as File).text();
 
-          // Validate hash
+          // Validate hash against unified transcript (not raw) so conversion changes are detected
           const hashValid = await Sentry.startSpan({ name: "validate.hash", op: "validation" }, async () => {
-            const computedHash = await sha256Hex(transcriptContent);
+            const computedHash = await sha256Hex(unifiedTranscriptField);
             return computedHash === sha256;
           });
 
