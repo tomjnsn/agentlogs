@@ -295,15 +295,6 @@ function TranscriptDetailComponent() {
                 <Download className="h-3 w-3" />
                 Unified
               </a>
-              <a
-                href={`/api/admin/transcript-raw/${data.id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 rounded bg-yellow-500/20 px-2 py-1 text-xs font-medium text-yellow-500 transition-colors hover:bg-yellow-500/30"
-              >
-                <Download className="h-3 w-3" />
-                Raw
-              </a>
             </div>
           </div>
         )}

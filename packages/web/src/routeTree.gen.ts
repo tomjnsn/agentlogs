@@ -27,7 +27,6 @@ import { Route as AppAppTeamRouteImport } from './routes/_app/app/team'
 import { Route as AppAppDeviceRouteImport } from './routes/_app/app/device'
 import { Route as AppAppAdminRouteImport } from './routes/_app/app/admin'
 import { Route as ApiAdminTranscriptUnifiedIdRouteImport } from './routes/api/admin/transcript-unified.$id'
-import { Route as ApiAdminTranscriptRawIdRouteImport } from './routes/api/admin/transcript-raw.$id'
 import { Route as AppAppPrivateCwdRouteImport } from './routes/_app/app/private.$cwd'
 import { Route as AppAppLogsIdRouteImport } from './routes/_app/app/logs.$id'
 
@@ -121,11 +120,6 @@ const ApiAdminTranscriptUnifiedIdRoute =
     path: '/api/admin/transcript-unified/$id',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiAdminTranscriptRawIdRoute = ApiAdminTranscriptRawIdRouteImport.update({
-  id: '/api/admin/transcript-raw/$id',
-  path: '/api/admin/transcript-raw/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AppAppPrivateCwdRoute = AppAppPrivateCwdRouteImport.update({
   id: '/app/private/$cwd',
   path: '/app/private/$cwd',
@@ -156,7 +150,6 @@ export interface FileRoutesByFullPath {
   '/app/': typeof AppAppIndexRoute
   '/app/logs/$id': typeof AppAppLogsIdRoute
   '/app/private/$cwd': typeof AppAppPrivateCwdRoute
-  '/api/admin/transcript-raw/$id': typeof ApiAdminTranscriptRawIdRoute
   '/api/admin/transcript-unified/$id': typeof ApiAdminTranscriptUnifiedIdRoute
 }
 export interface FileRoutesByTo {
@@ -178,7 +171,6 @@ export interface FileRoutesByTo {
   '/app': typeof AppAppIndexRoute
   '/app/logs/$id': typeof AppAppLogsIdRoute
   '/app/private/$cwd': typeof AppAppPrivateCwdRoute
-  '/api/admin/transcript-raw/$id': typeof ApiAdminTranscriptRawIdRoute
   '/api/admin/transcript-unified/$id': typeof ApiAdminTranscriptUnifiedIdRoute
 }
 export interface FileRoutesById {
@@ -202,7 +194,6 @@ export interface FileRoutesById {
   '/_app/app/': typeof AppAppIndexRoute
   '/_app/app/logs/$id': typeof AppAppLogsIdRoute
   '/_app/app/private/$cwd': typeof AppAppPrivateCwdRoute
-  '/api/admin/transcript-raw/$id': typeof ApiAdminTranscriptRawIdRoute
   '/api/admin/transcript-unified/$id': typeof ApiAdminTranscriptUnifiedIdRoute
 }
 export interface FileRouteTypes {
@@ -226,7 +217,6 @@ export interface FileRouteTypes {
     | '/app/'
     | '/app/logs/$id'
     | '/app/private/$cwd'
-    | '/api/admin/transcript-raw/$id'
     | '/api/admin/transcript-unified/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -248,7 +238,6 @@ export interface FileRouteTypes {
     | '/app'
     | '/app/logs/$id'
     | '/app/private/$cwd'
-    | '/api/admin/transcript-raw/$id'
     | '/api/admin/transcript-unified/$id'
   id:
     | '__root__'
@@ -271,7 +260,6 @@ export interface FileRouteTypes {
     | '/_app/app/'
     | '/_app/app/logs/$id'
     | '/_app/app/private/$cwd'
-    | '/api/admin/transcript-raw/$id'
     | '/api/admin/transcript-unified/$id'
   fileRoutesById: FileRoutesById
 }
@@ -286,7 +274,6 @@ export interface RootRouteChildren {
   AuthSplatRoute: typeof AuthSplatRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiBlobsSha256Route: typeof ApiBlobsSha256Route
-  ApiAdminTranscriptRawIdRoute: typeof ApiAdminTranscriptRawIdRoute
   ApiAdminTranscriptUnifiedIdRoute: typeof ApiAdminTranscriptUnifiedIdRoute
 }
 
@@ -418,13 +405,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminTranscriptUnifiedIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/admin/transcript-raw/$id': {
-      id: '/api/admin/transcript-raw/$id'
-      path: '/api/admin/transcript-raw/$id'
-      fullPath: '/api/admin/transcript-raw/$id'
-      preLoaderRoute: typeof ApiAdminTranscriptRawIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_app/app/private/$cwd': {
       id: '/_app/app/private/$cwd'
       path: '/app/private/$cwd'
@@ -489,7 +469,6 @@ const rootRouteChildren: RootRouteChildren = {
   AuthSplatRoute: AuthSplatRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiBlobsSha256Route: ApiBlobsSha256Route,
-  ApiAdminTranscriptRawIdRoute: ApiAdminTranscriptRawIdRoute,
   ApiAdminTranscriptUnifiedIdRoute: ApiAdminTranscriptUnifiedIdRoute,
 }
 export const routeTree = rootRouteImport
