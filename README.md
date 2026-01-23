@@ -175,3 +175,5 @@ All data scoped by `userId` for multi-tenant isolation.
 ---
 
 > Why do Java developers wear glasses? Because they can't C#.
+>
+> Why do programmers prefer dark mode? Because light attracts bugs.
