@@ -55,6 +55,7 @@ describe("convertOpenCodeTranscript", () => {
     expect(serialized).toMatchInlineSnapshot(`
       {
         "blendedTokens": 18924,
+        "clientVersion": "1.1.13",
         "costUsd": 0.047218750000000004,
         "cwd": "~/dev/agentlogs",
         "filesChanged": 1,

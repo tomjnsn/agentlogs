@@ -303,6 +303,7 @@ export const unifiedTranscriptSchema = z.object({
   preview: z.string().nullable(),
   summary: z.string().nullable().default(null),
   model: z.string().nullable(),
+  clientVersion: z.string().nullable(),
   blendedTokens: z.number(),
   costUsd: z.number(),
   messageCount: z.number(),

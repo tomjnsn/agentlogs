@@ -35,6 +35,7 @@ export type ConvertClaudeCodeOptions = {
   pricing?: Record<string, LiteLLMModelPricing>;
   now?: Date;
   gitContext?: UnifiedGitContext | null;
+  clientVersion?: string;
 };
 
 type ClaudeUsage = {
@@ -300,6 +301,7 @@ export function convertClaudeCodeTranscript(
     preview: previewMessage,
     summary: null,
     model: primaryModel,
+    clientVersion: options.clientVersion ?? extractClientVersion(flatTranscript),
     blendedTokens,
     costUsd,
     messageCount: messages.length,
@@ -372,6 +374,7 @@ export async function convertClaudeCodeFile(
     preview: previewMessage,
     summary: null,
     model: primaryModel,
+    clientVersion: options.clientVersion ?? extractClientVersion(flatTranscript),
     blendedTokens,
     costUsd,
     messageCount: messages.length,
@@ -789,6 +792,16 @@ function deriveWorkingDirectory(transcript: ClaudeMessageRecord[]): string | und
     }
   }
   return undefined;
+}
+
+function extractClientVersion(transcript: ClaudeMessageRecord[]): string | null {
+  for (const message of transcript) {
+    const version = message.raw.version;
+    if (typeof version === "string" && version.length > 0) {
+      return version;
+    }
+  }
+  return null;
 }
 
 function extractGitContextFromRecords(transcript: ClaudeMessageRecord[]): UnifiedGitContext {

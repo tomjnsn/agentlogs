@@ -289,22 +289,15 @@ export const Route = createFileRoute("/api/ingest")({
               )
             : Promise.resolve(existingSummary);
 
-          // Start R2 uploads in parallel
+          // Upload unified transcript to R2
           const unifiedJson = JSON.stringify(unifiedTranscript);
-          const r2UploadsPromise = Sentry.startSpan({ name: "r2.uploadTranscripts", op: "file.write" }, async () => {
-            const gzippedRaw = await gzipString(transcriptContent);
-            await Promise.all([
-              r2Bucket.put(`${r2KeyPrefix}.json`, unifiedJson, {
-                httpMetadata: { contentType: "application/json" },
-              }),
-              r2Bucket.put(`${r2KeyPrefix}.raw.jsonl.gz`, gzippedRaw, {
-                httpMetadata: { contentType: "application/x-gzip" },
-              }),
-            ]);
-            logger.debug("Uploaded transcripts to R2", {
+          const r2UploadsPromise = Sentry.startSpan({ name: "r2.uploadTranscript", op: "file.write" }, async () => {
+            await r2Bucket.put(`${r2KeyPrefix}.json`, unifiedJson, {
+              httpMetadata: { contentType: "application/json" },
+            });
+            logger.debug("Uploaded unified transcript to R2", {
               key: r2KeyPrefix,
               unifiedSize: unifiedJson.length,
-              rawCompressedSize: gzippedRaw.byteLength,
             });
           });
 
@@ -379,6 +372,7 @@ export const Route = createFileRoute("/api/ingest")({
             previewBlobSha256,
             summary,
             model: unifiedTranscript.model,
+            clientVersion: unifiedTranscript.clientVersion,
             costUsd: unifiedTranscript.costUsd,
             blendedTokens: unifiedTranscript.blendedTokens,
             messageCount: unifiedTranscript.messageCount,
@@ -515,40 +509,6 @@ async function sha256HexBuffer(input: ArrayBuffer): Promise<string> {
   const hashBuffer = await crypto.subtle.digest("SHA-256", input);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-async function gzipString(input: string): Promise<Uint8Array> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(input);
-
-  // Use CompressionStream API available in Cloudflare Workers
-  const stream = new ReadableStream({
-    start(controller) {
-      controller.enqueue(data);
-      controller.close();
-    },
-  });
-
-  const compressedStream = stream.pipeThrough(new CompressionStream("gzip"));
-  const chunks: Uint8Array[] = [];
-  const reader = compressedStream.getReader();
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-  }
-
-  // Combine all chunks into a single Uint8Array
-  const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
-  const result = new Uint8Array(totalLength);
-  let offset = 0;
-  for (const chunk of chunks) {
-    result.set(chunk, offset);
-    offset += chunk.length;
-  }
-
-  return result;
 }
 
 type DefaultSharingSettings = {

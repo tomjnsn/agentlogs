@@ -27,6 +27,7 @@ describe("convertCodexFile", () => {
         },
         "transcript": {
           "blendedTokens": 7697,
+          "clientVersion": "0.46.0",
           "costUsd": 0.054657250000000004,
           "cwd": "~/dev/vibeinsights/fixtures",
           "filesChanged": 1,

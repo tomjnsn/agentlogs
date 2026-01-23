@@ -52,6 +52,7 @@ describe("convertClaudeCodeFile", () => {
         },
         "transcript": {
           "blendedTokens": 2286,
+          "clientVersion": "2.0.13",
           "costUsd": 0.0126906,
           "cwd": "~/dev/studio",
           "filesChanged": 0,
@@ -202,6 +203,7 @@ describe("convertClaudeCodeFile", () => {
         },
         "transcript": {
           "blendedTokens": 14126,
+          "clientVersion": "2.0.14",
           "costUsd": 0.10516139999999999,
           "cwd": "~/dev/vibeinsights/fixtures/claudecode",
           "filesChanged": 1,
@@ -721,6 +723,7 @@ describe("convertClaudeCodeFile", () => {
         },
         "transcript": {
           "blendedTokens": 10896,
+          "clientVersion": "2.0.13",
           "costUsd": 0.040881600000000004,
           "cwd": "~/dev/studio",
           "filesChanged": 0,
@@ -872,6 +875,7 @@ describe("convertClaudeCodeFile", () => {
         },
         "transcript": {
           "blendedTokens": 2835,
+          "clientVersion": "2.0.14",
           "costUsd": 0.04278390000000001,
           "cwd": "~/dev/vibeinsights/fixtures/claudecode",
           "filesChanged": 0,
@@ -1232,6 +1236,7 @@ describe("convertClaudeCodeFile", () => {
         },
         "transcript": {
           "blendedTokens": 6098,
+          "clientVersion": "2.1.3",
           "costUsd": 0,
           "cwd": "~/dev/vibeinsights",
           "filesChanged": 0,

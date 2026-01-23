@@ -150,6 +150,7 @@ export const transcripts = sqliteTable(
     preview: text("preview"),
     summary: text("summary"),
     model: text("model"),
+    clientVersion: text("client_version"),
     costUsd: real("cost_usd").notNull(),
     blendedTokens: integer("blended_tokens").notNull(),
     messageCount: integer("message_count").notNull(),

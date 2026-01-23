@@ -23,6 +23,7 @@ export type ConvertCodexOptions = {
   now?: Date;
   gitContext?: UnifiedGitContext | null;
   pricing?: Record<string, LiteLLMModelPricing>;
+  clientVersion?: string;
 };
 
 type CodexEvent = {
@@ -34,6 +35,7 @@ type CodexEvent = {
 type CodexSessionMeta = {
   id: string | null;
   cwd: string | null;
+  cliVersion: string | null;
   git: {
     branch: string | null;
     repositoryUrl: string | null;
@@ -349,6 +351,7 @@ export function convertCodexTranscript(
     preview,
     summary: null,
     model: primaryModel,
+    clientVersion: options.clientVersion ?? sessionMeta?.cliVersion ?? null,
     blendedTokens,
     costUsd,
     messageCount: messages.length,
@@ -437,6 +440,7 @@ function extractSessionMeta(payload: Record<string, unknown>): CodexSessionMeta 
   return {
     id: asString(payload.id),
     cwd: asString(payload.cwd),
+    cliVersion: asString(payload.cli_version ?? payload.cliVersion),
     git: {
       branch: asString(git.branch),
       repositoryUrl: asString(git.repository_url ?? git.repositoryUrl),

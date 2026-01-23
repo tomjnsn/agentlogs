@@ -1,0 +1,1 @@
+ALTER TABLE `transcripts` ADD `client_version` text;

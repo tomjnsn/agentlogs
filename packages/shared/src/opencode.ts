@@ -139,6 +139,7 @@ export type ConvertOpenCodeOptions = {
   gitContext?: UnifiedGitContext | null;
   cwd?: string | null;
   pricing?: Record<string, LiteLLMModelPricing>;
+  clientVersion?: string;
 };
 
 // ============================================================================
@@ -350,6 +351,7 @@ export function convertOpenCodeTranscript(
     preview,
     summary: null,
     model: primaryModel,
+    clientVersion: options.clientVersion ?? info.version ?? null,
     blendedTokens,
     costUsd,
     messageCount: unifiedMessages.length,

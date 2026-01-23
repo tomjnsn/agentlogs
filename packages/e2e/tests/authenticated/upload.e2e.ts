@@ -1,8 +1,10 @@
 import { test, expect, Page } from "@playwright/test";
 import { execSync } from "node:child_process";
+import { eq } from "drizzle-orm";
 import path from "path";
 import fs from "fs";
 import os from "os";
+import { getTestDb } from "../../utils/db";
 
 const ROOT_DIR = path.resolve(import.meta.dirname!, "../../../..");
 const TEST_AUTH_TOKEN = "test-session-token";
@@ -13,6 +15,7 @@ type FixtureCase = {
   expectedSnippet: string;
   fixturePath: string;
   uploadCommand: string;
+  expectedClientVersion: string;
 };
 
 interface UploadResult {
@@ -80,6 +83,22 @@ async function assertTranscriptInUi(page: Page, id: string) {
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 10000 });
 }
 
+function assertTranscriptInDb(id: string, fixture: FixtureCase) {
+  const { db, sqlite, schema } = getTestDb();
+  try {
+    const transcriptRows = db.select().from(schema.transcripts).where(eq(schema.transcripts.id, id)).all();
+
+    expect(transcriptRows.length).toBe(1);
+    const transcript = transcriptRows[0];
+    expect(transcript.source).toBe(fixture.uploadCommand === "codex" ? "codex" : "claude-code");
+    expect(transcript.clientVersion).toBe(fixture.expectedClientVersion);
+    expect(transcript.messageCount).toBeGreaterThan(0);
+    expect(transcript.preview).toContain(fixture.expectedSnippet.slice(0, 20));
+  } finally {
+    sqlite.close();
+  }
+}
+
 test.describe("CLI Upload", () => {
   test("uploads claudecode crud fixture and shows it in the UI", async ({ page }) => {
     const fixture = {
@@ -87,11 +106,13 @@ test.describe("CLI Upload", () => {
       expectedSnippet: "create a file `JOKE.md` with a ranom joke",
       fixturePath: path.join(ROOT_DIR, "fixtures/claudecode/crud.jsonl"),
       uploadCommand: "claudecode",
+      expectedClientVersion: "2.0.14",
     } satisfies FixtureCase;
     const result = uploadFixtureTranscript(fixture);
     expect(result.output).toContain("Upload complete");
     expect(result.id).toBeTruthy();
 
+    assertTranscriptInDb(result.id!, fixture);
     await assertTranscriptInUi(page, result.id!);
   });
 
@@ -101,11 +122,13 @@ test.describe("CLI Upload", () => {
       expectedSnippet: "how are you doing",
       fixturePath: path.join(ROOT_DIR, "fixtures/claudecode/compact.jsonl"),
       uploadCommand: "claudecode",
+      expectedClientVersion: "2.0.13",
     } satisfies FixtureCase;
     const result = uploadFixtureTranscript(fixture);
     expect(result.output).toContain("Upload complete");
     expect(result.id).toBeTruthy();
 
+    assertTranscriptInDb(result.id!, fixture);
     await assertTranscriptInUi(page, result.id!);
   });
 
@@ -115,11 +138,13 @@ test.describe("CLI Upload", () => {
       expectedSnippet: "go to google.com, make a screenshoot, look at it, and tell me what you think",
       fixturePath: path.join(ROOT_DIR, "fixtures/claudecode/images.jsonl"),
       uploadCommand: "claudecode",
+      expectedClientVersion: "2.1.3",
     } satisfies FixtureCase;
     const result = uploadFixtureTranscript(fixture);
     expect(result.output).toContain("Upload complete");
     expect(result.id).toBeTruthy();
 
+    assertTranscriptInDb(result.id!, fixture);
     await assertTranscriptInUi(page, result.id!);
   });
 
@@ -129,11 +154,13 @@ test.describe("CLI Upload", () => {
       expectedSnippet: "ask a subagent how he's doing",
       fixturePath: path.join(ROOT_DIR, "fixtures/claudecode/subagent.jsonl"),
       uploadCommand: "claudecode",
+      expectedClientVersion: "2.0.13",
     } satisfies FixtureCase;
     const result = uploadFixtureTranscript(fixture);
     expect(result.output).toContain("Upload complete");
     expect(result.id).toBeTruthy();
 
+    assertTranscriptInDb(result.id!, fixture);
     await assertTranscriptInUi(page, result.id!);
   });
 
@@ -143,11 +170,13 @@ test.describe("CLI Upload", () => {
       expectedSnippet: "create a todo list with 3 items",
       fixturePath: path.join(ROOT_DIR, "fixtures/claudecode/todos.jsonl"),
       uploadCommand: "claudecode",
+      expectedClientVersion: "2.0.14",
     } satisfies FixtureCase;
     const result = uploadFixtureTranscript(fixture);
     expect(result.output).toContain("Upload complete");
     expect(result.id).toBeTruthy();
 
+    assertTranscriptInDb(result.id!, fixture);
     await assertTranscriptInUi(page, result.id!);
   });
 
@@ -157,11 +186,13 @@ test.describe("CLI Upload", () => {
       expectedSnippet: "create a file `JOKE.md` with a random joke",
       fixturePath: path.join(ROOT_DIR, "fixtures/codex/crud.jsonl"),
       uploadCommand: "codex",
+      expectedClientVersion: "0.46.0",
     } satisfies FixtureCase;
     const result = uploadFixtureTranscript(fixture);
     expect(result.output).toContain("Upload complete");
     expect(result.id).toBeTruthy();
 
+    assertTranscriptInDb(result.id!, fixture);
     await assertTranscriptInUi(page, result.id!);
   });
 });
@@ -172,6 +203,7 @@ test.describe("Client-Generated ID Behavior", () => {
     expectedSnippet: "create a file",
     fixturePath: path.join(ROOT_DIR, "fixtures/claudecode/crud.jsonl"),
     uploadCommand: "claudecode",
+    expectedClientVersion: "2.0.14",
   } satisfies FixtureCase;
 
   test("re-uploading same transcript uses same ID (idempotency)", async () => {
