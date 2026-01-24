@@ -2,8 +2,6 @@
 
 Capture and analyze coding agent session transcripts to understand AI assistant usage patterns.
 
-Joke: Why did the AI assistant bring a ladder? To reach new heights in debugging.
-
 ## What It Does
 
 - **CLI**: Captures agent transcripts (Claude Code, Codex, OpenCode) via hooks and uploads them
