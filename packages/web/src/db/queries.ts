@@ -505,18 +505,16 @@ export async function getInviteByCode(db: DrizzleDB, code: string) {
  *
  * Rules:
  * 1. Owner always sees their own transcripts
- * 2. Public transcripts visible to everyone
- * 3. Team transcripts visible if:
+ * 2. Team transcripts visible if:
  *    - Viewer is in the sharedWithTeamId team AND
  *    - Owner is ALSO still in that team (prevents stale sharing after owner leaves)
+ * 3. Public transcripts from team members (viewer and owner share a team)
  */
 function buildVisibilityCondition(viewerId: string) {
   return or(
     // 1. Owner sees own transcripts
     eq(transcripts.userId, viewerId),
-    // 2. Public transcripts
-    eq(transcripts.visibility, "public"),
-    // 3. Team transcripts where viewer AND owner are both in the shared team
+    // 2. Team transcripts where viewer AND owner are both in the shared team
     and(
       eq(transcripts.visibility, "team"),
       // Viewer is in the sharedWithTeamId team
@@ -529,6 +527,16 @@ function buildVisibilityCondition(viewerId: string) {
       exists(
         sql`(SELECT 1 FROM ${teamMembers} AS owner_tm
             WHERE owner_tm.team_id = ${transcripts.sharedWithTeamId}
+            AND owner_tm.user_id = ${transcripts.userId})`,
+      ),
+    ),
+    // 3. Public transcripts from team members (viewer and owner share a team)
+    and(
+      eq(transcripts.visibility, "public"),
+      exists(
+        sql`(SELECT 1 FROM ${teamMembers} AS viewer_tm
+            INNER JOIN ${teamMembers} AS owner_tm ON viewer_tm.team_id = owner_tm.team_id
+            WHERE viewer_tm.user_id = ${viewerId}
             AND owner_tm.user_id = ${transcripts.userId})`,
       ),
     ),
