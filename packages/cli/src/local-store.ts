@@ -58,9 +58,9 @@ async function getDb(): Promise<DbWrapper> {
       all: (sql, ...params) => bunDb.query(sql).all(...(params as (string | number | boolean | null)[])),
     };
   } else {
-    // Use better-sqlite3
-    const BetterSqlite3 = (await import("better-sqlite3")).default;
-    const nodeDb = new BetterSqlite3(DB_FILE);
+    // Use libsql (has prebuilt binaries, works with npx)
+    const { default: LibSql } = await import("libsql");
+    const nodeDb = new LibSql(DB_FILE);
     db = {
       exec: (sql) => nodeDb.exec(sql),
       get: (sql, ...params) => nodeDb.prepare(sql).get(...params),
