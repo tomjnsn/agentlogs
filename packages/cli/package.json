@@ -1,11 +1,19 @@
 {
   "name": "agentlogs",
-  "version": "0.0.9",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/vibeinsights/vibeinsights.git",
-    "directory": "packages/cli"
-  },
+  "version": "0.0.10",
+  "description": "CLI for uploading AI coding agent transcripts to AgentLogs",
+  "keywords": [
+    "agentlogs",
+    "ai",
+    "claude",
+    "claude-code",
+    "cli",
+    "codex",
+    "coding-agent",
+    "opencode",
+    "transcript"
+  ],
+  "homepage": "https://agentlogs.ai",
   "bin": {
     "agentlogs": "dist/index.js"
   },
@@ -15,11 +23,7 @@
   "type": "module",
   "main": "dist/index.js",
   "publishConfig": {
-    "access": "public",
-    "bin": {
-      "agentlogs": "dist/index.js"
-    },
-    "main": "dist/index.js"
+    "access": "public"
   },
   "scripts": {
     "start": "bun run src/index.ts",
@@ -29,15 +33,15 @@
     "check": "tsgo --project tsconfig.json"
   },
   "dependencies": {
-    "@paralleldrive/cuid2": "^2.3.0",
-    "aywson": "^0.0.3",
-    "commander": "^14.0.2",
     "jsonc-parser": "^3.3.1",
     "libsql": "^0.5.22"
   },
   "devDependencies": {
     "@agentlogs/shared": "workspace:*",
+    "@paralleldrive/cuid2": "^2.3.0",
+    "aywson": "^0.0.3",
     "better-auth": "^1.4.13",
+    "commander": "^14.0.2",
     "open": "^11.0.0"
   }
 }
