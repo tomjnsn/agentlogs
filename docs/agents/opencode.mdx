@@ -1,0 +1,44 @@
+---
+title: OpenCode
+description: Set up AgentLogs with OpenCode for automatic transcript capture
+icon: /icons/opencode.svg
+---
+
+# OpenCode Integration
+
+OpenCode is an open-source AI coding assistant. AgentLogs provides integration with OpenCode for automatic transcript sync.
+
+## Features
+
+- **Automatic sync** - Transcripts are uploaded automatically when the session becomes idle
+- **Git commit enhancement** - Automatically adds transcript links to git commit messages
+
+## Installation
+
+### 1. Authentication
+
+Run the following command in the terminal:
+
+```bash
+npx agentlogs login
+```
+
+### 2. Configure OpenCode
+
+Add the plugin to your `opencode.json` config file:
+
+```json
+{
+  "plugin": ["@agentlogs/opencode"]
+}
+```
+
+## How It Works
+
+The plugin captures transcripts using OpenCode events:
+
+- **session.created** - Initializes tracking for a new session
+- **session.idle** - Uploads the complete transcript when the session becomes idle
+- **tool.execute.before** - Intercepts git commits to add transcript links
+
+Transcripts are automatically deduplicated server-side based on session ID.

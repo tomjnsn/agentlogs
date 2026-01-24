@@ -1,0 +1,101 @@
+---
+title: Permissions
+description: Control which repositories are captured and who can see your transcripts
+---
+
+# Permissions Model
+
+AgentLogs gives you fine-grained control over which repositories are captured and how transcripts are shared.
+
+## Capture Modes
+
+AgentLogs supports two capture modes:
+
+### Denylist Mode (Default)
+
+By default, AgentLogs captures transcripts from **all repositories** except those you explicitly deny. This is the easiest way to get started.
+
+```bash
+# Deny a specific repo from being captured
+agentlogs deny /path/to/private-repo
+```
+
+### Allowlist Mode
+
+For stricter control, you can enable allowlist mode where **only explicitly allowed repositories** are captured.
+
+```bash
+# Enable allowlist mode
+agentlogs settings --mode allowlist
+
+# Allow a specific repo
+agentlogs allow /path/to/my-repo
+```
+
+<Warning>When switching to allowlist mode, no repositories will be captured until you explicitly allow them.</Warning>
+
+## Visibility Levels
+
+Each transcript can have one of three visibility levels:
+
+| Level       | Who can see               |
+| ----------- | ------------------------- |
+| **Private** | Only you                  |
+| **Team**    | You and your team members |
+| **Public**  | Anyone with the link      |
+
+### Default Visibility
+
+By default, visibility is determined automatically:
+
+- **Public repositories** → Team visibility
+- **Private repositories** → Private visibility
+
+### Override Visibility
+
+You can override the default visibility when allowing a repo:
+
+```bash
+# Always make transcripts from this repo private
+agentlogs allow /path/to/repo --visibility private
+
+# Always make transcripts from this repo public
+agentlogs allow /path/to/repo --visibility public
+```
+
+## Configuration File
+
+Your permission settings are stored in `~/.config/agentlogs/settings.jsonc`:
+
+```jsonc
+{
+  // "denylist" (default) or "allowlist"
+  "mode": "denylist",
+
+  // Repository-specific settings
+  "repos": {
+    "github.com/myorg/public-repo": {
+      "allow": true,
+      "visibility": "team",
+    },
+    "github.com/myorg/private-repo": {
+      "allow": false,
+    },
+  },
+}
+```
+
+<Tip>
+  The settings file uses JSONC format, which supports comments. This makes it easy to annotate why certain repos have
+  specific settings.
+</Tip>
+
+## Team Permissions
+
+When you're part of a team:
+
+- Team members can see transcripts with **team** or **public** visibility
+- Only you can see your **private** transcripts
+- Team admins can invite new members and manage team settings
+
+To create or join a team, visit the [Team settings](https://agentlogs.ai/app/team) page.

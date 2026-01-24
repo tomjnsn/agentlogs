@@ -1,0 +1,50 @@
+---
+title: Usage
+description: Use the AgentLogs CLI
+---
+
+# Usage
+
+The AgentLogs CLI is the primary way to sync transcripts from AI coding assistants to your AgentLogs account. No installation required — just run it with `npx`.
+
+## Requirements
+
+- Node.js 18+ or Bun 1.0+
+- macOS, Linux, or Windows
+
+## Authentication
+
+Before syncing, you need to log in to your AgentLogs account:
+
+```bash
+npx agentlogs login
+```
+
+This initiates a device authorization flow:
+
+1. The CLI displays a user code
+2. A browser window opens to the verification URL
+3. Enter the code and authorize the device
+4. The CLI receives an access token and stores it locally
+
+## Check Status
+
+Verify you're logged in:
+
+```bash
+npx agentlogs status
+```
+
+This shows:
+
+- Your logged-in email
+- Current environment (production/development)
+- Number of synced transcripts
+
+## Logout
+
+To log out and remove stored credentials:
+
+```bash
+npx agentlogs logout
+```

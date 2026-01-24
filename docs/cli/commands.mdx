@@ -1,0 +1,211 @@
+---
+title: Commands
+description: Complete CLI command reference
+---
+
+# Command Reference
+
+## Authentication
+
+### login
+
+Authenticate with AgentLogs using device authorization.
+
+```bash
+agentlogs login
+```
+
+Opens a browser for authentication. After authorizing, your token is stored locally.
+
+### logout
+
+Remove stored authentication credentials.
+
+```bash
+agentlogs logout
+```
+
+### status
+
+Show current authentication status and account info.
+
+```bash
+agentlogs status
+```
+
+**Output:**
+
+```
+Logged in as: user@example.com
+Environment: production
+Synced transcripts: 42
+```
+
+---
+
+## Claude Code
+
+### claudecode sync
+
+Sync all local Claude Code transcripts to AgentLogs.
+
+```bash
+agentlogs claudecode sync [claudeDir]
+```
+
+**Arguments:**
+
+- `claudeDir` - Optional. Path to Claude data directory. Defaults to `~/.claude`
+
+**Options:**
+
+- `--cwd <path>` - Only upload transcripts from sessions in a specific working directory
+
+**Behavior:**
+
+- Scans for transcript files in the Claude directory
+- Skips already-uploaded transcripts (deduplication via SHA256)
+- Respects your allow/deny settings
+
+**Example:**
+
+```bash
+# Sync all transcripts
+agentlogs claudecode sync
+
+# Only sync transcripts from a specific project
+agentlogs claudecode sync --cwd /path/to/my-project
+```
+
+### claudecode upload
+
+Upload a specific transcript file.
+
+```bash
+agentlogs claudecode upload <transcript>
+```
+
+**Arguments:**
+
+- `transcript` - Path to the JSONL transcript file
+
+### claudecode hook
+
+Hook entry point for Claude Code integration. Called automatically by Claude Code hooks.
+
+```bash
+agentlogs claudecode hook
+```
+
+Reads hook data from stdin. This command is meant to be called from Claude Code's hook system, not manually.
+
+---
+
+## OpenCode
+
+### opencode upload
+
+Upload an OpenCode session.
+
+```bash
+agentlogs opencode upload <sessionId>
+```
+
+**Arguments:**
+
+- `sessionId` - The OpenCode session ID to upload
+
+Sessions are read from `~/.local/share/opencode/storage/sessions/`.
+
+---
+
+## Settings
+
+### settings
+
+View or modify repository settings.
+
+```bash
+agentlogs settings [options]
+```
+
+**Options:**
+
+- `--mode <mode>` - Set capture mode: `denylist` or `allowlist`
+- `--json` - Output settings as JSON
+
+**Example:**
+
+```bash
+# View current settings
+agentlogs settings
+
+# Switch to allowlist mode
+agentlogs settings --mode allowlist
+```
+
+### allow
+
+Allow a repository to be captured.
+
+```bash
+agentlogs allow <path> [options]
+```
+
+**Arguments:**
+
+- `path` - Path to the repository
+
+**Options:**
+
+- `--visibility <level>` - Set visibility: `private`, `team`, or `public`
+
+**Example:**
+
+```bash
+# Allow a repo with default visibility
+agentlogs allow /path/to/repo
+
+# Allow with explicit visibility
+agentlogs allow /path/to/repo --visibility private
+```
+
+### deny
+
+Deny a repository from being captured.
+
+```bash
+agentlogs deny <path>
+```
+
+**Arguments:**
+
+- `path` - Path to the repository
+
+**Example:**
+
+```bash
+agentlogs deny /path/to/secret-repo
+```
+
+---
+
+## Global Options
+
+These options work with any command:
+
+| Option        | Description                                    |
+| ------------- | ---------------------------------------------- |
+| `--help`      | Show help for a command                        |
+| `--version`   | Show CLI version                               |
+| `--env <env>` | Use environment: `production` or `development` |
+
+**Example:**
+
+```bash
+# Get help for a specific command
+agentlogs claudecode sync --help
+
+# Use development environment
+agentlogs --env development claudecode sync
+```

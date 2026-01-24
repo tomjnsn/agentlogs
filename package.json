@@ -8,6 +8,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun --cwd packages/web dev",
+    "dev:docs": "docker run --rm -it -p 3333:3333 -v \"$(pwd)/docs:/app\" -w /app node:22 sh -c 'npm exec -y mintlify@latest -- dev --port 3333'",
     "build": "bun --cwd packages/web build",
     "start": "bun --cwd packages/web start",
     "db:generate": "bun --cwd packages/web db:generate",

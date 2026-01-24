@@ -1,0 +1,45 @@
+---
+title: Configuration
+description: Configure the AgentLogs CLI
+---
+
+# Configuration
+
+The AgentLogs CLI stores configuration in `~/.config/agentlogs/`.
+
+## Settings File
+
+Repository permissions are configured in `settings.json`:
+
+```jsonc
+{
+  // Capture mode: "denylist" (default) or "allowlist"
+  "mode": "denylist",
+
+  // Per-repository settings
+  "repos": {
+    // Repo identified by remote URL
+    "github.com/myorg/public-repo": {
+      "allow": true,
+      "visibility": "team",
+    },
+    "github.com/myorg/private-repo": {
+      "allow": false,
+    },
+  },
+}
+```
+
+<Note>
+  The settings file uses JSONC format, which supports comments. Feel free to add notes explaining your configuration
+  choices.
+</Note>
+
+### Settings Fields
+
+| Field                   | Type                                  | Description                                |
+| ----------------------- | ------------------------------------- | ------------------------------------------ |
+| `mode`                  | `"denylist"` \| `"allowlist"`         | Capture mode                               |
+| `repos`                 | object                                | Per-repo settings keyed by repo identifier |
+| `repos[key].allow`      | boolean                               | Whether to capture this repo               |
+| `repos[key].visibility` | `"private"` \| `"team"` \| `"public"` | Visibility override                        |

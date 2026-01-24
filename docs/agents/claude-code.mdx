@@ -1,0 +1,46 @@
+---
+title: Claude Code
+description: Set up AgentLogs with Claude Code for automatic transcript capture
+icon: /icons/claude-code.svg
+---
+
+# Claude Code Integration
+
+Claude Code is Anthropic's official CLI for Claude. AgentLogs provides deep integration with Claude Code, including automatic transcript sync and commit tracking.
+
+## Features
+
+- **Automatic sync** - Transcripts are uploaded automatically at the end of each session
+- **Commit tracking** - Links AI sessions to the git commits they produced
+
+## Installation
+
+### 1. Authentication
+
+Run the following command in the terminal:
+
+```bash
+npx agentlogs login
+```
+
+### 2. Claude Code Plugin
+
+Inside Claude Code, run the following commands:
+
+```bash
+/plugin marketplace add agentlogs/claude-code
+/plugin install agentlogs
+```
+
+## How It Works
+
+The plugin captures transcripts and tracks commits using Claude Code hooks:
+
+- **Stop** - Captures after each agent response (real-time visibility)
+- **SessionEnd** - Captures complete session (guaranteed final state)
+- **PreToolUse** - Runs before Bash commands to snapshot git state
+- **PostToolUse** - Runs after Bash commands to detect new commits
+
+Transcripts are automatically deduplicated server-side based on session ID.
+
+The PreToolUse and PostToolUse hooks work together to track commits: PreToolUse captures the current HEAD before a Bash command runs, and PostToolUse compares it after to detect any commits made by Claude Code.

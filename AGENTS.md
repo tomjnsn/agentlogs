@@ -1,3 +1,8 @@
+## Documentation
+
+- Docs are in `docs/` using [Mintlify](https://mintlify.com)
+- Changelog is in `docs/changelog.mdx`
+
 ## Setup & Tooling
 
 - Use Bun 1.3.x: install deps with `bun install` from the repo root.
