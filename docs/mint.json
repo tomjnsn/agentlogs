@@ -21,10 +21,11 @@
       "url": "https://discord.gg/yG4TNv3mjG"
     }
   ],
+  "theme": "maple",
   "anchors": [
     {
       "name": "Dashboard",
-      "icon": "layers",
+      "icon": "scroll",
       "url": "https://agentlogs.ai/app"
     }
   ],
