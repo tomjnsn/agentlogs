@@ -9,39 +9,20 @@
   },
   "favicon": "/favicon.svg",
   "navigation": {
-    "anchors": [
+    "groups": [
       {
-        "anchor": "Documentation",
-        "icon": "book-open",
-        "groups": [
-          {
-            "group": "Introduction",
-            "pages": ["introduction/overview", "introduction/getting-started", "introduction/permissions"]
-          },
-          {
-            "group": "Agents",
-            "pages": ["agents/claude-code", "agents/opencode"]
-          },
-          {
-            "group": "CLI",
-            "pages": ["cli/installation", "cli/commands", "cli/configuration"]
-          },
-          {
-            "group": "",
-            "pages": ["changelog"]
-          }
-        ]
+        "group": "Introduction",
+        "pages": ["introduction/overview", "introduction/getting-started", "introduction/permissions"]
+      },
+      {
+        "group": "Agents",
+        "pages": ["agents/claude-code", "agents/opencode"]
+      },
+      {
+        "group": "CLI",
+        "pages": ["cli/installation", "cli/commands", "cli/configuration"]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Dashboard",
-          "href": "https://agentlogs.ai/app",
-          "icon": "scroll"
-        }
-      ]
-    }
+    ]
   },
   "logo": {
     "light": "/logo-light.svg",
