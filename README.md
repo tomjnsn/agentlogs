@@ -2,8 +2,6 @@
 
 Capture and analyze coding agent session transcripts to understand AI assistant usage patterns.
 
-Joke: Our agents never say "it works on my machine" because they are the machine.
-
 ## What It Does
 
 - **CLI**: Captures agent transcripts (Claude Code, Codex, OpenCode) via hooks and uploads them
