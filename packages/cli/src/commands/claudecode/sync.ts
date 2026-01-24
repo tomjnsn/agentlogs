@@ -6,8 +6,8 @@ import { fetchTranscriptMetadata, getRepoMetadata } from "@agentlogs/shared";
 import { convertClaudeCodeTranscript, resolveGitContext } from "@agentlogs/shared/claudecode";
 import { LiteLLMPricingFetcher } from "@agentlogs/shared/pricing";
 import { redactSecretsDeep } from "@agentlogs/shared/redact";
-import { getAuthenticatedEnvironments, type Environment } from "../config";
-import { performUpload } from "../lib/perform-upload";
+import { getAuthenticatedEnvironments, type Environment } from "../../config";
+import { performUpload } from "../../lib/perform-upload";
 
 interface LocalTranscriptInfo {
   transcriptId: string;

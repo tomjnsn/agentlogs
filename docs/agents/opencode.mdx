@@ -12,6 +12,7 @@ OpenCode is an open-source AI coding assistant. AgentLogs provides integration w
 
 - **Automatic sync** - Transcripts are uploaded automatically when the session becomes idle
 - **Git commit enhancement** - Automatically adds transcript links to git commit messages
+- **Commit tracking** - Tracks which commits were made during each session
 
 ## Installation
 
@@ -33,12 +34,43 @@ Add the plugin to your `opencode.json` config file:
 }
 ```
 
+The plugin will be automatically installed via npm on next OpenCode startup.
+
 ## How It Works
 
-The plugin captures transcripts using OpenCode events:
+The plugin is lightweight and shells out to the AgentLogs CLI for all processing:
 
-- **session.created** - Initializes tracking for a new session
-- **session.idle** - Uploads the complete transcript when the session becomes idle
-- **tool.execute.before** - Intercepts git commits to add transcript links
+### Transcript Upload
 
-Transcripts are automatically deduplicated server-side based on session ID.
+When a session becomes idle, the plugin triggers the CLI to upload the transcript. Transcripts are automatically deduplicated server-side based on session ID.
+
+### Git Commit Enhancement
+
+When a git commit is detected:
+
+1. The plugin intercepts the command before execution
+2. Generates a stable transcript ID
+3. Appends a transcript link to the commit message
+4. Uploads a partial transcript so the link works immediately
+
+**Example commit message:**
+
+```
+Fix authentication bug
+
+🔮 View transcript: https://agentlogs.ai/s/abc123xyz
+```
+
+### Commit Tracking
+
+After a git commit completes, the CLI extracts the commit SHA, branch, and title, then associates them with the transcript for easy navigation.
+
+## Manual Upload
+
+You can manually upload a session using the CLI:
+
+```bash
+agentlogs opencode upload <sessionId>
+```
+
+Sessions are read from `~/.local/share/opencode/storage/`.

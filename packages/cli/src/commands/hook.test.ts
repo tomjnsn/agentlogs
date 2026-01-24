@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { appendTranscriptLink, containsGitCommit } from "./hook";
+import { appendTranscriptLink, containsGitCommit } from "../lib/hooks-shared";
 
 describe("containsGitCommit", () => {
   it("detects git commit command", () => {

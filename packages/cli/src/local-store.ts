@@ -161,3 +161,31 @@ export async function cacheTranscriptId(transcriptId: string, id: string): Promi
   const key = `transcript.${transcriptId}.id`;
   await store.set(key, id);
 }
+
+/**
+ * Cache a callId -> transcriptId mapping for commit tracking.
+ * Used to link tool.execute.before with tool.execute.after.
+ */
+export async function cacheCallTranscriptId(callId: string, transcriptId: string): Promise<void> {
+  const store = getLocalStore();
+  const key = `call.${callId}.transcriptId`;
+  await store.set(key, transcriptId);
+}
+
+/**
+ * Get cached transcriptId for a callId.
+ */
+export async function getCallTranscriptId(callId: string): Promise<string | undefined> {
+  const store = getLocalStore();
+  const key = `call.${callId}.transcriptId`;
+  return store.get<string>(key);
+}
+
+/**
+ * Delete cached callId -> transcriptId mapping after use.
+ */
+export async function deleteCallTranscriptId(callId: string): Promise<void> {
+  const store = getLocalStore();
+  const key = `call.${callId}.transcriptId`;
+  await store.delete(key);
+}

@@ -115,7 +115,29 @@ agentlogs opencode upload <sessionId>
 
 - `sessionId` - The OpenCode session ID to upload
 
-Sessions are read from `~/.local/share/opencode/storage/sessions/`.
+Sessions are read from `~/.local/share/opencode/storage/`.
+
+**Example:**
+
+```bash
+agentlogs opencode upload ses_abc123def456
+```
+
+### opencode hook
+
+Hook entry point for OpenCode plugin integration. Called automatically by the OpenCode plugin.
+
+```bash
+agentlogs opencode hook
+```
+
+Reads hook data from stdin and outputs JSON response. This command handles:
+
+- **tool.execute.before** - Intercepts git commits to add transcript links
+- **tool.execute.after** - Tracks commit metadata (SHA, branch, title)
+- **session.idle** - Uploads the complete transcript
+
+This command is meant to be called from the OpenCode plugin, not manually.
 
 ---
 

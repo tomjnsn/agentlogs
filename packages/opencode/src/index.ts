@@ -1,8 +1,8 @@
 /**
  * AgentLogs OpenCode Plugin
  *
- * Lightweight plugin that captures OpenCode session data and uploads via the agentlogs CLI.
- * No external dependencies - all heavy lifting is done by the CLI.
+ * Lightweight plugin that shells out to the agentlogs CLI for all processing.
+ * The CLI handles transcript uploads, git commit interception, and commit tracking.
  *
  * @example
  * // opencode.json
@@ -13,12 +13,13 @@ import { appendFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 
 // ============================================================================
-// Debug Logging
+// Debug Logging (compiled out in production builds)
 // ============================================================================
 
 const LOG_FILE = "/tmp/agentlogs-opencode.log";
 
 function log(message: string, data?: unknown): void {
+  if (process.env.NODE_ENV === "production") return;
   const timestamp = new Date().toISOString();
   const logLine = data
     ? `[${timestamp}] ${message}\n${JSON.stringify(data, null, 2)}\n`
@@ -31,7 +32,7 @@ function log(message: string, data?: unknown): void {
 }
 
 // ============================================================================
-// Types (minimal, no external deps)
+// Types
 // ============================================================================
 
 interface PluginContext {
@@ -40,37 +41,30 @@ interface PluginContext {
   project?: { id: string; path: string };
 }
 
-interface SessionInfo {
-  isSubagent: boolean;
-  transcriptUrl: string | null;
+interface HookPayload {
+  hook_event_name: string;
+  session_id: string;
+  call_id?: string;
+  tool?: string;
+  cwd?: string;
+  tool_input?: Record<string, unknown>;
+  tool_output?: Record<string, unknown>;
 }
 
-interface PluginState {
-  // Track sessions: sessionId → info
-  sessions: Map<string, SessionInfo>;
-  // Currently uploading session IDs (to prevent concurrent uploads)
-  uploading: Set<string>;
+interface HookResponse {
+  modified: boolean;
+  args?: Record<string, unknown>;
 }
 
 // ============================================================================
 // CLI Integration
 // ============================================================================
 
-interface UploadResult {
-  success: boolean;
-  transcriptId?: string;
-  transcriptUrl?: string;
-  error?: string;
-}
-
 /**
- * Upload transcript by shelling out to the agentlogs CLI.
- * Passes session ID - CLI reads directly from OpenCode storage.
- * Uses $VI_CLI_PATH if set, otherwise falls back to npx.
+ * Shell out to the agentlogs CLI hook command.
+ * Passes hook data via stdin, receives response via stdout.
  */
-async function uploadViaCli(sessionId: string, cwd: string): Promise<UploadResult> {
-  // Use VI_CLI_PATH if set, otherwise fall back to npx
-  // VI_CLI_PATH can be "bun /path/to/cli.ts" or just "/path/to/agentlogs"
+async function runHook(payload: HookPayload, cwd: string): Promise<HookResponse> {
   const cliPath = process.env.VI_CLI_PATH;
 
   let command: string;
@@ -79,18 +73,18 @@ async function uploadViaCli(sessionId: string, cwd: string): Promise<UploadResul
   if (cliPath) {
     const parts = cliPath.split(" ");
     command = parts[0];
-    args = [...parts.slice(1), "opencode", "upload", sessionId];
+    args = [...parts.slice(1), "opencode", "hook"];
   } else {
     command = "npx";
-    args = ["-y", "agentlogs@latest", "opencode", "upload", sessionId];
+    args = ["-y", "agentlogs@latest", "opencode", "hook"];
   }
 
-  log("Spawning CLI", { command, args, sessionId });
+  log("Running hook", { command, args, payload: payload.hook_event_name });
 
   return new Promise((resolve) => {
     const proc = spawn(command, args, {
       cwd,
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: ["pipe", "pipe", "pipe"],
     });
 
     let stdout = "";
@@ -103,93 +97,30 @@ async function uploadViaCli(sessionId: string, cwd: string): Promise<UploadResul
       stderr += data.toString();
     });
 
-    proc.on("close", (code) => {
-      log("CLI process exited", { code, stdout, stderr });
+    // Send payload via stdin
+    proc.stdin.write(JSON.stringify(payload));
+    proc.stdin.end();
 
-      if (code === 0) {
-        // Parse JSON output from CLI
+    proc.on("close", (code) => {
+      log("Hook process exited", { code, stdout: stdout.slice(0, 500), stderr: stderr.slice(0, 500) });
+
+      if (code === 0 && stdout.trim()) {
         try {
-          const result = JSON.parse(stdout.trim());
-          resolve({
-            success: true,
-            transcriptId: result.transcriptId,
-            transcriptUrl: result.transcriptUrl,
-          });
+          const response = JSON.parse(stdout.trim()) as HookResponse;
+          resolve(response);
         } catch {
-          resolve({
-            success: true,
-            error: "Failed to parse CLI output",
-          });
+          resolve({ modified: false });
         }
       } else {
-        resolve({
-          success: false,
-          error: stderr || `CLI exited with code ${code}`,
-        });
+        resolve({ modified: false });
       }
     });
 
     proc.on("error", (err) => {
-      log("CLI spawn error", { error: String(err) });
-      resolve({
-        success: false,
-        error: `Failed to spawn agentlogs CLI: ${err.message}`,
-      });
+      log("Hook spawn error", { error: String(err) });
+      resolve({ modified: false });
     });
   });
-}
-
-// ============================================================================
-// Git Utilities
-// ============================================================================
-
-function isGitCommitCommand(input: unknown): boolean {
-  if (!input || typeof input !== "object") return false;
-  const record = input as Record<string, unknown>;
-
-  const cmd = Array.isArray(record.command)
-    ? record.command.join(" ")
-    : typeof record.command === "string"
-      ? record.command
-      : "";
-
-  return /\bgit\s+commit\b/.test(cmd);
-}
-
-function appendTranscriptLinkToCommit(input: unknown, transcriptUrl: string): Record<string, unknown> | null {
-  if (!input || typeof input !== "object") return null;
-  const record = { ...(input as Record<string, unknown>) };
-
-  let cmdString: string;
-  if (Array.isArray(record.command)) {
-    cmdString = record.command.join(" ");
-  } else if (typeof record.command === "string") {
-    cmdString = record.command;
-  } else {
-    return null;
-  }
-
-  // Extract existing message
-  const messageMatch = cmdString.match(/-m\s+(?:"([^"]+)"|'([^']+)'|(\S+))/);
-  const existingMessage = messageMatch?.[1] || messageMatch?.[2] || messageMatch?.[3];
-  if (!existingMessage) return null;
-
-  const newMessage = `${existingMessage}\n\nTranscript: ${transcriptUrl}`;
-
-  if (Array.isArray(record.command)) {
-    const cmdArray = [...(record.command as string[])];
-    for (let i = 0; i < cmdArray.length; i++) {
-      if (cmdArray[i] === "-m" && i + 1 < cmdArray.length) {
-        cmdArray[i + 1] = newMessage;
-        break;
-      }
-    }
-    record.command = cmdArray;
-  } else {
-    record.command = cmdString.replace(/-m\s+(?:"[^"]+"|'[^']+'|\S+)/, `-m "${newMessage.replace(/"/g, '\\"')}"`);
-  }
-
-  return record;
 }
 
 // ============================================================================
@@ -197,105 +128,120 @@ function appendTranscriptLinkToCommit(input: unknown, transcriptUrl: string): Re
 // ============================================================================
 
 export const agentLogsPlugin = async (ctx: PluginContext) => {
-  const state: PluginState = {
-    sessions: new Map(),
-    uploading: new Set(),
-  };
-
   log("Plugin initialized", {
     directory: ctx.directory,
     projectId: ctx.project?.id,
   });
 
+  // Track callIds where we intercepted a git commit
+  // Used to know when to call CLI in after hook (git output may not include our link)
+  const interceptedCallIds = new Set<string>();
+
   return {
+    // Handle session events (for session.idle upload)
     event: async (rawEvent: any) => {
-      // OpenCode wraps events: { event: { type, properties } }
       const event = rawEvent?.event ?? rawEvent;
       const eventType = event?.type;
       const properties = event?.properties;
 
-      log(`Event: ${eventType}`, properties);
-
-      if (eventType === "session.created") {
-        const sessionId = properties?.info?.id;
-        const parentId = properties?.info?.parentID;
-        const isSubagent = !!parentId;
-
-        if (sessionId) {
-          state.sessions.set(sessionId, {
-            isSubagent,
-            transcriptUrl: null,
-          });
-          log("Session created", { sessionId, isSubagent, parentId });
-        }
-      }
-
+      // Only handle session.idle for uploads
       if (eventType === "session.idle") {
-        // Use session ID from the event, not from state
         const sessionId = properties?.sessionID;
         if (!sessionId) return;
 
-        const session = state.sessions.get(sessionId);
+        log("session.idle", { sessionId });
 
-        // Skip subagent sessions
-        if (session?.isSubagent) {
-          log("Skipping subagent session", { sessionId });
-          return;
-        }
-
-        // Skip if already uploading this session
-        if (state.uploading.has(sessionId)) {
-          log("Already uploading session", { sessionId });
-          return;
-        }
-
-        state.uploading.add(sessionId);
-        log("Session idle, uploading", { sessionId });
-
-        try {
-          // Upload via CLI - it reads directly from OpenCode storage
-          const result = await uploadViaCli(sessionId, ctx.directory);
-
-          if (result.success && result.transcriptUrl) {
-            // Store transcript URL for this session (for git commit linking)
-            if (session) {
-              session.transcriptUrl = result.transcriptUrl;
-            }
-            log("Upload success", { sessionId, url: result.transcriptUrl });
-          } else {
-            log("Upload failed", { sessionId, error: result.error });
-          }
-        } catch (error) {
-          log("Session idle error", { sessionId, error: String(error) });
-        } finally {
-          state.uploading.delete(sessionId);
-        }
+        // Fire and forget - CLI handles the upload
+        runHook(
+          {
+            hook_event_name: "session.idle",
+            session_id: sessionId,
+            cwd: ctx.directory,
+          },
+          ctx.directory,
+        ).catch((err) => log("session.idle hook error", { error: String(err) }));
       }
     },
 
-    tool: {
-      execute: {
-        before: async (args: { name: string; input: unknown }) => {
-          // Intercept git commits to add transcript link
-          // Use the most recent non-subagent session's transcript URL
-          let transcriptUrl: string | null = null;
-          for (const [, session] of state.sessions) {
-            if (!session.isSubagent && session.transcriptUrl) {
-              transcriptUrl = session.transcriptUrl;
-            }
-          }
+    // Hook: Called before any tool executes
+    "tool.execute.before": async (
+      input: { tool: string; sessionID: string; callID: string },
+      output: { args: any },
+    ) => {
+      // Only intercept bash/shell tools
+      if (input.tool !== "bash") {
+        return;
+      }
 
-          if ((args.name === "shell" || args.name === "bash") && isGitCommitCommand(args.input) && transcriptUrl) {
-            log("Intercepting git commit", { transcriptUrl });
-            const modified = appendTranscriptLinkToCommit(args.input, transcriptUrl);
-            if (modified) {
-              log("Added transcript link to commit");
-              return { ...args, input: modified };
-            }
-          }
-          return args;
+      // Quick check: skip if not a git commit
+      const command = output.args?.command;
+      if (typeof command !== "string" || !/\bgit\s+commit\b/.test(command)) {
+        return;
+      }
+
+      log("tool.execute.before (git commit)", {
+        tool: input.tool,
+        sessionID: input.sessionID,
+        callID: input.callID,
+      });
+
+      const response = await runHook(
+        {
+          hook_event_name: "tool.execute.before",
+          session_id: input.sessionID,
+          call_id: input.callID,
+          tool: input.tool,
+          tool_input: output.args,
+          cwd: ctx.directory,
         },
-      },
+        ctx.directory,
+      );
+
+      if (response.modified && response.args) {
+        log("tool.execute.before: args modified", { modified: true });
+        // Track this callId so we know to call CLI in after hook
+        interceptedCallIds.add(input.callID);
+        // Mutate in place - don't replace the reference, as OpenCode passes { args } by reference
+        Object.assign(output.args, response.args);
+      }
+    },
+
+    // Hook: Called after any tool executes
+    "tool.execute.after": async (
+      input: { tool: string; sessionID: string; callID: string },
+      output: { title: string; output: string; metadata: any },
+    ) => {
+      // Only handle bash tool
+      if (input.tool !== "bash") {
+        return;
+      }
+
+      // Check if we should call CLI:
+      // 1. This callId was intercepted in before hook (we modified the commit command)
+      // 2. Output contains our transcript link (fallback check)
+      const wasIntercepted = interceptedCallIds.has(input.callID);
+      const cmdOutput = output.output || "";
+      const hasLink = cmdOutput.includes("agentlogs.ai/s/");
+
+      if (!wasIntercepted && !hasLink) {
+        return;
+      }
+
+      // Clean up tracked callId
+      interceptedCallIds.delete(input.callID);
+
+      // Fire and forget - CLI handles commit tracking
+      runHook(
+        {
+          hook_event_name: "tool.execute.after",
+          session_id: input.sessionID,
+          call_id: input.callID,
+          tool: input.tool,
+          tool_output: output,
+          cwd: ctx.directory,
+        },
+        ctx.directory,
+      ).catch((err) => log("tool.execute.after hook error", { error: String(err) }));
     },
   };
 };

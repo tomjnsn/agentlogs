@@ -28,7 +28,7 @@
     "types": "dist/index.d.ts"
   },
   "scripts": {
-    "build": "bun build ./src/index.ts --outdir ./dist --target node",
+    "build": "bun build ./src/index.ts --outdir ./dist --target node --define 'process.env.NODE_ENV=\"production\"' --minify",
     "prepublishOnly": "bun run build",
     "check": "tsgo --project tsconfig.json"
   },

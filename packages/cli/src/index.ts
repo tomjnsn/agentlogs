@@ -2,14 +2,19 @@
 import { Command } from "commander";
 import { allowCommand } from "./commands/allow";
 import { denyCommand } from "./commands/deny";
-import { hookCommand } from "./commands/hook";
 import { loginCommand } from "./commands/login";
 import { logoutCommand } from "./commands/logout";
 import { settingsCommand } from "./commands/settings";
 import { statusCommand } from "./commands/status";
-import { syncCommand } from "./commands/sync";
-import { uploadCommand } from "./commands/upload";
-import { opencodeUploadCommand } from "./commands/opencode-upload";
+// Claude Code commands
+import { hookCommand as claudeCodeHookCommand } from "./commands/claudecode/hook";
+import { syncCommand } from "./commands/claudecode/sync";
+import { claudeCodeUploadCommand } from "./commands/claudecode/upload";
+// Codex commands
+import { codexUploadCommand } from "./commands/codex/upload";
+// OpenCode commands
+import { opencodeUploadCommand } from "./commands/opencode/upload";
+import { hookCommand as openCodeHookCommand } from "./commands/opencode/hook";
 
 const program = new Command();
 
@@ -47,14 +52,14 @@ claudecode
   .argument("<transcript>", "Path or alias for a transcript JSONL file")
   .description("Upload a transcript JSONL file to AgentLogs")
   .action(async (transcript: string) => {
-    await uploadCommand(transcript, "claude-code");
+    await claudeCodeUploadCommand(transcript);
   });
 
 claudecode
   .command("hook")
   .description("Process Claude Code hook input from stdin")
   .action(async () => {
-    await hookCommand();
+    await claudeCodeHookCommand();
   });
 
 const codex = program.command("codex").description("Codex transcript utilities for AgentLogs");
@@ -64,7 +69,7 @@ codex
   .argument("<transcript>", "Path or alias for a Codex transcript JSONL file")
   .description("Upload a Codex transcript JSONL file to AgentLogs")
   .action(async (transcript: string) => {
-    await uploadCommand(transcript, "codex");
+    await codexUploadCommand(transcript);
   });
 
 const opencode = program.command("opencode").description("OpenCode transcript utilities for AgentLogs");
@@ -75,6 +80,13 @@ opencode
   .description("Upload an OpenCode session transcript to AgentLogs")
   .action(async (sessionId: string) => {
     await opencodeUploadCommand(sessionId);
+  });
+
+opencode
+  .command("hook")
+  .description("Process OpenCode hook input from stdin")
+  .action(async () => {
+    await openCodeHookCommand();
   });
 
 claudecode

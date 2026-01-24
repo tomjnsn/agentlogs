@@ -5,7 +5,7 @@ import type { OpenCodeExport } from "@agentlogs/shared";
 import { convertOpenCodeTranscript } from "@agentlogs/shared/opencode";
 import { LiteLLMPricingFetcher } from "@agentlogs/shared/pricing";
 import { resolveGitContext } from "@agentlogs/shared/claudecode";
-import { uploadUnifiedToAllEnvs } from "../lib/perform-upload";
+import { uploadUnifiedToAllEnvs } from "../../lib/perform-upload";
 
 const OPENCODE_STORAGE = join(homedir(), ".local", "share", "opencode", "storage");
 
@@ -77,22 +77,33 @@ function readSessionFromStorage(sessionId: string): OpenCodeExport | null {
 
 export async function opencodeUploadCommand(sessionId: string): Promise<void> {
   if (!sessionId) {
+    console.error("Error: Session ID is required");
     process.exit(1);
   }
+
+  console.log(`Uploading OpenCode session: ${sessionId}`);
 
   // Read session from OpenCode storage
   const exportData = readSessionFromStorage(sessionId);
 
   if (!exportData) {
+    console.error(`Error: Session not found: ${sessionId}`);
+    console.error(`Searched in: ${OPENCODE_STORAGE}`);
     process.exit(1);
   }
 
   // Skip subagent sessions (they have a parentID)
   if (exportData.info.parentID) {
+    console.log("Skipping subagent session");
     process.exit(0);
   }
 
+  const title = exportData.info.title || "Untitled";
+  const messageCount = exportData.messages?.length ?? 0;
+  console.log(`Session: "${title}" (${messageCount} messages)`);
+
   // Fetch pricing data
+  console.log("Fetching pricing data...");
   const pricingFetcher = new LiteLLMPricingFetcher();
   const pricingData = await pricingFetcher.fetchModelPricing();
   const pricing = Object.fromEntries(pricingData);
@@ -101,7 +112,12 @@ export async function opencodeUploadCommand(sessionId: string): Promise<void> {
   const cwd = exportData.info.directory ?? process.cwd();
   const gitContext = await resolveGitContext(cwd, undefined);
 
+  if (gitContext?.repo) {
+    console.log(`Repository: ${gitContext.repo}`);
+  }
+
   // Convert to unified format
+  console.log("Converting transcript...");
   const unifiedTranscript = convertOpenCodeTranscript(exportData, {
     pricing,
     gitContext,
@@ -109,10 +125,12 @@ export async function opencodeUploadCommand(sessionId: string): Promise<void> {
   });
 
   if (!unifiedTranscript) {
+    console.error("Error: Failed to convert transcript");
     process.exit(1);
   }
 
   // Upload using shared logic (handles allowlist, redaction, multi-env upload)
+  console.log("Uploading...");
   const result = await uploadUnifiedToAllEnvs({
     unifiedTranscript,
     sessionId,
@@ -120,19 +138,32 @@ export async function opencodeUploadCommand(sessionId: string): Promise<void> {
     rawTranscript: JSON.stringify(exportData),
   });
 
-  // Exit silently if skipped due to allowlist
+  // Exit if skipped due to allowlist
   if (result.skipped) {
+    console.log("Skipped: Repository not in allowlist");
     process.exit(0);
   }
 
-  // Output single JSON result to stdout (plugin parses this)
   if (result.anySuccess && result.id) {
-    // Find the first successful environment for URL
-    const successEnv = result.results.find((r) => r.success);
-    const baseURL = successEnv?.baseURL ?? "https://agentlogs.ai";
-    const url = `${baseURL}/app/logs/${result.id}`;
-    console.log(JSON.stringify({ transcriptId: result.id, transcriptUrl: url }));
+    console.log("");
+    console.log("Upload successful!");
+    console.log(`Transcript ID: ${result.id}`);
+
+    // Show URL for each successful environment
+    for (const envResult of result.results) {
+      if (envResult.success) {
+        const url = `${envResult.baseURL}/app/logs/${result.id}`;
+        console.log(`View: ${url}`);
+      }
+    }
   } else {
+    console.error("");
+    console.error("Upload failed:");
+    for (const envResult of result.results) {
+      if (!envResult.success && envResult.error) {
+        console.error(`  ${envResult.envName}: ${envResult.error}`);
+      }
+    }
     process.exit(1);
   }
 }
