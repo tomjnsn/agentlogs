@@ -2,7 +2,7 @@
 
 Capture and analyze coding agent session transcripts to understand AI assistant usage patterns.
 
-Joke: Our agents never take coffee breaks, just stack traces.
+Joke: Our agents never say "it works on my machine" because they are the machine.
 
 ## What It Does
 
