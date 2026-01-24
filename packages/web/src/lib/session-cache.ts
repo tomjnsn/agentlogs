@@ -7,6 +7,10 @@ let cacheTimestamp = 0;
 const CACHE_TTL = 30_000;
 
 export async function ensureSession(): Promise<SessionData> {
+  if (typeof window === "undefined") {
+    return getSession();
+  }
+
   const now = Date.now();
   if (cachedSession !== undefined && now - cacheTimestamp < CACHE_TTL) {
     return cachedSession;
