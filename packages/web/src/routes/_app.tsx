@@ -13,6 +13,7 @@ import { createFileRoute, Link, Outlet, redirect, useRouter } from "@tanstack/re
 import { ChevronDownIcon, LogOutIcon, LogsIcon, ShieldIcon, UsersIcon } from "lucide-react";
 import { DiscordIcon, Logo } from "@/components/icons/source-icons";
 import { authClient } from "../lib/auth-client";
+import { clearSessionCache } from "../lib/session-cache";
 
 export const Route = createFileRoute("/_app")({
   beforeLoad: ({ location, context }) => {
@@ -44,6 +45,7 @@ function AppLayout() {
   const [debugMode, setDebugMode] = useDebugMode();
 
   const handleSignOut = async () => {
+    clearSessionCache();
     await authClient.signOut({
       fetchOptions: {
         onSuccess: () => router.invalidate(),

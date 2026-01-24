@@ -2,12 +2,12 @@
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import React, { type ReactNode } from "react";
 import { initializeClientLogger } from "../lib/client-logger";
-import { getSession } from "../lib/server-functions";
+import { ensureSession } from "../lib/session-cache";
 import appCss from "../styles/globals.css?url";
 
 export const Route = createRootRoute({
   beforeLoad: async () => {
-    const session = await getSession();
+    const session = await ensureSession();
     return { session };
   },
   head: () => ({
@@ -50,12 +50,6 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
     <html className="dark:scheme-dark">
       <head suppressHydrationWarning>
         <HeadContent />
-        {import.meta.env.DEV && (
-          <>
-            <script src="//unpkg.com/react-grab/dist/index.global.js" crossOrigin="anonymous" />
-            <script src="//unpkg.com/@react-grab/claude-code/dist/client.global.js" crossOrigin="anonymous" />
-          </>
-        )}
       </head>
       <body>
         {children}

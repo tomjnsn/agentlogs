@@ -86,7 +86,8 @@ function ActivityChart({ data }: { data: DailyCount[] }) {
 
 export const Route = createFileRoute("/_app/app/")({
   loader: () => getHomePageData(),
-  staleTime: 0, // Always refetch to ensure visibility changes are reflected
+  staleTime: 0,
+  preloadStaleTime: 30_000,
   component: HomeComponent,
   errorComponent: ErrorComponent,
 });

@@ -46,8 +46,7 @@ import { getTranscript, updateVisibility } from "../../../lib/server-functions";
 
 export const Route = createFileRoute("/_app/app/logs/$id")({
   loader: ({ params }) => getTranscript({ data: params.id }),
-  // Cache preloaded data so hover-prefetch is effective
-  staleTime: 30_000, // Data fresh for 30s (covers hover → click)
+  staleTime: 30_000,
   gcTime: 5 * 60_000, // Keep in cache 5min for back navigation
   pendingComponent: TranscriptPendingComponent,
   pendingMinMs: 100, // Only show loading if takes > 100ms (avoids flash)
