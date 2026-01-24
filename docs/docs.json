@@ -1,0 +1,67 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "maple",
+  "name": "AgentLogs",
+  "colors": {
+    "primary": "#0D9373",
+    "light": "#07C983",
+    "dark": "#0D9373"
+  },
+  "favicon": "/favicon.svg",
+  "navigation": {
+    "anchors": [
+      {
+        "anchor": "Documentation",
+        "icon": "book-open",
+        "groups": [
+          {
+            "group": "Introduction",
+            "pages": ["introduction/overview", "introduction/getting-started", "introduction/permissions"]
+          },
+          {
+            "group": "Agents",
+            "pages": ["agents/claude-code", "agents/opencode"]
+          },
+          {
+            "group": "CLI",
+            "pages": ["cli/installation", "cli/commands", "cli/configuration"]
+          },
+          {
+            "group": "",
+            "pages": ["changelog"]
+          }
+        ]
+      }
+    ],
+    "global": {
+      "anchors": [
+        {
+          "anchor": "Dashboard",
+          "href": "https://agentlogs.ai/app",
+          "icon": "scroll"
+        }
+      ]
+    }
+  },
+  "logo": {
+    "light": "/logo-light.svg",
+    "dark": "/logo-dark.svg"
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Changelog",
+        "href": "/changelog"
+      },
+      {
+        "label": "Support",
+        "href": "https://discord.gg/yG4TNv3mjG"
+      }
+    ]
+  },
+  "footer": {
+    "socials": {
+      "discord": "https://discord.gg/yG4TNv3mjG"
+    }
+  }
+}
