@@ -10,6 +10,7 @@ import { uploadTranscript } from "@agentlogs/shared/upload";
 import type { UploadOptions } from "@agentlogs/shared/upload";
 import { getAuthenticatedEnvironments, type EnvName } from "../config";
 import { cacheTranscriptId, getOrCreateTranscriptId } from "../local-store";
+import { getRepoIdFromCwd, getRepoVisibility, isRepoAllowed } from "../settings";
 
 export interface PerformUploadParams {
   transcriptPath: string;
@@ -32,142 +33,115 @@ export interface PerformUploadResult {
   unifiedTranscript: UnifiedTranscript;
   sha256: string;
   source: TranscriptSource;
+  /** True if upload was skipped due to allowlist */
+  skipped: boolean;
 }
 
+/**
+ * Parameters for uploading a pre-converted UnifiedTranscript.
+ * Use this when you've already converted from a source format.
+ */
+export interface UploadUnifiedParams {
+  /** The converted transcript */
+  unifiedTranscript: UnifiedTranscript;
+  /** Session ID for deduplication and client ID generation */
+  sessionId: string;
+  /** Working directory for repo detection (allowlist check) */
+  cwd: string;
+  /** Raw transcript content for archival (optional) */
+  rawTranscript?: string;
+  /** Binary blobs (images, etc.) to upload with the transcript */
+  blobs?: UploadBlob[];
+  /** Visibility override - if not set, uses repo settings or server default */
+  visibility?: TranscriptVisibility;
+}
+
+export interface UploadUnifiedResult {
+  results: EnvUploadResult[];
+  /** The database ID (CUID2) for stable links */
+  id: string;
+  sessionId: string;
+  anySuccess: boolean;
+  allSuccess: boolean;
+  /** True if upload was skipped due to allowlist */
+  skipped: boolean;
+}
+
+/**
+ * Upload a single transcript to a specific environment.
+ * Used by the sync command for per-environment uploads.
+ *
+ * Note: This function respects the allowlist. If the repo is not allowed,
+ * it returns success=false with skipped=true.
+ */
 export async function performUpload(
   params: PerformUploadParams,
   options: UploadOptions = {},
 ): Promise<PerformUploadResult> {
-  const { transcriptPath, sessionId, source = "claude-code" } = params;
+  // Parse file first (cheap) to get cwd for allowlist check
+  const parsed = parseTranscriptFile(params);
 
-  if (!transcriptPath) {
-    throw new Error("No transcript path provided.");
+  // Check if repo is allowed before expensive conversion
+  const repoId = await getRepoIdFromCwd(parsed.cwd);
+  if (!isRepoAllowed(repoId)) {
+    return {
+      success: false,
+      eventCount: parsed.records.length,
+      invalidLines: parsed.invalidLines,
+      sessionId: "",
+      cwd: parsed.cwd,
+      unifiedTranscript: {} as UnifiedTranscript, // Empty placeholder, not used when skipped
+      sha256: "",
+      source: params.source ?? "claude-code",
+      skipped: true,
+    };
   }
 
-  if (!existsSync(transcriptPath)) {
-    throw new Error(`Transcript file not found at path: ${transcriptPath}`);
-  }
-
-  const rawContent = readFileSync(transcriptPath, "utf8");
-  const redactedRawContent = redactSecretsPreserveLength(rawContent);
-  const lines = rawContent.split(/\r?\n/);
-  const records: Record<string, unknown>[] = [];
-  let invalidLines = 0;
-
-  for (const rawLine of lines) {
-    const line = rawLine.trim();
-    if (!line) continue;
-
-    try {
-      const parsed = JSON.parse(line) as unknown;
-      if (typeof parsed === "object" && parsed !== null) {
-        records.push(parsed as Record<string, unknown>);
-      } else {
-        invalidLines += 1;
-      }
-    } catch {
-      invalidLines += 1;
-    }
-  }
-
-  if (invalidLines > 0) {
-    console.warn(`Skipped ${invalidLines} line(s) that were not valid JSON.`);
-  }
-
-  if (records.length === 0) {
-    throw new Error("No transcript events found in the specified file.");
-  }
-
-  const pricingFetcher = new LiteLLMPricingFetcher();
-  const pricingData = await pricingFetcher.fetchModelPricing();
-  const pricing = Object.fromEntries(pricingData);
-
-  const converterOptions = {
-    pricing,
-  };
-
-  const resolvedCwd =
-    params.cwdOverride && params.cwdOverride.trim().length > 0
-      ? params.cwdOverride.trim()
-      : (extractCwdFromRecords(records) ?? process.cwd());
-
-  // Resolve git context from .git/config for accurate repo detection
-  const gitBranch = extractGitBranchFromRecords(records);
-  const gitContext = await resolveGitContext(resolvedCwd, gitBranch);
-
-  const converterOptionsWithGit = {
-    ...converterOptions,
-    gitContext,
-  };
-
-  const conversionResult =
-    source === "codex"
-      ? convertCodexTranscript(records, converterOptions)
-      : convertClaudeCodeTranscript(records, converterOptionsWithGit);
-
-  if (!conversionResult) {
-    throw new Error(`Unable to convert ${source} transcript to unified format.`);
-  }
-
-  const { transcript, blobs: transcriptBlobs } = conversionResult;
+  // Now do expensive conversion (pass pre-parsed data)
+  const converted = await convertTranscriptFile(params, parsed);
 
   // Redact secrets from transcript messages
-  const unifiedTranscript = redactSecretsDeep(transcript);
+  const redactedTranscript = redactSecretsDeep(converted.unifiedTranscript);
 
-  const finalSessionId = sessionId ?? unifiedTranscript.id;
-  if (!finalSessionId) {
-    throw new Error("Transcript did not include a session identifier.");
-  }
-
-  if (sessionId && sessionId !== unifiedTranscript.id) {
-    throw new Error(
-      `Provided sessionId (${sessionId}) does not match unified transcript id (${unifiedTranscript.id}).`,
-    );
-  }
-
-  const eventCount = records.length;
-  // Compute sha256 from unified transcript (not raw) so conversion changes are detected
-  const unifiedJson = JSON.stringify(unifiedTranscript);
+  // Compute sha256 from redacted unified transcript
+  const unifiedJson = JSON.stringify(redactedTranscript);
   const sha256 = createHash("sha256").update(unifiedJson).digest("hex");
 
   // Generate stable client ID for this transcript
-  const clientId = await getOrCreateTranscriptId(finalSessionId);
+  const clientId = await getOrCreateTranscriptId(converted.sessionId);
 
-  // Convert Map<sha256, TranscriptBlob> to UploadBlob[]
-  const uploadBlobs: UploadBlob[] = [];
-  for (const [blobSha256, blob] of transcriptBlobs) {
-    uploadBlobs.push({
-      sha256: blobSha256,
-      data: new Uint8Array(blob.data),
-      mediaType: blob.mediaType,
-    });
-  }
+  // Determine visibility: explicit override > repo setting > server default
+  const visibility = params.visibility ?? getRepoVisibility(repoId);
+
+  // Redact secrets from raw transcript
+  const redactedRawTranscript = redactSecretsPreserveLength(converted.rawTranscript);
 
   const payload: UploadPayload = {
     id: clientId,
     sha256,
-    rawTranscript: redactedRawContent,
-    unifiedTranscript,
-    blobs: uploadBlobs.length > 0 ? uploadBlobs : undefined,
-    visibility: params.visibility,
+    rawTranscript: redactedRawTranscript,
+    unifiedTranscript: redactedTranscript,
+    blobs: converted.blobs.length > 0 ? converted.blobs : undefined,
+    visibility,
   };
 
   const result = await uploadTranscript(payload, options);
 
   // Cache the server's returned ID (handles case where server returns existing ID)
   if (result.success && result.id) {
-    await cacheTranscriptId(finalSessionId, result.id);
+    await cacheTranscriptId(converted.sessionId, result.id);
   }
 
   return {
     ...result,
-    eventCount,
-    invalidLines,
-    sessionId: finalSessionId,
-    unifiedTranscript,
+    eventCount: converted.eventCount,
+    invalidLines: converted.invalidLines,
+    sessionId: converted.sessionId,
+    unifiedTranscript: redactedTranscript,
     sha256,
-    source,
-    cwd: resolvedCwd,
+    source: params.source ?? "claude-code",
+    cwd: converted.cwd,
+    skipped: false,
   };
 }
 
@@ -264,34 +238,260 @@ export interface MultiEnvUploadResult {
   allSuccess: boolean;
 }
 
+interface ParsedTranscriptFile {
+  rawContent: string;
+  records: Record<string, unknown>[];
+  cwd: string;
+  invalidLines: number;
+}
+
 /**
- * Upload a transcript to all authenticated environments.
- * Each environment is uploaded independently - failures in one don't affect others.
+ * Parse a JSONL transcript file and extract cwd.
+ * This is cheap and can be used to check allowlist before expensive conversion.
+ */
+function parseTranscriptFile(params: PerformUploadParams): ParsedTranscriptFile {
+  const { transcriptPath } = params;
+
+  if (!transcriptPath) {
+    throw new Error("No transcript path provided.");
+  }
+
+  if (!existsSync(transcriptPath)) {
+    throw new Error(`Transcript file not found at path: ${transcriptPath}`);
+  }
+
+  const rawContent = readFileSync(transcriptPath, "utf8");
+  const lines = rawContent.split(/\r?\n/);
+  const records: Record<string, unknown>[] = [];
+  let invalidLines = 0;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    try {
+      const parsed = JSON.parse(line) as unknown;
+      if (typeof parsed === "object" && parsed !== null) {
+        records.push(parsed as Record<string, unknown>);
+      } else {
+        invalidLines += 1;
+      }
+    } catch {
+      invalidLines += 1;
+    }
+  }
+
+  if (records.length === 0) {
+    throw new Error("No transcript events found in the specified file.");
+  }
+
+  const cwd =
+    params.cwdOverride && params.cwdOverride.trim().length > 0
+      ? params.cwdOverride.trim()
+      : (extractCwdFromRecords(records) ?? process.cwd());
+
+  return { rawContent, records, cwd, invalidLines };
+}
+
+/**
+ * Convert a Claude Code or Codex JSONL transcript file to UnifiedTranscript.
+ * This is the expensive step - call parseTranscriptFile first if you need to check allowlist.
+ * Pass preParsed to avoid double-parsing.
+ */
+export async function convertTranscriptFile(
+  params: PerformUploadParams,
+  preParsed?: ParsedTranscriptFile,
+): Promise<{
+  unifiedTranscript: UnifiedTranscript;
+  rawTranscript: string;
+  blobs: UploadBlob[];
+  sessionId: string;
+  cwd: string;
+  eventCount: number;
+  invalidLines: number;
+}> {
+  const { sessionId, source = "claude-code" } = params;
+  const parsed = preParsed ?? parseTranscriptFile(params);
+
+  const pricingFetcher = new LiteLLMPricingFetcher();
+  const pricingData = await pricingFetcher.fetchModelPricing();
+  const pricing = Object.fromEntries(pricingData);
+
+  // Resolve git context from .git/config for accurate repo detection
+  const gitBranch = extractGitBranchFromRecords(parsed.records);
+  const gitContext = await resolveGitContext(parsed.cwd, gitBranch);
+
+  const converterOptions = { pricing, gitContext };
+
+  const conversionResult =
+    source === "codex"
+      ? convertCodexTranscript(parsed.records, { pricing })
+      : convertClaudeCodeTranscript(parsed.records, converterOptions);
+
+  if (!conversionResult) {
+    throw new Error(`Unable to convert ${source} transcript to unified format.`);
+  }
+
+  const { transcript, blobs: transcriptBlobs } = conversionResult;
+
+  const finalSessionId = sessionId ?? transcript.id;
+  if (!finalSessionId) {
+    throw new Error("Transcript did not include a session identifier.");
+  }
+
+  if (sessionId && sessionId !== transcript.id) {
+    throw new Error(`Provided sessionId (${sessionId}) does not match unified transcript id (${transcript.id}).`);
+  }
+
+  // Convert Map<sha256, TranscriptBlob> to UploadBlob[]
+  const uploadBlobs: UploadBlob[] = [];
+  for (const [blobSha256, blob] of transcriptBlobs) {
+    uploadBlobs.push({
+      sha256: blobSha256,
+      data: new Uint8Array(blob.data),
+      mediaType: blob.mediaType,
+    });
+  }
+
+  return {
+    unifiedTranscript: transcript,
+    rawTranscript: parsed.rawContent,
+    blobs: uploadBlobs,
+    sessionId: finalSessionId,
+    cwd: parsed.cwd,
+    eventCount: parsed.records.length,
+    invalidLines: parsed.invalidLines,
+  };
+}
+
+/**
+ * Upload a Claude Code or Codex transcript to all authenticated environments.
+ * Checks allowlist first, then converts and uploads.
  */
 export async function performUploadToAllEnvs(params: PerformUploadParams): Promise<MultiEnvUploadResult> {
-  const authenticatedEnvs = await getAuthenticatedEnvironments();
+  // Parse file first (cheap) to get cwd for allowlist check
+  const parsed = parseTranscriptFile(params);
 
+  // Check allowlist before expensive conversion
+  const repoId = await getRepoIdFromCwd(parsed.cwd);
+  if (!isRepoAllowed(repoId)) {
+    return {
+      results: [],
+      eventCount: parsed.records.length,
+      id: "",
+      sessionId: "",
+      anySuccess: false,
+      allSuccess: false,
+    };
+  }
+
+  // Now do expensive conversion (pass pre-parsed data to avoid double-parsing)
+  const converted = await convertTranscriptFile(params, parsed);
+
+  // Upload using shared logic (allowlist already checked, skip that check)
+  const result = await uploadUnifiedToAllEnvs({
+    unifiedTranscript: converted.unifiedTranscript,
+    sessionId: converted.sessionId,
+    cwd: converted.cwd,
+    rawTranscript: converted.rawTranscript,
+    blobs: converted.blobs,
+    visibility: params.visibility,
+  });
+
+  // Handle skipped case (shouldn't happen since we checked above, but be safe)
+  if (result.skipped) {
+    return {
+      results: [],
+      eventCount: converted.eventCount,
+      id: "",
+      sessionId: converted.sessionId,
+      anySuccess: false,
+      allSuccess: false,
+    };
+  }
+
+  return {
+    results: result.results,
+    eventCount: converted.eventCount,
+    id: result.id,
+    sessionId: result.sessionId,
+    anySuccess: result.anySuccess,
+    allSuccess: result.allSuccess,
+  };
+}
+
+/**
+ * Upload a pre-converted UnifiedTranscript to all authenticated environments.
+ * This is the shared upload logic used by all sources (Claude Code, OpenCode, Codex, etc.)
+ *
+ * Handles:
+ * - Allowlist check (skips upload if repo not allowed)
+ * - Secret redaction
+ * - SHA256 computation
+ * - Client ID generation
+ * - Multi-environment upload
+ */
+export async function uploadUnifiedToAllEnvs(params: UploadUnifiedParams): Promise<UploadUnifiedResult> {
+  const { unifiedTranscript, sessionId, cwd, rawTranscript, blobs, visibility: visibilityOverride } = params;
+
+  // Check if repo is allowed for capture
+  const repoId = await getRepoIdFromCwd(cwd);
+  if (!isRepoAllowed(repoId)) {
+    return {
+      results: [],
+      id: "",
+      sessionId,
+      anySuccess: false,
+      allSuccess: false,
+      skipped: true,
+    };
+  }
+
+  const authenticatedEnvs = await getAuthenticatedEnvironments();
   if (authenticatedEnvs.length === 0) {
     throw new Error("No authenticated environments found. Run `agentlogs login` first.");
   }
 
+  // Redact secrets from transcript
+  const redactedTranscript = redactSecretsDeep(unifiedTranscript);
+
+  // Compute sha256 from redacted unified transcript
+  const unifiedJson = JSON.stringify(redactedTranscript);
+  const sha256 = createHash("sha256").update(unifiedJson).digest("hex");
+
+  // Generate stable client ID for this transcript
+  const clientId = await getOrCreateTranscriptId(sessionId);
+
+  // Determine visibility: explicit override > repo setting > server default
+  const visibility = visibilityOverride ?? getRepoVisibility(repoId);
+
+  // Redact secrets from raw transcript (use unified JSON if not provided)
+  const redactedRawTranscript = redactSecretsPreserveLength(rawTranscript ?? unifiedJson);
+
+  const payload: UploadPayload = {
+    id: clientId,
+    sha256,
+    rawTranscript: redactedRawTranscript,
+    unifiedTranscript: redactedTranscript,
+    blobs: blobs && blobs.length > 0 ? blobs : undefined,
+    visibility,
+  };
+
   const results: EnvUploadResult[] = [];
-  let eventCount = 0;
   let id = "";
-  let sessionId = "";
 
   for (const env of authenticatedEnvs) {
     try {
-      const result = await performUpload(params, {
+      const result = await uploadTranscript(payload, {
         serverUrl: env.baseURL,
         authToken: env.token,
       });
 
-      // Capture event count, id, and session ID from first successful upload
-      if (result.success && eventCount === 0) {
-        eventCount = result.eventCount;
-        id = result.id ?? "";
-        sessionId = result.sessionId;
+      if (result.success && result.id) {
+        await cacheTranscriptId(sessionId, result.id);
+        if (!id) {
+          id = result.id;
+        }
       }
 
       results.push({
@@ -313,10 +513,10 @@ export async function performUploadToAllEnvs(params: PerformUploadParams): Promi
 
   return {
     results,
-    eventCount,
     id,
     sessionId,
     anySuccess: results.some((r) => r.success),
     allSuccess: results.every((r) => r.success),
+    skipped: false,
   };
 }

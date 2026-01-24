@@ -4,12 +4,8 @@ import { homedir } from "os";
 import type { OpenCodeExport } from "@agentlogs/shared";
 import { convertOpenCodeTranscript } from "@agentlogs/shared/opencode";
 import { LiteLLMPricingFetcher } from "@agentlogs/shared/pricing";
-import { uploadTranscript } from "@agentlogs/shared/upload";
-import { redactSecretsDeep } from "@agentlogs/shared/redact";
-import { createHash } from "crypto";
-import { getAuthenticatedEnvironments } from "../config";
-import { cacheTranscriptId, getOrCreateTranscriptId } from "../local-store";
 import { resolveGitContext } from "@agentlogs/shared/claudecode";
+import { uploadUnifiedToAllEnvs } from "../lib/perform-upload";
 
 const OPENCODE_STORAGE = join(homedir(), ".local", "share", "opencode", "storage");
 
@@ -96,12 +92,6 @@ export async function opencodeUploadCommand(sessionId: string): Promise<void> {
     process.exit(0);
   }
 
-  // Get authenticated environments
-  const authenticatedEnvs = await getAuthenticatedEnvironments();
-  if (authenticatedEnvs.length === 0) {
-    process.exit(1);
-  }
-
   // Fetch pricing data
   const pricingFetcher = new LiteLLMPricingFetcher();
   const pricingData = await pricingFetcher.fetchModelPricing();
@@ -122,50 +112,26 @@ export async function opencodeUploadCommand(sessionId: string): Promise<void> {
     process.exit(1);
   }
 
-  // Redact secrets
-  const redactedTranscript = redactSecretsDeep(unifiedTranscript);
+  // Upload using shared logic (handles allowlist, redaction, multi-env upload)
+  const result = await uploadUnifiedToAllEnvs({
+    unifiedTranscript,
+    sessionId,
+    cwd,
+    rawTranscript: JSON.stringify(exportData),
+  });
 
-  // Compute sha256 from unified transcript (not raw) so changes in conversion are detected
-  const unifiedJson = JSON.stringify(redactedTranscript);
-  const sha256 = createHash("sha256").update(unifiedJson).digest("hex");
-
-  // Raw transcript is still sent for archival but not used for dedup
-  const rawTranscript = JSON.stringify(exportData);
-
-  // Generate stable client ID
-  const clientId = await getOrCreateTranscriptId(sessionId);
-
-  // Upload to all authenticated environments, track last successful result
-  let lastResult: { transcriptId: string; transcriptUrl: string } | null = null;
-
-  for (const env of authenticatedEnvs) {
-    try {
-      const result = await uploadTranscript(
-        {
-          id: clientId,
-          sha256,
-          rawTranscript,
-          unifiedTranscript: redactedTranscript,
-        },
-        {
-          serverUrl: env.baseURL,
-          authToken: env.token,
-        },
-      );
-
-      if (result.success && result.id) {
-        await cacheTranscriptId(sessionId, result.id);
-        const url = `${env.baseURL}/app/logs/${result.id}`;
-        lastResult = { transcriptId: result.id, transcriptUrl: url };
-      }
-    } catch {
-      // Silently continue to next environment
-    }
+  // Exit silently if skipped due to allowlist
+  if (result.skipped) {
+    process.exit(0);
   }
 
   // Output single JSON result to stdout (plugin parses this)
-  if (lastResult) {
-    console.log(JSON.stringify(lastResult));
+  if (result.anySuccess && result.id) {
+    // Find the first successful environment for URL
+    const successEnv = result.results.find((r) => r.success);
+    const baseURL = successEnv?.baseURL ?? "https://agentlogs.ai";
+    const url = `${baseURL}/app/logs/${result.id}`;
+    console.log(JSON.stringify({ transcriptId: result.id, transcriptUrl: url }));
   } else {
     process.exit(1);
   }

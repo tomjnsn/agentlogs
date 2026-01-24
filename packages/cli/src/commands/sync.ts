@@ -104,6 +104,7 @@ async function syncToEnvironment(
     console.log(`Uploading ${transcriptsToUpload.length} transcript(s)...`);
 
     let successCount = 0;
+    let skippedCount = 0;
     let failureCount = 0;
     const failures: Array<{ transcriptId: string; displayPath: string; reason: string }> = [];
 
@@ -124,7 +125,10 @@ async function syncToEnvironment(
           },
         );
 
-        if (result.success) {
+        if (result.skipped) {
+          skippedCount += 1;
+          console.log(`[${label}] - ${context} • skipped (repo not allowed)`);
+        } else if (result.success) {
           successCount += 1;
           console.log(
             `[${label}] ✓ ${context} • ${result.eventCount} events${result.transcriptId ? ` → ${result.transcriptId}` : ""}`,
@@ -143,7 +147,8 @@ async function syncToEnvironment(
       }
     }
 
-    console.log(`Sync complete: ${successCount} uploaded, ${failureCount} failed.`);
+    const skippedSuffix = skippedCount > 0 ? `, ${skippedCount} skipped` : "";
+    console.log(`Sync complete: ${successCount} uploaded, ${failureCount} failed${skippedSuffix}.`);
 
     if (failures.length > 0) {
       console.error("Failed transcript details:");

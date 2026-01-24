@@ -3,9 +3,10 @@ import type { DrizzleDB } from ".";
 import { repos, teamInvites, teamMembers, teams, transcripts, user, type UserRole } from "./schema";
 
 /**
- * Get all repos for a user with computed transcript count
+ * Get repos from transcripts visible to the user.
+ * Only returns repos that appear in transcripts the user can access.
  */
-export async function getRepos(db: DrizzleDB, userId: string) {
+export async function getRepos(db: DrizzleDB, viewerId: string) {
   return await db
     .select({
       id: repos.id,
@@ -15,7 +16,8 @@ export async function getRepos(db: DrizzleDB, userId: string) {
       transcriptCount: sql<number>`CAST(COUNT(${transcripts.id}) AS INTEGER)`.as("transcript_count"),
     })
     .from(repos)
-    .leftJoin(transcripts, and(eq(transcripts.repoId, repos.id), eq(transcripts.userId, userId)))
+    .innerJoin(transcripts, eq(transcripts.repoId, repos.id))
+    .where(buildVisibilityCondition(viewerId))
     .groupBy(repos.id)
     .orderBy(desc(repos.lastActivity));
 }

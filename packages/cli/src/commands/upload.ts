@@ -33,6 +33,14 @@ export async function uploadCommand(transcriptArg: string, source: TranscriptSou
       source,
     });
 
+    // Handle skipped uploads (repo not allowed)
+    if (result.results.length === 0) {
+      console.log("");
+      console.log("- Upload skipped (repo not allowed by allowlist)");
+      console.log("  Use `agentlogs allow` to enable uploads for this repo.");
+      return;
+    }
+
     console.log("");
     for (const envResult of result.results) {
       const envLabel = envResult.envName === "dev" ? "Development" : "Production";

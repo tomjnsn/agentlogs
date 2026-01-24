@@ -3,7 +3,7 @@ import { getDevLogPath } from "@agentlogs/shared/paths";
 import { getAuthenticatedEnvironments } from "../config";
 import { performUploadToAllEnvs } from "../lib/perform-upload";
 import { getOrCreateTranscriptId } from "../local-store";
-import { getRepoIdFromCwd, getRepoVisibility, isRepoAllowed } from "../settings";
+import { getRepoIdFromCwd, isRepoAllowed } from "../settings";
 
 // Create logger for CLI hook commands
 // In dev mode (VI_CLI_PATH set), logs to <monorepo>/logs/dev.log
@@ -282,30 +282,20 @@ async function handleSessionEnd(hookInput: ClaudeHookInput): Promise<void> {
     return;
   }
 
-  // Check if repo is allowed for capture
-  const cwd = typeof hookInput.cwd === "string" ? hookInput.cwd : undefined;
-  const repoId = await getRepoIdFromCwd(cwd);
-  if (!isRepoAllowed(repoId)) {
-    logger.info(`SessionEnd: upload skipped, repo not allowed`, { sessionId, repoId });
-    return;
-  }
-
-  const authenticatedEnvs = await getAuthenticatedEnvironments();
-  if (authenticatedEnvs.length === 0) {
-    logger.error("SessionEnd: no authenticated environments found. Run the CLI login flow first.", { sessionId });
-    return;
-  }
-
-  // Get visibility setting for this repo (if configured)
-  const visibility = getRepoVisibility(repoId);
-
   try {
     const result = await performUploadToAllEnvs({
       transcriptPath,
       sessionId: hookInput.session_id,
       cwdOverride: hookInput.cwd,
-      visibility,
     });
+
+    // Check if skipped due to allowlist (no results means skipped or no auth)
+    if (result.results.length === 0) {
+      if (!result.anySuccess) {
+        logger.info(`SessionEnd: upload skipped (repo not allowed or no auth)`, { sessionId });
+      }
+      return;
+    }
 
     for (const envResult of result.results) {
       if (envResult.success) {
@@ -343,30 +333,20 @@ async function handleStop(hookInput: ClaudeHookInput): Promise<void> {
     return;
   }
 
-  // Check if repo is allowed for capture
-  const cwd = typeof hookInput.cwd === "string" ? hookInput.cwd : undefined;
-  const repoId = await getRepoIdFromCwd(cwd);
-  if (!isRepoAllowed(repoId)) {
-    logger.info(`Stop: upload skipped, repo not allowed`, { sessionId, repoId });
-    return;
-  }
-
-  const authenticatedEnvs = await getAuthenticatedEnvironments();
-  if (authenticatedEnvs.length === 0) {
-    logger.error("Stop: no authenticated environments found. Run the CLI login flow first.", { sessionId });
-    return;
-  }
-
-  // Get visibility setting for this repo (if configured)
-  const visibility = getRepoVisibility(repoId);
-
   try {
     const result = await performUploadToAllEnvs({
       transcriptPath,
       sessionId: hookInput.session_id,
       cwdOverride: hookInput.cwd,
-      visibility,
     });
+
+    // Check if skipped due to allowlist (no results means skipped or no auth)
+    if (result.results.length === 0) {
+      if (!result.anySuccess) {
+        logger.info(`Stop: upload skipped (repo not allowed or no auth)`, { sessionId });
+      }
+      return;
+    }
 
     for (const envResult of result.results) {
       if (envResult.success) {
@@ -579,37 +559,22 @@ async function uploadPartialTranscript(payload: {
     return;
   }
 
-  // Check if repo is allowed for capture
-  const repoId = await getRepoIdFromCwd(payload.cwd);
-  if (!isRepoAllowed(repoId)) {
-    logger.info(`Commit tracking transcript upload skipped: repo not allowed`, {
-      sessionId: payload.sessionId.substring(0, 8),
-      repoId,
-    });
-    return;
-  }
-
-  const authenticatedEnvs = await getAuthenticatedEnvironments();
-  if (authenticatedEnvs.length === 0) {
-    logger.warn(
-      "Commit tracking transcript upload skipped: no authenticated environments. Run 'agentlogs login' first.",
-      {
-        sessionId: payload.sessionId.substring(0, 8),
-      },
-    );
-    return;
-  }
-
-  // Get visibility setting for this repo (if configured)
-  const visibility = getRepoVisibility(repoId);
-
   try {
     const result = await performUploadToAllEnvs({
       transcriptPath: payload.transcriptPath,
       sessionId: payload.sessionId,
       cwdOverride: payload.cwd,
-      visibility,
     });
+
+    // Check if skipped due to allowlist (no results means skipped or no auth)
+    if (result.results.length === 0) {
+      if (!result.anySuccess) {
+        logger.info(`Commit tracking: upload skipped (repo not allowed or no auth)`, {
+          sessionId: payload.sessionId.substring(0, 8),
+        });
+      }
+      return;
+    }
 
     for (const envResult of result.results) {
       if (envResult.success) {
