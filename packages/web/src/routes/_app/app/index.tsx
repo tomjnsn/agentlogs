@@ -6,7 +6,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Globe, Loader2, Lock, MessageSquare, Search, Terminal } from "lucide-react";
 import { ClaudeCodeIcon, CodexIcon, GitHubIcon, OpenCodeIcon } from "../../../components/icons/source-icons";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getDailyActivity, getRepos, getTranscriptsPaginated } from "../../../lib/server-functions";
+import { getHomePageData, getTranscriptsPaginated } from "../../../lib/server-functions";
 import { useInfiniteScroll } from "../../../hooks/use-infinite-scroll";
 import { ClientOnly } from "../../../components/client-only";
 
@@ -85,19 +85,7 @@ function ActivityChart({ data }: { data: DailyCount[] }) {
 }
 
 export const Route = createFileRoute("/_app/app/")({
-  loader: async () => {
-    try {
-      const [initialData, dailyActivity, repos] = await Promise.all([
-        getTranscriptsPaginated({ data: {} }),
-        getDailyActivity(),
-        getRepos(),
-      ]);
-      return { initialData, dailyActivity, repos };
-    } catch (error) {
-      console.error("Failed to load data:", error);
-      throw error;
-    }
-  },
+  loader: () => getHomePageData(),
   staleTime: 0, // Always refetch to ensure visibility changes are reflected
   component: HomeComponent,
   errorComponent: ErrorComponent,

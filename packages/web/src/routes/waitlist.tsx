@@ -1,9 +1,9 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { getSession } from "../lib/server-functions";
 
 export const Route = createFileRoute("/waitlist")({
-  beforeLoad: async () => {
-    const session = await getSession();
+  beforeLoad: ({ context }) => {
+    // Use session from parent __root layout (already fetched)
+    const session = context.session;
     // If user is already approved, redirect to app
     if (session?.user.role === "user" || session?.user.role === "admin") {
       throw redirect({ to: "/app" });

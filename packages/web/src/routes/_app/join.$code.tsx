@@ -1,17 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { acceptInvite, getInviteInfo, getSession, getTeam } from "../../lib/server-functions";
+import { acceptInvite, getJoinPageData } from "../../lib/server-functions";
 
 export const Route = createFileRoute("/_app/join/$code")({
-  loader: async ({ params }) => {
-    const [invite, session, currentTeam] = await Promise.all([
-      getInviteInfo({ data: params.code }),
-      getSession(),
-      getTeam(),
-    ]);
-    return { invite, session, currentTeam, code: params.code };
-  },
+  loader: ({ params }) => getJoinPageData({ data: params.code }),
   component: JoinPage,
 });
 

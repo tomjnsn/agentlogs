@@ -41,6 +41,54 @@
 - Run from packages/web: `bunx shadcn@latest add <component-name>`
 - Example: `bunx shadcn@latest add data-table`
 
+## Server Functions & Loaders
+
+- **One server function per loader**: Each route loader should call exactly ONE server function that orchestrates all data fetching.
+- **Use parent context for session**: Child routes should use `context.session` from `beforeLoad` instead of calling `getSession()` again.
+- **Why**: Reduces network round-trips (1 RPC instead of N), keeps server-side logic together, and makes data flow easier to reason about.
+
+```typescript
+// ❌ Bad: Multiple server function calls from loader
+loader: async ({ params }) => {
+  const [invite, session, team] = await Promise.all([
+    getInviteInfo({ data: params.code }), // RPC 1
+    getSession(), // RPC 2
+    getTeam(), // RPC 3
+  ]);
+  return { invite, session, team };
+};
+
+// ✅ Good: Single server function orchestrates everything
+loader: ({ params }) => getJoinPageData({ data: params.code });
+
+// In server-functions.ts:
+export const getJoinPageData = createServerFn({ method: "GET" })
+  .validator(z.object({ code: z.string() }))
+  .handler(async ({ data }) => {
+    const [invite, session, team] = await Promise.all([
+      getInviteInfoInternal(data.code),
+      getSessionInternal(),
+      getTeamInternal(),
+    ]);
+    return { invite, session, team, code: data.code };
+  });
+```
+
+### Using Parent Context (for session checks)
+
+```typescript
+// ❌ Bad: Fetching session again when parent already has it
+beforeLoad: async () => {
+  const session = await getSession(); // Redundant RPC!
+  if (!session) throw redirect({ to: "/" });
+};
+
+// ✅ Good: Use session from parent route's context
+beforeLoad: ({ context }) => {
+  if (!context.session) throw redirect({ to: "/" });
+};
+```
+
 ## Releasing the CLI
 
 1. Bump version in `packages/cli/package.json` and commit: `cli: Release version X.Y.Z`

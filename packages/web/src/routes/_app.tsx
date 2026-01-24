@@ -13,11 +13,11 @@ import { createFileRoute, Link, Outlet, redirect, useRouter } from "@tanstack/re
 import { ChevronDownIcon, LogOutIcon, LogsIcon, ShieldIcon, UsersIcon } from "lucide-react";
 import { DiscordIcon, Logo } from "@/components/icons/source-icons";
 import { authClient } from "../lib/auth-client";
-import { getSession } from "../lib/server-functions";
 
 export const Route = createFileRoute("/_app")({
-  beforeLoad: async ({ location }) => {
-    const session = await getSession();
+  beforeLoad: ({ location, context }) => {
+    // Use session from parent __root layout (already fetched)
+    const session = context.session;
 
     // Allow unauthenticated access to public transcript pages and redirects
     const isPublicTranscriptRoute = location.pathname.startsWith("/app/logs/") || location.pathname.startsWith("/s/");

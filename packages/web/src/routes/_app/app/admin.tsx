@@ -7,26 +7,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import {
-  getAdminStats,
-  getAdminUsers,
-  getSession,
-  sendWelcomeEmail,
-  updateUserRole,
-} from "../../../lib/server-functions";
+import { getAdminPageData, sendWelcomeEmail, updateUserRole } from "../../../lib/server-functions";
 import { userRoles, type UserRole } from "../../../db/schema";
 
 export const Route = createFileRoute("/_app/app/admin")({
-  beforeLoad: async () => {
-    const session = await getSession();
-    if (!session || session.user.role !== "admin") {
+  beforeLoad: ({ context }) => {
+    // Use session from parent _app layout (already fetched)
+    if (!context.session || context.session.user.role !== "admin") {
       throw redirect({ to: "/app" });
     }
   },
-  loader: async () => {
-    const [stats, users] = await Promise.all([getAdminStats(), getAdminUsers()]);
-    return { stats, users };
-  },
+  loader: () => getAdminPageData(),
   component: AdminPage,
 });
 

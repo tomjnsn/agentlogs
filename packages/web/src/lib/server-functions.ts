@@ -877,3 +877,140 @@ export const updateVisibility = createServerFn({ method: "POST" })
     logger.info("Transcript visibility updated", { transcriptId, visibility, sharedWithTeamId, userId });
     return { success: true, visibility, sharedWithTeamId };
   });
+
+// =============================================================================
+// Orchestrating Server Functions (one per loader)
+// =============================================================================
+
+/**
+ * Get all data needed for the join page
+ * Consolidates getInviteInfo, getSession, and getTeam into a single RPC call
+ */
+export const getJoinPageData = createServerFn({ method: "GET" })
+  .inputValidator((code: string) => code)
+  .handler(async ({ data: code }) => {
+    const db = createDrizzle(env.DB);
+    const auth = createAuth();
+    const headers = getRequestHeaders();
+
+    // Fetch invite info (public, doesn't need auth)
+    const invite = await queries.getInviteByCode(db, code);
+    const inviteData = invite
+      ? {
+          code: invite.code,
+          teamName: invite.team.name,
+          memberCount: invite.team.members.length,
+          ownerName: invite.team.owner.name,
+          expired: new Date(invite.expiresAt) < new Date(),
+        }
+      : null;
+
+    // Fetch session (may be null for unauthenticated users)
+    let session: Awaited<ReturnType<typeof auth.api.getSession>> = null;
+    try {
+      session = await auth.api.getSession({ headers });
+    } catch {
+      // Session fetch failed, user is not authenticated
+    }
+
+    // Fetch current team (only if authenticated)
+    let currentTeam: Awaited<ReturnType<typeof queries.getUserTeam>> = null;
+    if (session?.user) {
+      currentTeam = await queries.getUserTeam(db, session.user.id);
+    }
+
+    return { invite: inviteData, session, currentTeam, code };
+  });
+
+/**
+ * Get all data needed for the admin page
+ * Consolidates getAdminStats and getAdminUsers into a single RPC call
+ */
+export const getAdminPageData = createServerFn({ method: "GET" }).handler(async () => {
+  await requireAdmin();
+  const db = createDrizzle(env.DB);
+
+  const [stats, users] = await Promise.all([queries.getAdminAggregateStats(db), queries.getAdminUserStats(db)]);
+
+  return { stats, users };
+});
+
+/**
+ * Get all data needed for the team page
+ * Consolidates getTeam and getSession into a single RPC call
+ */
+export const getTeamPageData = createServerFn({ method: "GET" }).handler(async () => {
+  const db = createDrizzle(env.DB);
+  const auth = createAuth();
+  const headers = getRequestHeaders();
+
+  const session = await auth.api.getSession({ headers });
+  if (!session?.user) {
+    throw new Error("Unauthorized");
+  }
+
+  const team = await queries.getUserTeam(db, session.user.id);
+
+  return { team, session };
+});
+
+/**
+ * Get all data needed for the home page
+ * Consolidates getTranscriptsPaginated, getDailyActivity, and getRepos into a single RPC call
+ */
+export const getHomePageData = createServerFn({ method: "GET" }).handler(async () => {
+  const db = createDrizzle(env.DB);
+  const userId = await getAuthenticatedUserId();
+
+  const [paginatedResult, repos, dailyActivityResults] = await Promise.all([
+    queries.getTranscriptsPaginated(db, userId, { limit: PAGE_SIZE }),
+    queries.getRepos(db, userId),
+    queries.getDailyActivityCounts(db, userId),
+  ]);
+
+  // Transform paginated result
+  const initialData = {
+    items: paginatedResult.items.map((t) => ({
+      id: t.id,
+      repoId: t.repoId,
+      transcriptId: t.transcriptId,
+      source: t.source,
+      preview: t.preview,
+      summary: t.summary,
+      createdAt: t.createdAt,
+      updatedAt: t.updatedAt,
+      messageCount: t.messageCount,
+      toolCount: t.toolCount,
+      userMessageCount: t.userMessageCount,
+      filesChanged: t.filesChanged,
+      linesAdded: t.linesAdded,
+      linesRemoved: t.linesRemoved,
+      linesModified: t.linesModified,
+      costUsd: t.costUsd,
+      userName: t.userName,
+      userImage: t.userImage,
+      repoName: t.repoName,
+      branch: t.branch,
+      cwd: t.cwd,
+      visibility: t.visibility,
+      previewBlobSha256: (t as typeof t & { previewBlobSha256?: string | null }).previewBlobSha256 ?? null,
+    })),
+    nextCursor: paginatedResult.nextCursor
+      ? { createdAt: paginatedResult.nextCursor.createdAt.toISOString(), id: paginatedResult.nextCursor.id }
+      : null,
+    hasMore: paginatedResult.hasMore,
+  };
+
+  // Fill in missing days for daily activity
+  const counts = new Map<string, number>(dailyActivityResults.map((r) => [r.date, r.count]));
+  const dailyActivity: Array<{ date: string; count: number }> = [];
+  const today = new Date();
+  for (let i = 29; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    const key = date.toISOString().split("T")[0];
+    dailyActivity.push({ date: key, count: counts.get(key) ?? 0 });
+  }
+
+  return { initialData, dailyActivity, repos };
+});

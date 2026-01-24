@@ -17,17 +17,13 @@ import {
   createTeam,
   deleteTeam,
   generateInvite,
-  getSession,
-  getTeam,
+  getTeamPageData,
   leaveTeam,
   removeMember,
 } from "../../../lib/server-functions";
 
 export const Route = createFileRoute("/_app/app/team")({
-  loader: async () => {
-    const [team, session] = await Promise.all([getTeam(), getSession()]);
-    return { team, session };
-  },
+  loader: () => getTeamPageData(),
   component: TeamPage,
 });
 
@@ -165,7 +161,7 @@ function NoTeamView({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
-type TeamData = NonNullable<Awaited<ReturnType<typeof getTeam>>>;
+type TeamData = NonNullable<Awaited<ReturnType<typeof getTeamPageData>>["team"]>;
 
 function AddMemberPopover({ teamId, onSuccess }: { teamId: string; onSuccess: () => void }) {
   const [isOpen, setIsOpen] = useState(false);
