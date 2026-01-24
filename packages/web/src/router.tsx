@@ -13,7 +13,6 @@ export function getRouter() {
   if (!router.isServer) {
     Sentry.init({
       dsn: "https://29ad86aa7e3802d0b0838f4d7ab55311@o4510717166682112.ingest.de.sentry.io/4510717169631312",
-      tunnel: "/api/tunnel",
       sendDefaultPii: true,
       integrations: [Sentry.tanstackRouterBrowserTracingIntegration(router)],
       tracesSampleRate: 1.0,
