@@ -41,6 +41,10 @@
     {
       "group": "CLI",
       "pages": ["cli/installation", "cli/commands", "cli/configuration"]
+    },
+    {
+      "group": "",
+      "pages": ["changelog"]
     }
   ],
   "footerSocials": {
