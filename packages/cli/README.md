@@ -2,37 +2,21 @@
 
 CLI for uploading and syncing AI coding agent transcripts to [AgentLogs](https://agentlogs.ai).
 
-## Install
-
-```bash
-npm install -g agentlogs
-```
-
 ## Usage
 
 ```bash
 # Authenticate
-agentlogs login
-agentlogs status
-agentlogs logout
-
-# Claude Code
-agentlogs claudecode upload <transcript.jsonl>
-agentlogs claudecode sync              # sync all local transcripts
-agentlogs claudecode hook              # for use with Claude Code hooks
-
-# Codex
-agentlogs codex upload <transcript.jsonl>
-
-# OpenCode
-agentlogs opencode upload <sessionId>
-agentlogs opencode hook
+npx agentlogs login
+npx agentlogs status
+npx agentlogs logout
 
 # Repository settings
-agentlogs allow --public   # allow capture for current repo
-agentlogs deny             # deny capture for current repo
-agentlogs settings         # view/modify settings
+npx agentlogs allow --public   # allow capture for current repo
+npx agentlogs deny             # deny capture for current repo
+npx agentlogs settings         # view/modify settings
 ```
+
+For agent specific commands, see the [agent specific documentation](https://agentlogs.ai/docs/agents).
 
 ## License
 
