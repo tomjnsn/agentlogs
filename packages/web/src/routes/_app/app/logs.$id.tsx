@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -13,6 +14,7 @@ import {
   Database,
   Download,
   Hash,
+  Link2,
   SquareCheck,
   ChevronDown,
   Clock,
@@ -57,7 +59,7 @@ export const Route = createFileRoute("/_app/app/logs/$id")({
     const title = loaderData.summary || loaderData.preview || "Untitled Thread";
     const description = loaderData.preview || "View this AI agent transcript on AgentLogs";
     const baseUrl = loaderData.baseUrl || "";
-    const ogImageUrl = `${baseUrl}/api/og/${loaderData.id}`;
+    const ogImageUrl = `${baseUrl}/api/og/${loaderData.id}/png`;
     const pageUrl = `${baseUrl}/app/logs/${loaderData.id}`;
 
     return {
@@ -270,7 +272,10 @@ function TranscriptDetailComponent() {
   const pageTitle = data.summary || unifiedTranscript.preview || "Untitled Thread";
   const showDebugInfo = data.isAdmin && debugMode;
 
-  // Auto-scroll to message if hash is present in URL (instant, no animation)
+  // Track permalinked message from URL hash
+  const [permalinkedIndex, setPermalinkedIndex] = useState<number | null>(null);
+
+  // Auto-scroll to message and set permalink if hash is present in URL
   useEffect(() => {
     const hash = window.location.hash;
     if (hash) {
@@ -280,8 +285,32 @@ function TranscriptDetailComponent() {
         const scrollTop = window.scrollY + rect.top - 16;
         window.scrollTo({ top: scrollTop, behavior: "instant" });
       }
+      // Set permalinked index from hash
+      const match = hash.match(/^#msg-(\d+)$/);
+      if (match) {
+        setPermalinkedIndex(parseInt(match[1], 10) - 1);
+      }
     }
   }, []);
+
+  // Clear permalinked state on first user scroll (delay to ignore programmatic scrolls)
+  useEffect(() => {
+    if (permalinkedIndex === null) return;
+
+    const handleScroll = () => {
+      setPermalinkedIndex(null);
+    };
+
+    // Delay attaching listener to ignore programmatic scroll from scrollIntoView
+    const timeout = setTimeout(() => {
+      window.addEventListener("scroll", handleScroll, { once: true });
+    }, 500);
+
+    return () => {
+      clearTimeout(timeout);
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, [permalinkedIndex]);
 
   return (
     <div className="flex gap-8">
@@ -300,7 +329,7 @@ function TranscriptDetailComponent() {
         </header>
 
         {/* Log Metadata */}
-        <div className="mb-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+        <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground md:mb-8">
           {/* Author */}
           <div className="flex items-center gap-1.5">
             <img src={data.userImage || undefined} alt={data.userName || "User"} className="h-4 w-4 rounded-full" />
@@ -403,6 +432,8 @@ function TranscriptDetailComponent() {
                 message={segment.message}
                 index={segment.index}
                 showDebugInfo={showDebugInfo}
+                isPermalinked={permalinkedIndex === segment.index}
+                onPermalink={setPermalinkedIndex}
               />
             ) : (
               <CollapsedSteps key={`collapsed-${i}`} messages={segment.messages} showDebugInfo={showDebugInfo} />
@@ -412,11 +443,15 @@ function TranscriptDetailComponent() {
       </div>
 
       {/* Sidebar - vertically centered TOC with independent scroll */}
-      <aside className="sticky top-0 hidden h-screen w-56 shrink-0 lg:flex lg:items-center">
-        <div className="max-h-[80vh] space-y-6 overflow-y-auto">
+      <aside className="sticky top-0 hidden h-screen w-1/4 shrink-0 lg:flex lg:items-start">
+        <div className="max-h-screen space-y-6 overflow-y-auto p-2">
           {/* User Prompts Navigation */}
           {userMessages.length > 0 && (
-            <PromptsList userMessages={userMessages} totalMessages={unifiedTranscript.messages.length} />
+            <PromptsList
+              userMessages={userMessages}
+              permalinkedIndex={permalinkedIndex}
+              onPermalink={setPermalinkedIndex}
+            />
           )}
           {/* Commits */}
           {data.commits && data.commits.length > 0 && (
@@ -434,26 +469,16 @@ function TranscriptDetailComponent() {
 
 function PromptsList({
   userMessages,
-  totalMessages,
+  permalinkedIndex,
+  onPermalink,
 }: {
   userMessages: Array<{ index: number; text: string }>;
-  totalMessages: number;
+  permalinkedIndex: number | null;
+  onPermalink: (index: number | null) => void;
 }) {
-  const [activeIndex, setActiveIndex] = useState<number | null>(userMessages[0]?.index ?? null);
-
-  // Calculate response length after each user message and map to mask percentage
-  const getMaskClass = (i: number): string => {
-    const currentIndex = userMessages[i].index;
-    const nextIndex = userMessages[i + 1]?.index ?? totalMessages;
-    const responseLength = nextIndex - currentIndex - 1;
-
-    // Map response length to mask percentage buckets (15% gradient width, variable endpoint)
-    if (responseLength <= 3) return "[mask-image:linear-gradient(to_right,black_0%,black_50%,transparent_65%)]";
-    if (responseLength <= 8) return "[mask-image:linear-gradient(to_right,black_0%,black_55%,transparent_70%)]";
-    if (responseLength <= 15) return "[mask-image:linear-gradient(to_right,black_0%,black_60%,transparent_75%)]";
-    if (responseLength <= 25) return "[mask-image:linear-gradient(to_right,black_0%,black_65%,transparent_80%)]";
-    return "[mask-image:linear-gradient(to_right,black_0%,black_70%,transparent_85%)]";
-  };
+  const [scrollActiveIndex, setScrollActiveIndex] = useState<number | null>(userMessages[0]?.index ?? null);
+  // Use permalinked index if set, otherwise use scroll-tracked index
+  const activeIndex = permalinkedIndex ?? scrollActiveIndex;
 
   // Track which message is closest to the top of the viewport
   useEffect(() => {
@@ -484,7 +509,7 @@ function PromptsList({
         }
       }
 
-      setActiveIndex(closestIndex);
+      setScrollActiveIndex(closestIndex);
     };
 
     // Initial calculation
@@ -494,11 +519,14 @@ function PromptsList({
     return () => window.removeEventListener("scroll", handleScroll);
   }, [userMessages]);
 
-  const scrollToMessage = (index: number) => {
+  const scrollToMessage = (e: React.MouseEvent, index: number) => {
+    e.preventDefault();
     const messageId = `msg-${index + 1}`;
     const target = document.getElementById(messageId);
     if (target) {
-      target.scrollIntoView({ behavior: "smooth", block: "start" });
+      onPermalink(index);
+      target.scrollIntoView({ behavior: "instant", block: "start" });
+      window.history.pushState(null, "", `#${messageId}`);
     }
   };
 
@@ -509,16 +537,17 @@ function PromptsList({
       <div className="mb-2 text-xs font-medium text-muted-foreground">Prompts</div>
       <div className="space-y-0.5">
         {userMessages.map((msg, i) => (
-          <button
+          <a
             key={msg.index}
-            onClick={() => scrollToMessage(msg.index)}
-            className={`block w-full overflow-hidden py-1 text-left text-sm whitespace-nowrap transition-colors hover:text-foreground ${getMaskClass(i)} ${
+            href={`#msg-${msg.index + 1}`}
+            onClick={(e) => scrollToMessage(e, msg.index)}
+            className={`block w-full truncate py-1 text-left text-sm transition-colors hover:text-foreground ${
               activeIndex === msg.index ? "text-foreground" : "text-muted-foreground"
             }`}
           >
             <span className="mr-2 text-muted-foreground/60 tabular-nums">{String(i + 1).padStart(padLength, "0")}</span>
             {msg.text}
-          </button>
+          </a>
         ))}
       </div>
     </section>
@@ -854,9 +883,11 @@ interface MessageBlockProps {
   message: UnifiedTranscriptMessage;
   index: number;
   showDebugInfo?: boolean;
+  isPermalinked?: boolean;
+  onPermalink?: (index: number) => void;
 }
 
-function MessageBlock({ message, index, showDebugInfo }: MessageBlockProps) {
+function MessageBlock({ message, index, showDebugInfo, isPermalinked, onPermalink }: MessageBlockProps) {
   const messageId = `msg-${index + 1}`;
 
   // User message - dark pill with avatar
@@ -868,9 +899,27 @@ function MessageBlock({ message, index, showDebugInfo }: MessageBlockProps) {
 
     const userImages = message.images ?? [];
 
+    const handlePermalink = (e: React.MouseEvent) => {
+      e.preventDefault();
+      onPermalink?.(index);
+      window.history.pushState(null, "", `#${messageId}`);
+    };
+
     return (
-      <div id={messageId} className="scroll-mt-4">
-        <div className="rounded-lg bg-secondary/80 px-5 py-5">
+      <div id={messageId} className="group/permalink scroll-mt-4">
+        <div
+          className={`relative rounded-lg bg-secondary/80 px-5 py-5 ${isPermalinked ? "ring-1 ring-foreground/20" : ""}`}
+        >
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            asChild
+            className="absolute top-[calc(var(--radius-lg)-var(--radius-md))] right-[calc(var(--radius-lg)-var(--radius-md))] opacity-0 transition-opacity group-hover/permalink:opacity-100 hover:!bg-foreground/10"
+          >
+            <a href={`#${messageId}`} onClick={handlePermalink} title="Permalink">
+              <Link2 className="h-3.5 w-3.5" />
+            </a>
+          </Button>
           <TruncatedUserMessage text={message.text} />
           <ImageGallery images={userImages} />
         </div>

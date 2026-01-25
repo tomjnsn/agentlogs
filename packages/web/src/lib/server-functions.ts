@@ -273,6 +273,8 @@ export const getTranscript = createServerFn({ method: "GET" })
           branch: c.branch,
           timestamp: c.timestamp,
         })),
+      // Base URL for OG meta tags (absolute URLs required for social sharing)
+      baseUrl: env.WEB_URL,
     };
   });
 
