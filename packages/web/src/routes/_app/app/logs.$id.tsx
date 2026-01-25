@@ -142,6 +142,77 @@ function isInternalMessage(text: string): boolean {
   return internalPatterns.some((pattern) => pattern.test(trimmed));
 }
 
+// Check if a message is "important" and should be shown expanded
+// Important messages: user messages, last agent response before user message
+function isImportantMessage(
+  message: UnifiedTranscriptMessage,
+  index: number,
+  messages: UnifiedTranscriptMessage[],
+): boolean {
+  // User messages are always important
+  if (message.type === "user") return true;
+
+  // Commands are important (like user prompts)
+  if (message.type === "command") return true;
+
+  // Check if this is the last agent response before a user message
+  if (message.type === "agent") {
+    // Look ahead to find if the next non-thinking, non-tool-call message is a user message
+    for (let i = index + 1; i < messages.length; i++) {
+      const nextMsg = messages[i];
+      if (nextMsg.type === "user" || nextMsg.type === "command") {
+        return true; // This agent message is right before a user prompt
+      }
+      if (nextMsg.type === "agent") {
+        return false; // Another agent message comes first
+      }
+      // Continue past tool-calls and thinking blocks
+    }
+    // If this is the last agent message in the conversation, it's important
+    return true;
+  }
+
+  return false;
+}
+
+// Segment type for grouping messages
+type MessageSegment =
+  | { type: "important"; message: UnifiedTranscriptMessage; index: number }
+  | { type: "collapsed"; messages: Array<{ message: UnifiedTranscriptMessage; index: number }> };
+
+// Group messages into segments of important messages and collapsed steps
+function groupMessagesIntoSegments(messages: UnifiedTranscriptMessage[]): MessageSegment[] {
+  const segments: MessageSegment[] = [];
+  let currentCollapsedGroup: Array<{ message: UnifiedTranscriptMessage; index: number }> = [];
+
+  for (let i = 0; i < messages.length; i++) {
+    const message = messages[i];
+
+    // Skip internal messages
+    if (message.type === "user" && isInternalMessage(message.text)) {
+      continue;
+    }
+
+    if (isImportantMessage(message, i, messages)) {
+      // Flush any pending collapsed group
+      if (currentCollapsedGroup.length > 0) {
+        segments.push({ type: "collapsed", messages: currentCollapsedGroup });
+        currentCollapsedGroup = [];
+      }
+      segments.push({ type: "important", message, index: i });
+    } else {
+      currentCollapsedGroup.push({ message, index: i });
+    }
+  }
+
+  // Flush any remaining collapsed group
+  if (currentCollapsedGroup.length > 0) {
+    segments.push({ type: "collapsed", messages: currentCollapsedGroup });
+  }
+
+  return segments;
+}
+
 // Get user messages with their indices for navigation
 function getUserMessagesWithIndices(messages: UnifiedTranscriptMessage[]): Array<{ index: number; text: string }> {
   const result: Array<{ index: number; text: string }> = [];
@@ -300,9 +371,18 @@ function TranscriptDetailComponent() {
 
         {/* Messages */}
         <div className="space-y-4">
-          {unifiedTranscript.messages.map((message, i) => (
-            <MessageBlock key={i} message={message} index={i} showDebugInfo={showDebugInfo} />
-          ))}
+          {groupMessagesIntoSegments(unifiedTranscript.messages).map((segment, i) =>
+            segment.type === "important" ? (
+              <MessageBlock
+                key={`msg-${segment.index}`}
+                message={segment.message}
+                index={segment.index}
+                showDebugInfo={showDebugInfo}
+              />
+            ) : (
+              <CollapsedSteps key={`collapsed-${i}`} messages={segment.messages} showDebugInfo={showDebugInfo} />
+            ),
+          )}
         </div>
       </div>
 
@@ -764,8 +844,8 @@ function MessageBlock({ message, index, showDebugInfo }: MessageBlockProps) {
     const userImages = message.images ?? [];
 
     return (
-      <div id={messageId} className="flex min-w-0 scroll-mt-4 items-start gap-3">
-        <div className="min-w-0 rounded-lg bg-secondary/60 px-4 py-2.5">
+      <div id={messageId} className="scroll-mt-4">
+        <div className="rounded-lg bg-secondary/80 px-5 py-5">
           <TruncatedUserMessage text={message.text} />
           <ImageGallery images={userImages} />
         </div>
@@ -832,6 +912,69 @@ function MessageBlock({ message, index, showDebugInfo }: MessageBlockProps) {
   }
 
   return null;
+}
+
+// Collapsed steps component - groups unimportant messages into a collapsible section
+function CollapsedSteps({
+  messages,
+  showDebugInfo,
+}: {
+  messages: Array<{ message: UnifiedTranscriptMessage; index: number }>;
+  showDebugInfo?: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  if (messages.length === 0) return null;
+
+  // Calculate total diff stats from Write/Edit tools in this collapsed section
+  let totalAdded = 0;
+  let totalRemoved = 0;
+  let totalModified = 0;
+
+  for (const { message } of messages) {
+    if (message.type === "tool-call") {
+      const inputObj = message.input as Record<string, unknown> | undefined;
+
+      if (message.toolName === "Edit" && inputObj?.diff) {
+        const stats = parseDiffStats(String(inputObj.diff));
+        totalAdded += stats.added - stats.modified;
+        totalRemoved += stats.removed - stats.modified;
+        totalModified += stats.modified;
+      } else if (message.toolName === "Write" && inputObj?.content) {
+        const lineCount = String(inputObj.content).split("\n").length;
+        totalAdded += lineCount;
+      }
+    }
+  }
+
+  const hasChanges = totalAdded > 0 || totalRemoved > 0 || totalModified > 0;
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="group/steps">
+      <div className="flex items-center gap-2">
+        <CollapsibleTrigger className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:border-muted-foreground/30 hover:text-foreground">
+          <ChevronDown className="h-4 w-4 transition-transform group-data-[open]/steps:rotate-180" />
+          <span>
+            {isOpen ? "Hide" : "Show"} {messages.length} steps
+          </span>
+        </CollapsibleTrigger>
+        {hasChanges && (
+          <span className="flex items-center gap-1 text-sm">
+            {totalAdded > 0 && <span className="text-green-500">+{totalAdded}</span>}
+            {totalModified > 0 && <span className="text-yellow-500">~{totalModified}</span>}
+            {totalRemoved > 0 && <span className="text-red-400">-{totalRemoved}</span>}
+          </span>
+        )}
+      </div>
+      <CollapsibleContent>
+        <div className="mt-3 ml-2 space-y-3 border-l border-border pl-4">
+          {messages.map(({ message, index }) => (
+            <MessageBlock key={index} message={message} index={index} showDebugInfo={showDebugInfo} />
+          ))}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
 }
 
 function TruncatedUserMessage({ text }: { text: string }) {
