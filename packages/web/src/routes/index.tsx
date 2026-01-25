@@ -7,7 +7,7 @@ export const Route = createFileRoute("/")({
 
 function LandingPage() {
   return (
-    <main className="dark flex min-h-screen flex-col items-center justify-center scheme-dark">
+    <main className="relative flex min-h-screen flex-col items-center justify-center bg-neutral-950 bg-linear-to-b from-neutral-950 to-white/5">
       <div className="absolute top-0 right-0 p-6">
         <a href="/auth/github" className="text-sm text-white/50 hover:text-white/80">
           Sign in
