@@ -6,9 +6,14 @@ import { formatCwdWithTilde } from "./paths";
 import type { LiteLLMModelPricing } from "./pricing";
 
 const FIXTURE_DIR = path.resolve(import.meta.dir, "../../../fixtures/codex");
-const TEST_NOW = new Date("2025-10-17T23:00:00Z");
+const TEST_NOW = new Date("2026-01-25T12:00:00Z");
 const TEST_PRICING: Record<string, LiteLLMModelPricing> = {
   "gpt-5-codex": {
+    cache_read_input_token_cost: 1.25e-7,
+    input_cost_per_token: 0.00000125,
+    output_cost_per_token: 0.00001,
+  },
+  "gpt-5.2-codex": {
     cache_read_input_token_cost: 1.25e-7,
     input_cost_per_token: 0.00000125,
     output_cost_per_token: 0.00001,
@@ -18,7 +23,7 @@ const TEST_PRICING: Record<string, LiteLLMModelPricing> = {
 describe("convertCodexFile", () => {
   test("crud.jsonl", async () => {
     const serialized = await loadSerializedTranscript("crud.jsonl");
-    expect(serialized.transcript.cwd).toBe(formatCwdWithTilde("/Users/philipp/dev/vibeinsights/fixtures"));
+    expect(serialized.transcript.cwd).toBe(formatCwdWithTilde("/Users/philipp/dev/agentlogs/fixtures"));
     expect(serialized).toMatchInlineSnapshot(`
       {
         "blobs": {
@@ -26,171 +31,150 @@ describe("convertCodexFile", () => {
           "sha256s": [],
         },
         "transcript": {
-          "blendedTokens": 7697,
-          "clientVersion": "0.46.0",
-          "costUsd": 0.054657250000000004,
-          "cwd": "~/dev/vibeinsights/fixtures",
+          "blendedTokens": 6691,
+          "clientVersion": "0.89.0",
+          "costUsd": 0.0243885,
+          "cwd": "~/dev/agentlogs/fixtures",
           "filesChanged": 1,
           "git": {
             "branch": "main",
             "relativeCwd": "fixtures",
-            "repo": "github.com/vibeinsights/vibeinsights",
+            "repo": "github.com/agentlogs/agentlogs",
           },
-          "id": "0199f433-233e-74b0-80d8-b9ef1b9fabd7",
-          "linesAdded": 8,
-          "linesModified": 2,
+          "id": "019bf4b5-e7b0-75a0-8bf2-05fbf1b13c9b",
+          "linesAdded": 7,
+          "linesModified": 1,
           "linesRemoved": 0,
-          "messageCount": 11,
+          "messageCount": 9,
           "messages": [
             {
               "text": "create a file \`JOKE.md\` with a random joke with a title and a footer with some random text, then read this file, then make change to the file, then delete the file.",
-              "timestamp": "2025-10-17T22:03:54.811Z",
+              "timestamp": "2026-01-25T10:32:00.708Z",
               "type": "user",
             },
             {
-              "model": "gpt-5-codex",
-              "text": "**Planning multi-step file operations** I'll create a multi-step approach to create, read, modify, and delete a file named JOKE.md using shell commands and apply_patch, ensuring each step follows instructions and the environment setup with bash in the specified working directory.",
-              "timestamp": "2025-10-17T22:04:07.368Z",
+              "model": "gpt-5.2-codex",
+              "text": "**Planning file operations and command sequence**",
+              "timestamp": "2026-01-25T10:32:03.661Z",
               "type": "thinking",
             },
             {
-              "id": "call_AesrALvhA1lH4IRySGLoM8jj",
+              "id": "call_3LP2FP4eeep7JxJRvO3h42Oh",
               "input": {
                 "content": 
-      "# The Invisible Bicycle
+      "# The Late Comedian
 
-      I tried to ride an invisible bike today. I couldn't see it coming when I crashed into thin air.
+      Why did the scarecrow get promoted? Because he was outstanding in his field.
 
       ---
-
-      Footer: Mind the invisible potholes.
+      Footer note: The coffee machine approves this message.
       "
       ,
                 "file_path": "./JOKE.md",
               },
-              "model": "gpt-5-codex",
+              "model": "gpt-5.2-codex",
               "output": undefined,
-              "timestamp": "2025-10-17T22:04:07.368Z",
+              "timestamp": "2026-01-25T10:32:04.513Z",
               "toolName": "Write",
               "type": "tool-call",
             },
             {
-              "model": "gpt-5-codex",
-              "text": "**Reading file contents**",
-              "timestamp": "2025-10-17T22:04:09.039Z",
-              "type": "thinking",
-            },
-            {
-              "id": "call_bL8fv2kzcwiqF3xGFKT01WZR",
+              "id": "call_Cxwk4ioosZkYyeToIOOH3NB6",
               "input": {
                 "file_path": "./JOKE.md",
               },
-              "model": "gpt-5-codex",
+              "model": "gpt-5.2-codex",
               "output": 
-      "# The Invisible Bicycle
+      "# The Late Comedian
 
-      I tried to ride an invisible bike today. I couldn't see it coming when I crashed into thin air.
+      Why did the scarecrow get promoted? Because he was outstanding in his field.
 
       ---
-
-      Footer: Mind the invisible potholes."
+      Footer note: The coffee machine approves this message."
       ,
-              "timestamp": "2025-10-17T22:04:09.039Z",
+              "timestamp": "2026-01-25T10:32:06.455Z",
               "toolName": "Read",
               "type": "tool-call",
             },
             {
-              "model": "gpt-5-codex",
-              "text": "**Updating joke content**",
-              "timestamp": "2025-10-17T22:04:13.393Z",
+              "model": "gpt-5.2-codex",
+              "text": "**Modifying footer text**",
+              "timestamp": "2026-01-25T10:32:07.754Z",
               "type": "thinking",
             },
             {
-              "id": "call_bT3EiO3FSsAgovw9CiNXqWMH",
+              "id": "call_jNxPfZXnxjqCPQxUeOy07aR1",
               "input": {
                 "diff": 
       "@@
-      -I tried to ride an invisible bike today. I couldn't see it coming when I crashed into thin air.
-      +I told my friend about my invisible bike. He said he couldn't handle it—apparently the handlebars were missing.
-      @@
-      -Footer: Mind the invisible potholes.
-      +Footer: Watch out for translucent traffic lights.
+      -Footer note: The coffee machine approves this message.
+      +Footer note: The office cactus applauds politely.
       "
       ,
                 "file_path": "./JOKE.md",
               },
-              "model": "gpt-5-codex",
+              "model": "gpt-5.2-codex",
               "output": {
                 "exitCode": 0,
                 "message": 
       "Success. Updated the following files:
-      M JOKE.md"
+      M ./JOKE.md"
       ,
               },
-              "timestamp": "2025-10-17T22:04:13.393Z",
+              "timestamp": "2026-01-25T10:32:08.476Z",
               "toolName": "Edit",
               "type": "tool-call",
             },
             {
-              "model": "gpt-5-codex",
-              "text": "**Removing file**",
-              "timestamp": "2025-10-17T22:04:15.278Z",
+              "model": "gpt-5.2-codex",
+              "text": "**Deleting file**",
+              "timestamp": "2026-01-25T10:32:10.017Z",
               "type": "thinking",
             },
             {
-              "id": "call_Gf4EHYjxCQYPqhY6wa7mBXBS",
+              "id": "call_p5WYLDqEH0nELpogFOahfsv4",
               "input": {
-                "command": [
-                  "bash",
-                  "-lc",
-                  "rm JOKE.md",
-                ],
-                "workdir": ".",
+                "cmd": "rm ./JOKE.md",
               },
-              "model": "gpt-5-codex",
+              "model": "gpt-5.2-codex",
               "output": {
+                "durationSeconds": 0.0522,
                 "exitCode": 0,
               },
-              "timestamp": "2025-10-17T22:04:15.278Z",
+              "timestamp": "2026-01-25T10:32:10.281Z",
               "toolName": "Bash",
               "type": "tool-call",
             },
             {
-              "model": "gpt-5-codex",
-              "text": "**Summarizing file operations and finalizing response** I'll recap the sequence of actions on \`JOKE.md\`: creating it with initial content, reading and verifying what was inside, updating the joke text before finally deleting the file. Since the file no longer exists, I can’t show the final content but will confirm its removal and note that no tests or next steps are needed. This overview will help provide a clear, easy-to-follow summary for the user.",
-              "timestamp": "2025-10-17T22:04:23.055Z",
-              "type": "thinking",
-            },
-            {
-              "model": "gpt-5-codex",
-              "text": "- Created \`JOKE.md\` with the title “The Invisible Bicycle,” a short gag about crashing into thin air, and a footer warning about invisible potholes. - Read the file back to confirm the initial content matched the request. - Updated the body to a new punch line about missing handlebars and changed the footer to “Watch out for translucent traffic lights.” - Removed \`JOKE.md\` when finished, leaving no lingering artifacts. No further action needed.",
-              "timestamp": "2025-10-17T22:04:23.055Z",
+              "model": "gpt-5.2-codex",
+              "text": "Created \`JOKE.md\`, read it, updated the footer line, and deleted the file.",
+              "timestamp": "2026-01-25T10:32:11.486Z",
               "type": "agent",
             },
           ],
-          "model": "gpt-5-codex",
+          "model": "gpt-5.2-codex",
           "modelUsage": [
             {
-              "model": "gpt-5-codex",
+              "model": "gpt-5.2-codex",
               "usage": {
-                "cachedInputTokens": 72448,
-                "inputTokens": 76033,
-                "outputTokens": 2384,
-                "reasoningOutputTokens": 1728,
-                "totalTokens": 78417,
+                "cachedInputTokens": 78848,
+                "inputTokens": 84834,
+                "outputTokens": 577,
+                "reasoningOutputTokens": 128,
+                "totalTokens": 85411,
               },
             },
           ],
           "preview": "create a file \`JOKE.md\` with a random joke with a title and a footer with some random text, then read this file, then make change to the file, then delete the file.",
           "source": "codex",
           "summary": null,
-          "timestamp": "2025-10-17T22:04:23.055Z",
+          "timestamp": "2026-01-25T10:32:11.490Z",
           "tokenUsage": {
-            "cachedInputTokens": 72448,
-            "inputTokens": 76033,
-            "outputTokens": 2384,
-            "reasoningOutputTokens": 1728,
-            "totalTokens": 78417,
+            "cachedInputTokens": 78848,
+            "inputTokens": 84834,
+            "outputTokens": 577,
+            "reasoningOutputTokens": 128,
+            "totalTokens": 85411,
           },
           "toolCount": 4,
           "userMessageCount": 1,

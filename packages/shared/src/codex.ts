@@ -77,9 +77,15 @@ const DEFAULT_TIERED_THRESHOLD = 200_000;
 
 const TOOL_NAMES: Record<string, string> = {
   shell: "Bash",
+  exec_command: "Bash",
 };
 
-const IGNORED_USER_PREFIXES = ["<user_instructions", "<environment_context"];
+const IGNORED_USER_PREFIXES = [
+  "<user_instructions",
+  "<environment_context",
+  "# agents.md instructions for",
+  "<permissions instructions>",
+];
 
 /**
  * Convert a Codex transcript from an in-memory event array.
@@ -611,6 +617,8 @@ function updateToolCallOutput(
   let sanitizedOutput: unknown = output;
   if (rawName === "shell") {
     sanitizedOutput = sanitizeShellOutput(output);
+  } else if (rawName === "exec_command") {
+    sanitizedOutput = sanitizeExecCommandOutput(output);
   } else if (rawName === "apply_patch") {
     sanitizedOutput = sanitizeApplyPatchOutput(output);
   }
@@ -621,7 +629,7 @@ function updateToolCallOutput(
   };
 
   // Try to convert bash commands to proper tools AFTER output is attached
-  if (rawName === "shell") {
+  if (rawName === "shell" || rawName === "exec_command") {
     const converted = convertBashToTool(updated, cwd);
     if (converted) {
       return converted;
@@ -637,19 +645,23 @@ function convertBashToTool(toolCall: UnifiedTranscriptMessage, cwd: string | nul
   }
 
   const input = toolCall.input as Record<string, unknown>;
-  const command = input.command;
+  let cmdString: string | null = null;
 
-  if (!Array.isArray(command) || command.length < 3) {
-    return null;
+  // Handle new format: { cmd: "..." }
+  if (typeof input.cmd === "string") {
+    cmdString = input.cmd;
+  }
+  // Handle old format: { command: ["bash", "-lc", "..."] }
+  else if (Array.isArray(input.command) && input.command.length >= 3) {
+    const shell = input.command[0];
+    if (
+      (shell === "bash" || shell === "zsh" || shell === "/bin/zsh" || shell === "/bin/bash") &&
+      input.command[1] === "-lc"
+    ) {
+      cmdString = asString(input.command[2]);
+    }
   }
 
-  // Check if it's a bash/zsh -lc command
-  const shell = command[0];
-  if ((shell !== "bash" && shell !== "zsh") || command[1] !== "-lc") {
-    return null;
-  }
-
-  const cmdString = asString(command[2]);
   if (!cmdString) {
     return null;
   }
@@ -708,7 +720,7 @@ function sanitizeToolCall(
 
   let { toolName, input, output } = toolCall;
 
-  if (rawName === "shell") {
+  if (rawName === "shell" || rawName === "exec_command") {
     toolName = "Bash";
     if (input && typeof input === "object") {
       const record = { ...(input as Record<string, unknown>) };
@@ -771,6 +783,43 @@ function sanitizeShellOutput(value: unknown): unknown {
   if (Number.isFinite(duration) && duration > 0) {
     result.durationSeconds = duration;
   }
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
+function sanitizeExecCommandOutput(value: unknown): unknown {
+  // New Codex exec_command format returns text like:
+  // "Chunk ID: dd6d89\nWall time: 0.0510 seconds\nProcess exited with code 0\nOriginal token count: 0\nOutput:\n<actual output>"
+  const text = asString(value);
+  if (!text) {
+    return sanitizeShellOutput(value);
+  }
+
+  const result: Record<string, unknown> = {};
+
+  // Extract exit code
+  const exitMatch = text.match(/Process exited with code (\d+)/);
+  if (exitMatch) {
+    result.exitCode = parseInt(exitMatch[1], 10);
+  }
+
+  // Extract wall time as duration
+  const timeMatch = text.match(/Wall time: ([\d.]+) seconds/);
+  if (timeMatch) {
+    const duration = parseFloat(timeMatch[1]);
+    if (duration > 0) {
+      result.durationSeconds = duration;
+    }
+  }
+
+  // Extract output (everything after "Output:\n")
+  const outputMatch = text.match(/Output:\n([\s\S]*?)$/);
+  if (outputMatch && outputMatch[1]) {
+    const stdout = outputMatch[1].trim();
+    if (stdout) {
+      result.stdout = stdout;
+    }
+  }
+
   return Object.keys(result).length > 0 ? result : undefined;
 }
 
