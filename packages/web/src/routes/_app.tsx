@@ -10,7 +10,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useDebugMode } from "@/hooks/use-debug-mode";
 import { createFileRoute, Link, Outlet, redirect, useRouter } from "@tanstack/react-router";
-import { ChevronDownIcon, LogOutIcon, LogsIcon, ShieldIcon, UsersIcon } from "lucide-react";
+import {
+  BookOpenIcon,
+  ChevronDownIcon,
+  LogOutIcon,
+  LogsIcon,
+  ScrollTextIcon,
+  ShieldIcon,
+  UsersIcon,
+} from "lucide-react";
 import { DiscordIcon, Logo } from "@/components/icons/source-icons";
 import { authClient } from "../lib/auth-client";
 import { clearSessionCache } from "../lib/session-cache";
@@ -140,6 +148,14 @@ function AppLayout() {
                     <DropdownMenuSeparator />
                   </>
                 )}
+                <DropdownMenuItem onClick={() => window.open("https://docs.agentlogs.ai", "_blank")}>
+                  <BookOpenIcon className="size-4" />
+                  Docs
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => window.open("https://docs.agentlogs.ai/changelog", "_blank")}>
+                  <ScrollTextIcon className="size-4" />
+                  Changelog
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => window.open("https://discord.gg/yG4TNv3mjG", "_blank")}>
                   <DiscordIcon className="size-4" />
                   Support
