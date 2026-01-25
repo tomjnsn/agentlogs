@@ -47,10 +47,11 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 let lastWatcherEvent: { type: string; path: string; timestamp: number } | undefined;
 const startTime = Date.now();
 
-// Session tracking: path -> { mtime, lastAgentMessageTs }
+// Session tracking: path -> { mtime, lastAgentMessageTs, isNew }
 interface TrackedSession {
   mtime: number;
   lastAgentMessageTs: string | null;
+  isNewSession: boolean; // True if created during this service run (should upload first agent_message)
 }
 const trackedSessions = new Map<string, TrackedSession>();
 
@@ -136,6 +137,7 @@ function trackSession(filePath: string, isNew: boolean = false) {
     trackedSessions.set(filePath, {
       mtime: stat.mtimeMs,
       lastAgentMessageTs,
+      isNewSession: isNew, // New sessions should upload on first agent_message
     });
 
     log("DEBUG", `Tracking session: ${filePath}`, {
@@ -209,9 +211,15 @@ function checkSessionForTurnComplete(filePath: string) {
       const isFirstDiscovery = tracked.lastAgentMessageTs === null;
       tracked.lastAgentMessageTs = newAgentMessageTs;
 
-      if (!isFirstDiscovery) {
+      // Upload if:
+      // - Not first discovery (subsequent agent messages), OR
+      // - First discovery on a NEW session (created during this service run)
+      if (!isFirstDiscovery || tracked.isNewSession) {
         log("INFO", `Turn completed: ${filePath}`, { agentMessageTs: newAgentMessageTs });
         logWatcherEvent({ type: "turn_complete", path: filePath, reason: "agent_message" });
+
+        // Clear isNewSession flag after first upload
+        tracked.isNewSession = false;
 
         // Trigger upload (fire and forget, don't block polling)
         uploadSession(filePath).catch((err) => {
@@ -262,18 +270,7 @@ async function uploadSession(filePath: string): Promise<void> {
  * Poll all tracked sessions for changes
  */
 function pollSessions() {
-  for (const [filePath, tracked] of trackedSessions.entries()) {
-    try {
-      const stat = statSync(filePath);
-      if (stat.mtimeMs > tracked.mtime) {
-        log("DEBUG", `Polling: mtime changed for ${filePath}`, {
-          oldMtime: tracked.mtime,
-          newMtime: stat.mtimeMs,
-        });
-      }
-    } catch {
-      // Ignore
-    }
+  for (const filePath of trackedSessions.keys()) {
     checkSessionForTurnComplete(filePath);
   }
 }
