@@ -1,6 +1,6 @@
 {
   "name": "agentlogs",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "description": "CLI for uploading AI coding agent transcripts to AgentLogs",
   "keywords": [
     "agentlogs",
