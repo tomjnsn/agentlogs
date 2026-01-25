@@ -25,7 +25,7 @@
       },
       {
         "group": "Agents",
-        "pages": ["agents/claude-code", "agents/opencode"]
+        "pages": ["agents/claude-code", "agents/codex", "agents/opencode"]
       },
       {
         "group": "CLI",

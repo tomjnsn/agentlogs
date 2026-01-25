@@ -101,6 +101,88 @@ Reads hook data from stdin. This command is meant to be called from Claude Code'
 
 ---
 
+## Codex (Experimental)
+
+### codex upload
+
+Upload a Codex transcript file.
+
+```bash
+agentlogs codex upload <transcript>
+```
+
+**Arguments:**
+
+- `transcript` - Path to the JSONL transcript file
+
+**Example:**
+
+```bash
+agentlogs codex upload ~/.codex/sessions/2025/01/25/session-abc123.jsonl
+```
+
+### mcp
+
+Run as an MCP server for Codex integration.
+
+```bash
+agentlogs mcp
+```
+
+This command is meant to be called by Codex's MCP server system, not manually. It:
+
+- Ensures the background service is running
+- Connects to the service to keep it alive
+- Exposes no tools or prompts (lifecycle management only)
+
+### service start
+
+Start the background service.
+
+```bash
+agentlogs service start
+```
+
+The service watches `~/.codex/sessions` for transcript changes and uploads them automatically.
+
+### service stop
+
+Stop the background service.
+
+```bash
+agentlogs service stop
+```
+
+### service status
+
+Show background service status.
+
+```bash
+agentlogs service status
+```
+
+**Output:**
+
+```
+Service: running (PID: 12345)
+Connections: 1
+Watching: true
+Uptime: 3600s
+Last event: turn_complete (5s ago)
+```
+
+### service logs
+
+Tail the watcher event logs.
+
+```bash
+agentlogs service logs
+```
+
+Shows recent file system events and turn completions. Press `Ctrl+C` to stop.
+
+---
+
 ## OpenCode
 
 ### opencode upload

@@ -1,0 +1,51 @@
+---
+title: Codex (experimental)
+description: Set up AgentLogs with OpenAI Codex for automatic transcript capture
+icon: /icons/codex.svg
+---
+
+<Warning>Codex support is **experimental**. The integration works but may have rough edges.</Warning>
+
+# Codex Integration
+
+Codex is OpenAI's CLI for coding with GPT models. AgentLogs provides automatic transcript capture through an MCP server integration.
+
+## Features
+
+- **Automatic capture** - Transcripts are uploaded after each agent response
+- **Background service** - Watches sessions and handles uploads automatically
+
+## Installation
+
+### 1. Authentication
+
+Run the following command in the terminal:
+
+```bash
+npx agentlogs login
+```
+
+### 2. Configure MCP Server
+
+Run the following command to add the AgentLogs MCP server:
+
+```bash
+codex mcp add agentlogs -- npx -y agentlogs mcp
+```
+
+<Accordion title="Manual configuration">
+Alternatively, add the following to your Codex config file (`~/.codex/config.toml`):
+
+```toml
+[mcp_servers.agentlogs]
+command = "npx"
+args = ["-y", "agentlogs", "mcp"]
+```
+
+</Accordion>
+
+## How It Works
+
+The MCP server is spawned by Codex and connects to a background service that watches `~/.codex/sessions` for changes. When an agent response completes, the transcript is uploaded.
+
+The MCP server doesn't expose any tools or prompts—it exists purely for lifecycle management. The background service shuts down automatically after all Codex sessions close.
