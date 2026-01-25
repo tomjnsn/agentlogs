@@ -51,6 +51,36 @@ export const Route = createFileRoute("/_app/app/logs/$id")({
   pendingComponent: TranscriptPendingComponent,
   pendingMinMs: 100, // Only show loading if takes > 100ms (avoids flash)
   component: TranscriptDetailComponent,
+  head: ({ loaderData }) => {
+    if (!loaderData) return {};
+
+    const title = loaderData.summary || loaderData.preview || "Untitled Thread";
+    const description = loaderData.preview || "View this AI agent transcript on AgentLogs";
+    const baseUrl = loaderData.baseUrl || "";
+    const ogImageUrl = `${baseUrl}/api/og/${loaderData.id}`;
+    const pageUrl = `${baseUrl}/app/logs/${loaderData.id}`;
+
+    return {
+      meta: [
+        { title: `${title} - AgentLogs` },
+        { name: "description", content: description },
+        // Open Graph
+        { property: "og:title", content: title },
+        { property: "og:description", content: description },
+        { property: "og:image", content: ogImageUrl },
+        { property: "og:image:width", content: "1200" },
+        { property: "og:image:height", content: "630" },
+        { property: "og:url", content: pageUrl },
+        { property: "og:type", content: "article" },
+        { property: "og:site_name", content: "AgentLogs" },
+        // Twitter Card
+        { name: "twitter:card", content: "summary_large_image" },
+        { name: "twitter:title", content: title },
+        { name: "twitter:description", content: description },
+        { name: "twitter:image", content: ogImageUrl },
+      ],
+    };
+  },
 });
 
 function TranscriptPendingComponent() {
@@ -240,11 +270,6 @@ function TranscriptDetailComponent() {
   const pageTitle = data.summary || unifiedTranscript.preview || "Untitled Thread";
   const showDebugInfo = data.isAdmin && debugMode;
 
-  // Set document title
-  useEffect(() => {
-    document.title = `${pageTitle} - Agent Logs`;
-  }, [pageTitle]);
-
   // Auto-scroll to message if hash is present in URL (instant, no animation)
   useEffect(() => {
     const hash = window.location.hash;
@@ -370,7 +395,7 @@ function TranscriptDetailComponent() {
         )}
 
         {/* Messages */}
-        <div className="space-y-4">
+        <div className="space-y-4 [--color-foreground:color-mix(in_oklab,var(--foreground)_90%,_transparent)]">
           {groupMessagesIntoSegments(unifiedTranscript.messages).map((segment, i) =>
             segment.type === "important" ? (
               <MessageBlock
@@ -954,9 +979,7 @@ function CollapsedSteps({
       <div className="flex items-center gap-2">
         <CollapsibleTrigger className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:border-muted-foreground/30 hover:text-foreground">
           <ChevronDown className="h-4 w-4 transition-transform group-data-[open]/steps:rotate-180" />
-          <span>
-            {isOpen ? "Hide" : "Show"} {messages.length} steps
-          </span>
+          <span>{isOpen ? `Hide ${messages.length} steps` : `${messages.length} steps hidden`}</span>
         </CollapsibleTrigger>
         {hasChanges && (
           <span className="flex items-center gap-1 text-sm">
