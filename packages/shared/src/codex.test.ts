@@ -134,7 +134,7 @@ describe("convertCodexFile", () => {
             {
               "id": "call_p5WYLDqEH0nELpogFOahfsv4",
               "input": {
-                "cmd": "rm ./JOKE.md",
+                "command": "rm ./JOKE.md",
               },
               "model": "gpt-5.2-codex",
               "output": {

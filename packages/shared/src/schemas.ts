@@ -178,7 +178,13 @@ const grepToolCallSchema = baseToolCallShapeSchema.extend({
 
 const bashToolCallSchema = baseToolCallShapeSchema.extend({
   toolName: z.literal("Bash"),
-  input: z.unknown().optional(),
+  input: z
+    .object({
+      command: z.string(),
+      description: z.string().optional(),
+    })
+    .passthrough()
+    .optional(),
   output: z
     .union([
       z.string(),

@@ -651,6 +651,10 @@ function convertBashToTool(toolCall: UnifiedTranscriptMessage, cwd: string | nul
   if (typeof input.cmd === "string") {
     cmdString = input.cmd;
   }
+  // Handle sanitized format: { command: "..." } (string, not array)
+  else if (typeof input.command === "string") {
+    cmdString = input.command;
+  }
   // Handle old format: { command: ["bash", "-lc", "..."] }
   else if (Array.isArray(input.command) && input.command.length >= 3) {
     const shell = input.command[0];
@@ -723,11 +727,40 @@ function sanitizeToolCall(
   if (rawName === "shell" || rawName === "exec_command") {
     toolName = "Bash";
     if (input && typeof input === "object") {
-      const record = { ...(input as Record<string, unknown>) };
-      if (typeof record.workdir === "string" && cwd) {
-        record.workdir = relativizePath(record.workdir, cwd);
+      const record = input as Record<string, unknown>;
+      const bashInput: Record<string, unknown> = {};
+
+      // Extract command string from various formats
+      let cmdString: string | null = null;
+      // Handle new format: { cmd: "..." }
+      if (typeof record.cmd === "string") {
+        cmdString = record.cmd;
       }
-      input = record;
+      // Handle old format: { command: ["bash", "-lc", "..."] }
+      else if (Array.isArray(record.command) && record.command.length >= 3) {
+        const shell = record.command[0];
+        if (
+          (shell === "bash" || shell === "zsh" || shell === "/bin/zsh" || shell === "/bin/bash") &&
+          record.command[1] === "-lc"
+        ) {
+          cmdString = asString(record.command[2]);
+        }
+      }
+      // Handle command as string directly
+      else if (typeof record.command === "string") {
+        cmdString = record.command;
+      }
+
+      if (cmdString) {
+        bashInput.command = cmdString;
+      }
+
+      // Copy description if present
+      if (typeof record.description === "string") {
+        bashInput.description = record.description;
+      }
+
+      input = bashInput;
     }
   }
 

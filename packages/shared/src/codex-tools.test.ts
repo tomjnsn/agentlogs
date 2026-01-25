@@ -84,12 +84,7 @@ describe("Codex tool calls", () => {
       {
         "id": "call-shell",
         "input": {
-          "command": [
-            "bash",
-            "-lc",
-            "pwd",
-          ],
-          "workdir": ".",
+          "command": "pwd",
         },
         "model": "gpt-5-codex",
         "output": {
