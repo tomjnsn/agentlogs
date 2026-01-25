@@ -15,6 +15,9 @@ import { codexUploadCommand } from "./commands/codex/upload";
 // OpenCode commands
 import { opencodeUploadCommand } from "./commands/opencode/upload";
 import { hookCommand as openCodeHookCommand } from "./commands/opencode/hook";
+// Service and MCP commands
+import { startService, stopService, serviceStatus, serviceLogs } from "./commands/service";
+import { mcpCommand } from "./commands/mcp";
 
 const program = new Command();
 
@@ -125,6 +128,45 @@ program
   .description("Deny capture for the current repository")
   .action(async () => {
     await denyCommand();
+  });
+
+// Service commands
+const service = program.command("service").description("Manage the agentlogs background service");
+
+service
+  .command("start")
+  .description("Start the background service")
+  .action(async () => {
+    await startService();
+  });
+
+service
+  .command("stop")
+  .description("Stop the background service")
+  .action(async () => {
+    await stopService();
+  });
+
+service
+  .command("status")
+  .description("Show service status")
+  .action(async () => {
+    await serviceStatus();
+  });
+
+service
+  .command("logs")
+  .description("Tail the watcher event logs")
+  .action(async () => {
+    await serviceLogs();
+  });
+
+// MCP server command (spawned by Codex)
+program
+  .command("mcp")
+  .description("Start MCP server (used by Codex)")
+  .action(async () => {
+    await mcpCommand();
   });
 
 program.showHelpAfterError("(add --help for additional information)");
