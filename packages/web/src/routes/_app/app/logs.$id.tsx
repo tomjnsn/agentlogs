@@ -395,7 +395,7 @@ function TranscriptDetailComponent() {
         )}
 
         {/* Messages */}
-        <div className="space-y-4 [--color-foreground:color-mix(in_oklab,var(--foreground)_90%,_transparent)]">
+        <div className="space-y-4 [--color-foreground:color-mix(in_oklab,var(--foreground)_90%,_transparent)] md:space-y-8">
           {groupMessagesIntoSegments(unifiedTranscript.messages).map((segment, i) =>
             segment.type === "important" ? (
               <MessageBlock
