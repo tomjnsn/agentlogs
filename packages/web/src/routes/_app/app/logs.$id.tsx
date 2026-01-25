@@ -35,7 +35,7 @@ import {
 } from "lucide-react";
 import { ClaudeCodeIcon, CodexIcon, GitHubIcon, MCPIcon, OpenCodeIcon } from "../../../components/icons/source-icons";
 import { CodeBlock, DiffViewer, FileViewer, GrepContentViewer, ShellOutput } from "../../../components/diff-viewer";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MarkdownRenderer } from "../../../components/markdown-renderer";
 import { useDebugMode } from "@/hooks/use-debug-mode";
 
@@ -44,7 +44,7 @@ import {
   replaceImageReferencesForDisplay,
   type ImageReference,
 } from "../../../lib/message-utils";
-import { getTranscript, updateVisibility } from "../../../lib/server-functions";
+import { getTranscript, updateTitle, updateVisibility } from "../../../lib/server-functions";
 
 export const Route = createFileRoute("/_app/app/logs/$id")({
   loader: ({ params }) => getTranscript({ data: params.id }),
@@ -59,7 +59,7 @@ export const Route = createFileRoute("/_app/app/logs/$id")({
     const title = loaderData.summary || loaderData.preview || "Untitled Thread";
     const description = loaderData.preview || "View this AI agent transcript on AgentLogs";
     const baseUrl = loaderData.baseUrl || "";
-    const ogImageUrl = `${baseUrl}/api/og/${loaderData.id}/png`;
+    const ogImageUrl = `${baseUrl}/api/og/${loaderData.id}.png?title=${encodeURIComponent(title)}`;
     const pageUrl = `${baseUrl}/app/logs/${loaderData.id}`;
 
     return {
@@ -317,15 +317,16 @@ function TranscriptDetailComponent() {
       {/* Main Content */}
       <div className="min-w-0 flex-1">
         {/* Header with lines changed */}
-        <header className="mb-1 flex items-baseline gap-3">
-          <h1 className="min-w-0 truncate font-serif text-3xl font-semibold tracking-wide">{pageTitle}</h1>
-          {(data.linesAdded > 0 || data.linesRemoved > 0 || data.linesModified > 0) && (
-            <span className="flex shrink-0 items-center gap-1 text-sm">
-              {data.linesAdded > 0 && <span className="text-green-500">+{data.linesAdded}</span>}
-              {data.linesModified > 0 && <span className="text-yellow-500">~{data.linesModified}</span>}
-              {data.linesRemoved > 0 && <span className="text-red-400">-{data.linesRemoved}</span>}
-            </span>
-          )}
+        <header className="mb-1">
+          <EditableTitle transcriptId={data.id} initialTitle={pageTitle} canEdit={data.isOwner || data.isAdmin}>
+            {(data.linesAdded > 0 || data.linesRemoved > 0 || data.linesModified > 0) && (
+              <span className="flex shrink-0 items-center gap-1 text-sm">
+                {data.linesAdded > 0 && <span className="text-green-500">+{data.linesAdded}</span>}
+                {data.linesModified > 0 && <span className="text-yellow-500">~{data.linesModified}</span>}
+                {data.linesRemoved > 0 && <span className="text-red-400">-{data.linesRemoved}</span>}
+              </span>
+            )}
+          </EditableTitle>
         </header>
 
         {/* Log Metadata */}
@@ -420,6 +421,18 @@ function TranscriptDetailComponent() {
                 Unified
               </a>
             </div>
+          </div>
+        )}
+
+        {/* OG Image Preview (debug mode only) */}
+        {showDebugInfo && (
+          <div className="mb-4 overflow-hidden rounded-lg border border-dashed border-yellow-500/30">
+            <div className="bg-yellow-950/10 px-3 py-1.5 text-xs font-medium text-yellow-500">OG Image Preview</div>
+            <img
+              src={`/api/og/${data.id}.png?title=${encodeURIComponent(pageTitle)}`}
+              alt="OG preview"
+              className="w-full"
+            />
           </div>
         )}
 
@@ -753,6 +766,111 @@ function VisibilitySection({ transcriptId, visibility, isOwner }: VisibilitySect
         </div>
       )}
     </>
+  );
+}
+
+interface EditableTitleProps {
+  transcriptId: string;
+  initialTitle: string;
+  canEdit: boolean;
+  children?: React.ReactNode;
+}
+
+function EditableTitle({ transcriptId, initialTitle, canEdit, children }: EditableTitleProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [title, setTitle] = useState(initialTitle);
+  const [editValue, setEditValue] = useState(initialTitle);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
+
+  const handleStartEdit = () => {
+    if (!canEdit) return;
+    setEditValue(title);
+    setIsEditing(true);
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    setEditValue(title);
+  };
+
+  const handleSave = async () => {
+    const newTitle = editValue.trim();
+    if (newTitle === title) {
+      setIsEditing(false);
+      return;
+    }
+
+    setIsUpdating(true);
+    const minDisplayPromise = new Promise((resolve) => setTimeout(resolve, 200));
+
+    try {
+      await Promise.all([updateTitle({ data: { transcriptId, title: newTitle } }), minDisplayPromise]);
+      setTitle(newTitle || "Untitled Thread");
+      setIsEditing(false);
+    } catch (err) {
+      console.error("Failed to update title:", err);
+      // Keep editing mode open on error
+      await minDisplayPromise;
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleSave();
+    } else if (e.key === "Escape") {
+      handleCancel();
+    }
+  };
+
+  if (isEditing) {
+    return (
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <input
+          ref={inputRef}
+          type="text"
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onBlur={isUpdating ? undefined : handleCancel}
+          disabled={isUpdating}
+          className="min-w-0 flex-1 truncate bg-transparent font-serif text-3xl font-semibold tracking-wide outline-none"
+          placeholder="Untitled Thread"
+        />
+        {isUpdating && <Loader2 className="h-5 w-5 shrink-0 animate-spin text-muted-foreground" />}
+      </div>
+    );
+  }
+
+  return (
+    <div className="group/title flex min-w-0 items-baseline gap-3">
+      <div className="relative min-w-0">
+        <h1 className="min-w-0 truncate font-serif text-3xl font-semibold tracking-wide">
+          {title || "Untitled Thread"}
+        </h1>
+        {canEdit && (
+          <button
+            type="button"
+            onClick={handleStartEdit}
+            className="absolute top-1 -right-6 rounded bg-background p-1 opacity-0 transition-opacity group-hover/title:opacity-100"
+            title="Edit title"
+          >
+            <Pencil className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+          </button>
+        )}
+      </div>
+      {children}
+    </div>
   );
 }
 

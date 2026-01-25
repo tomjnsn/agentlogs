@@ -832,6 +832,41 @@ export const acceptInvite = createServerFn({ method: "POST" })
   });
 
 /**
+ * Update transcript title (summary)
+ * Only owners and admins can update the title
+ */
+export const updateTitle = createServerFn({ method: "POST" })
+  .inputValidator((input: { transcriptId: string; title: string }) => input)
+  .handler(async ({ data: { transcriptId, title } }) => {
+    const db = createDrizzle(env.DB);
+    const userId = await getAuthenticatedUserId();
+
+    // Get user role to check if admin
+    const userRole = await queries.getUserRole(db, userId);
+    const isAdmin = userRole === "admin";
+
+    // Verify transcript exists
+    const transcript = await db.query.transcripts.findFirst({
+      where: eq(transcripts.id, transcriptId),
+    });
+    if (!transcript) {
+      throw new Error("Transcript not found");
+    }
+
+    // Check if user is owner or admin
+    if (transcript.userId !== userId && !isAdmin) {
+      throw new Error("You can only change the title of your own transcripts");
+    }
+
+    // Update title (summary field)
+    const trimmedTitle = title.trim() || null;
+    await db.update(transcripts).set({ summary: trimmedTitle }).where(eq(transcripts.id, transcriptId));
+
+    logger.info("Transcript title updated", { transcriptId, title: trimmedTitle, userId });
+    return { success: true, title: trimmedTitle };
+  });
+
+/**
  * Update transcript visibility
  * When setting to 'team', also stores the specific sharedWithTeamId
  */
