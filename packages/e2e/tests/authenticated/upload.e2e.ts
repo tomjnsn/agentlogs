@@ -186,7 +186,7 @@ test.describe("CLI Upload", () => {
       expectedSnippet: "create a file `JOKE.md` with a random joke",
       fixturePath: path.join(ROOT_DIR, "fixtures/codex/crud.jsonl"),
       uploadCommand: "codex",
-      expectedClientVersion: "0.46.0",
+      expectedClientVersion: "0.89.0",
     } satisfies FixtureCase;
     const result = uploadFixtureTranscript(fixture);
     expect(result.output).toContain("Upload complete");
