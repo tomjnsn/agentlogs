@@ -8,8 +8,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    name: Lint, Test, Type Check, Build
+  check:
+    name: Lint, Type Check, Unit Tests
     runs-on: namespace-profile-default
 
     steps:
@@ -31,8 +31,30 @@ jobs:
       - name: Run checks (lint, format, typecheck)
         run: bun run check
 
-      - name: Run tests
+      - name: Run unit tests
         run: bun test
+
+  e2e:
+    name: E2E Tests
+    runs-on: namespace-profile-default
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('**/bun.lockb') }}
 
       - name: Install Playwright browsers
         run: ./node_modules/.bin/playwright install --with-deps chromium chromium-headless-shell
@@ -41,13 +63,33 @@ jobs:
       - name: Run E2E tests
         run: bun run test:e2e
 
+  build:
+    name: Build
+    runs-on: namespace-profile-default
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Generate Cloudflare types
+        run: bun run cf-typegen
+        working-directory: ./packages/web
+
       - name: Build application
         run: bun run build
 
   deploy:
     name: Deploy to Cloudflare
     runs-on: namespace-profile-default
-    needs: [build]
+    needs: [check, e2e, build]
     if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
     environment:
       name: Production
