@@ -80,7 +80,7 @@ export function createAuth() {
           clientId: env.GITHUB_CLIENT_ID,
           clientSecret: env.GITHUB_CLIENT_SECRET,
           mapProfileToUser: (profile) => ({
-            username: profile.login,
+            username: profile.login.toLowerCase(),
           }),
         },
       },
