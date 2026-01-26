@@ -73,6 +73,7 @@ function seedDatabase() {
     .values({
       id: "test-user-id",
       name: "Test User",
+      username: "testuser",
       email: "test@example.com",
       emailVerified: true,
       role: "user",

@@ -359,6 +359,7 @@ export async function getAdminUserStats(db: DrizzleDB) {
     .select({
       id: user.id,
       name: user.name,
+      username: user.username,
       email: user.email,
       image: user.image,
       role: user.role,

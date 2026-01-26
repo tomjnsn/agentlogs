@@ -176,6 +176,13 @@
       "when": 1769162392097,
       "tag": "0024_legal_odin",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "6",
+      "when": 1769386157367,
+      "tag": "0025_petite_lizard",
+      "breakpoints": true
     }
   ]
 }

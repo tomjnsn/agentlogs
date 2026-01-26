@@ -202,7 +202,6 @@ function AdminPage() {
                 <TableHead>Role</TableHead>
                 <TableHead>Welcome Email</TableHead>
                 <TableHead className="text-right">Transcripts</TableHead>
-                <TableHead className="text-right">Total Cost</TableHead>
                 <TableHead className="text-right">Joined</TableHead>
               </TableRow>
             </TableHeader>
@@ -215,7 +214,10 @@ function AdminPage() {
                         <AvatarImage src={user.image ?? undefined} alt={user.name} />
                         <AvatarFallback>{user.name?.charAt(0) ?? "?"}</AvatarFallback>
                       </Avatar>
-                      <span className="font-medium">{user.name}</span>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{user.name}</span>
+                        {user.username && <span className="text-xs text-muted-foreground">@{user.username}</span>}
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{user.email}</TableCell>
@@ -226,7 +228,6 @@ function AdminPage() {
                     <WelcomeEmailButton userId={user.id} initialSentAt={user.welcomeEmailSentAt ?? null} />
                   </TableCell>
                   <TableCell className="text-right font-mono">{user.transcriptCount}</TableCell>
-                  <TableCell className="text-right font-mono">{formatCost(user.totalCost ?? 0)}</TableCell>
                   <TableCell className="text-right text-muted-foreground">
                     {new Date(user.createdAt).toLocaleDateString()}
                   </TableCell>

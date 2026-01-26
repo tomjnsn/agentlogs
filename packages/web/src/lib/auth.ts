@@ -55,6 +55,14 @@ export function createAuth() {
       database: drizzleAdapter(db, {
         provider: "sqlite",
       }),
+      user: {
+        additionalFields: {
+          username: {
+            type: "string",
+            required: false,
+          },
+        },
+      },
       databaseHooks: {
         user: {
           create: {
@@ -71,6 +79,9 @@ export function createAuth() {
         github: {
           clientId: env.GITHUB_CLIENT_ID,
           clientSecret: env.GITHUB_CLIENT_SECRET,
+          mapProfileToUser: (profile) => ({
+            username: profile.login,
+          }),
         },
       },
       secret: env.BETTER_AUTH_SECRET,
