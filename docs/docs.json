@@ -21,7 +21,12 @@
     "groups": [
       {
         "group": "Introduction",
-        "pages": ["introduction/overview", "introduction/getting-started", "introduction/permissions"]
+        "pages": [
+          "introduction/overview",
+          "introduction/getting-started",
+          "introduction/permissions",
+          "introduction/secret-redaction"
+        ]
       },
       {
         "group": "Agents",
