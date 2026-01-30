@@ -11,6 +11,7 @@ import {
 import { useDebugMode } from "@/hooks/use-debug-mode";
 import { createFileRoute, Link, Outlet, redirect, useRouter } from "@tanstack/react-router";
 import {
+  BarChart3Icon,
   BookOpenIcon,
   ChevronDownIcon,
   LogOutIcon,
@@ -102,6 +103,13 @@ function AppLayout() {
               >
                 <LogsIcon className="size-4" />
                 Logs
+              </Link>
+              <Link
+                to="/app/team/dashboard"
+                className="flex items-center gap-2 text-sm text-white/50 transition-colors hover:text-white data-[status=active]:text-white"
+              >
+                <BarChart3Icon className="size-4" />
+                Dashboard
               </Link>
               <Link
                 to="/app/team"
