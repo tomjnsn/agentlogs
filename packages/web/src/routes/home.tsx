@@ -5,12 +5,9 @@ import { InstallCommand } from "../components/oatmeal/elements/install-command";
 import { Main } from "../components/oatmeal/elements/main";
 import { Screenshot } from "../components/oatmeal/elements/screenshot";
 import { ArrowNarrowRightIcon } from "../components/oatmeal/icons/arrow-narrow-right-icon";
-import {
-  Feature,
-  FeaturesStackedAlternatingWithDemos,
-} from "../components/oatmeal/sections/features-stacked-alternating-with-demos";
 import { FeatureThreeColumnWithDemos, Features } from "../components/oatmeal/sections/features-three-column-with-demos";
-import { ClaudeCodeIcon, CodexIcon, Logo, OpenCodeIcon } from "../components/icons/source-icons";
+import { FooterLink, FooterSimple, SocialLink } from "../components/oatmeal/sections/footer-simple";
+import { ClaudeCodeIcon, CodexIcon, DiscordIcon, Logo, OpenCodeIcon } from "../components/icons/source-icons";
 
 export const Route = createFileRoute("/home")({
   component: LandingPage,
@@ -25,6 +22,7 @@ function LandingPage() {
         <HeroScreenshot />
         <FeatureSection />
       </Main>
+      <Footer />
     </div>
   );
 }
@@ -57,14 +55,14 @@ function Hero() {
         <div className="flex flex-col items-start gap-6">
           <h1 className="max-w-2xl font-serif text-5xl/12 tracking-tight text-white sm:text-[5rem]/20">
             Coding agents, visible to your team.{" "}
-            <span className="inline-flex items-center -space-x-2 align-middle">
-              <span className="inline-flex size-14 items-center justify-center rounded-full border-4 border-neutral-950 bg-[#e87b35]">
+            <span className="group/icons inline-flex items-center align-middle">
+              <span className="inline-flex size-14 items-center justify-center rounded-full border-4 border-neutral-950 bg-[#e87b35] transition-transform duration-200 [.group\\/icons:has(:nth-child(2):hover)_&]:-translate-x-2 [.group\\/icons:has(:nth-child(3):hover)_&]:-translate-x-3">
                 <ClaudeCodeIcon className="size-7 text-white" />
               </span>
-              <span className="inline-flex size-14 items-center justify-center rounded-full border-4 border-neutral-950 bg-black">
+              <span className="-ml-2 inline-flex size-14 items-center justify-center rounded-full border-4 border-neutral-950 bg-black transition-transform duration-200">
                 <CodexIcon className="size-7 text-white" />
               </span>
-              <span className="inline-flex size-14 items-center justify-center rounded-full border-4 border-neutral-950 bg-white">
+              <span className="-ml-2 inline-flex size-14 items-center justify-center rounded-full border-4 border-neutral-950 bg-white transition-transform duration-200 [.group\\/icons:has(:nth-child(1):hover)_&]:translate-x-3 [.group\\/icons:has(:nth-child(2):hover)_&]:translate-x-2">
                 <OpenCodeIcon className="size-7 text-black" />
               </span>
             </span>
@@ -92,8 +90,8 @@ function HeroScreenshot() {
       <Container>
         <Screenshot wallpaper="art" placement="bottom" className="aspect-video rounded-2xl">
           <img
-            src="/features/list.png"
-            alt="AgentLogs session list"
+            src="/features/detail.png"
+            alt="AgentLogs session detail"
             className="w-full shadow-2xl ring-1 ring-white/10 ring-inset"
           />
         </Screenshot>
@@ -104,54 +102,63 @@ function HeroScreenshot() {
 
 function FeatureSection() {
   return (
-    <>
-      <FeaturesStackedAlternatingWithDemos
-        features={
-          <Feature
-            headline="Session Details"
-            subheadline="See every prompt, every step, and the full conversation history. Inspect tool calls, file changes, and shell commands in detail."
+    <Features
+      headline="Everything you need to understand what your agents are doing."
+      subheadline={
+        <p>
+          Track every session, share context across your team, and build a knowledge base of prompts that actually work.
+        </p>
+      }
+      features={
+        <>
+          <FeatureThreeColumnWithDemos
             demo={
-              <Screenshot wallpaper="green" placement="bottom-right">
-                <img src="/features/detail.png" alt="Session Details" />
+              <Screenshot wallpaper="green" placement="bottom-right" className="h-56">
+                <img src="/features/list.png" alt="Team session list" />
               </Screenshot>
             }
+            headline="Team Dashboard"
+            subheadline="See what your team is working on. Share sessions, learn from each other's prompts, and build institutional knowledge."
           />
-        }
-      />
+          <FeatureThreeColumnWithDemos
+            demo={
+              <Screenshot wallpaper="blue" placement="bottom-right" className="h-56">
+                <img src="/features/git.png" alt="Git integration" />
+              </Screenshot>
+            }
+            headline="Git Integration"
+            subheadline="Every session automatically linked to the commits it produced."
+          />
+          <FeatureThreeColumnWithDemos
+            demo={
+              <Screenshot wallpaper="purple" placement="bottom-left" className="h-56">
+                <img src="/features/diff.png" alt="Code diffs" />
+              </Screenshot>
+            }
+            headline="Code Diffs"
+            subheadline="Review the exact changes your agents made, line by line."
+          />
+        </>
+      }
+    />
+  );
+}
 
-      <Features
-        features={
-          <>
-            <FeatureThreeColumnWithDemos
-              demo={
-                <Screenshot wallpaper="blue" placement="bottom-right" className="h-56">
-                  <img src="/features/git.png" alt="Git integration" />
-                </Screenshot>
-              }
-              headline="Git Integration"
-              subheadline="Every session automatically linked to the commits it produced."
-            />
-            <FeatureThreeColumnWithDemos
-              demo={
-                <Screenshot wallpaper="purple" placement="bottom-left" className="h-56">
-                  <img src="/features/diff.png" alt="Code diffs" />
-                </Screenshot>
-              }
-              headline="Code Diffs"
-              subheadline="Review the exact changes your agents made, line by line."
-            />
-            <FeatureThreeColumnWithDemos
-              demo={
-                <Screenshot wallpaper="brown" placement="bottom-right" className="h-56">
-                  <img src="/features/cli.png" alt="CLI tools" />
-                </Screenshot>
-              }
-              headline="CLI Tools"
-              subheadline="Sync transcripts, manage permissions, and control capture from your terminal."
-            />
-          </>
-        }
-      />
-    </>
+function Footer() {
+  return (
+    <FooterSimple
+      links={
+        <>
+          <FooterLink href="https://agentlogs.ai/docs">Docs</FooterLink>
+          <FooterLink href="https://agentlogs.ai/docs/changelog">Changelog</FooterLink>
+        </>
+      }
+      socialLinks={
+        <SocialLink href="https://discord.gg/yG4TNv3mjG" name="Discord">
+          <DiscordIcon />
+        </SocialLink>
+      }
+      fineprint={<p>&copy; {new Date().getFullYear()} AgentLogs</p>}
+    />
   );
 }
