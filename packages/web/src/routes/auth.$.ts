@@ -11,9 +11,13 @@ export const Route = createFileRoute("/auth/$")({
           throw redirect({ to: "/" });
         }
 
+        // Allow callbackURL from query params, default to /app
+        const url = new URL(request.url);
+        const callbackURL = url.searchParams.get("callbackURL") ?? "/app";
+
         const auth = createAuth();
         const result = await auth.api.signInSocial({
-          body: { provider, callbackURL: "/app" },
+          body: { provider, callbackURL },
           headers: request.headers,
           returnHeaders: true,
         });

@@ -36,6 +36,13 @@ export const Route = createFileRoute("/_app")({
         // Allow access without session for public transcripts
         return { session: null };
       }
+
+      // For device auth page, redirect to GitHub login with callback to return here
+      if (location.pathname === "/app/device") {
+        const callbackURL = location.href; // Preserves ?user_code=...
+        throw redirect({ href: `/auth/github?callbackURL=${encodeURIComponent(callbackURL)}` });
+      }
+
       throw redirect({ to: "/" });
     }
     // Waitlist users can't access the app (except public transcripts)
