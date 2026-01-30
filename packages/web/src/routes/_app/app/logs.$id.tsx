@@ -1,9 +1,20 @@
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import type { UnifiedTranscriptMessage } from "@agentlogs/shared/claudecode";
 import { unifiedTranscriptSchema } from "@agentlogs/shared/schemas";
 import {
@@ -31,6 +42,7 @@ import {
   Square,
   SquareTerminal,
   Terminal,
+  Trash2,
   Users,
 } from "lucide-react";
 import { ClaudeCodeIcon, CodexIcon, GitHubIcon, MCPIcon, OpenCodeIcon } from "../../../components/icons/source-icons";
@@ -44,7 +56,7 @@ import {
   replaceImageReferencesForDisplay,
   type ImageReference,
 } from "../../../lib/message-utils";
-import { getTranscript, updateTitle, updateVisibility } from "../../../lib/server-functions";
+import { deleteTranscript, getTranscript, updateTitle, updateVisibility } from "../../../lib/server-functions";
 
 export const Route = createFileRoute("/_app/app/logs/$id")({
   loader: ({ params }) => getTranscript({ data: params.id }),
@@ -383,6 +395,8 @@ function TranscriptDetailComponent() {
               <span>{unifiedTranscript.git.branch}</span>
             </div>
           )}
+          {/* Delete button - only for owner or admin */}
+          {(data.isOwner || data.isAdmin) && <DeleteTranscriptButton transcriptId={data.id} />}
         </div>
 
         {/* Debug Info (admin only) */}
@@ -683,6 +697,62 @@ function getVisibilityLabel(visibility: string) {
     default:
       return "Private";
   }
+}
+
+interface DeleteTranscriptButtonProps {
+  transcriptId: string;
+}
+
+function DeleteTranscriptButton({ transcriptId }: DeleteTranscriptButtonProps) {
+  const navigate = useNavigate();
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await deleteTranscript({ data: { transcriptId } });
+      // Redirect to home after successful deletion
+      navigate({ to: "/app" });
+    } catch (err) {
+      console.error("Failed to delete transcript:", err);
+      setIsDeleting(false);
+      setIsOpen(false);
+    }
+  };
+
+  return (
+    <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
+      <AlertDialogTrigger
+        className="flex cursor-pointer items-center gap-1.5 text-muted-foreground transition-colors hover:text-destructive"
+        render={<button type="button" />}
+      >
+        <Trash2 className="h-4 w-4" />
+        <span>Delete</span>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete transcript?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This action cannot be undone. The transcript and its metadata will be permanently deleted.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+          <AlertDialogAction variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+            {isDeleting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Deleting...
+              </>
+            ) : (
+              "Delete"
+            )}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 }
 
 interface VisibilitySectionProps {
