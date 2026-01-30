@@ -19,6 +19,7 @@ import { Route as ApiIngestRouteImport } from './routes/api/ingest'
 import { Route as ApiCommitTrackRouteImport } from './routes/api/commit-track'
 import { Route as AppAppIndexRouteImport } from './routes/_app/app/index'
 import { Route as ApiTranscriptsClearRouteImport } from './routes/api/transcripts/clear'
+import { Route as ApiTranscriptsIdRouteImport } from './routes/api/transcripts.$id'
 import { Route as ApiOgIdRouteImport } from './routes/api/og.$id'
 import { Route as ApiBlobsSha256RouteImport } from './routes/api/blobs.$sha256'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth.$'
@@ -79,6 +80,11 @@ const AppAppIndexRoute = AppAppIndexRouteImport.update({
 const ApiTranscriptsClearRoute = ApiTranscriptsClearRouteImport.update({
   id: '/clear',
   path: '/clear',
+  getParentRoute: () => ApiTranscriptsRoute,
+} as any)
+const ApiTranscriptsIdRoute = ApiTranscriptsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
   getParentRoute: () => ApiTranscriptsRoute,
 } as any)
 const ApiOgIdRoute = ApiOgIdRouteImport.update({
@@ -158,6 +164,7 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/blobs/$sha256': typeof ApiBlobsSha256Route
   '/api/og/$id': typeof ApiOgIdRoute
+  '/api/transcripts/$id': typeof ApiTranscriptsIdRoute
   '/api/transcripts/clear': typeof ApiTranscriptsClearRoute
   '/app/': typeof AppAppIndexRoute
   '/app/logs/$id': typeof AppAppLogsIdRoute
@@ -181,6 +188,7 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/blobs/$sha256': typeof ApiBlobsSha256Route
   '/api/og/$id': typeof ApiOgIdRoute
+  '/api/transcripts/$id': typeof ApiTranscriptsIdRoute
   '/api/transcripts/clear': typeof ApiTranscriptsClearRoute
   '/app': typeof AppAppIndexRoute
   '/app/logs/$id': typeof AppAppLogsIdRoute
@@ -206,6 +214,7 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/blobs/$sha256': typeof ApiBlobsSha256Route
   '/api/og/$id': typeof ApiOgIdRoute
+  '/api/transcripts/$id': typeof ApiTranscriptsIdRoute
   '/api/transcripts/clear': typeof ApiTranscriptsClearRoute
   '/_app/app/': typeof AppAppIndexRoute
   '/_app/app/logs/$id': typeof AppAppLogsIdRoute
@@ -231,6 +240,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/blobs/$sha256'
     | '/api/og/$id'
+    | '/api/transcripts/$id'
     | '/api/transcripts/clear'
     | '/app/'
     | '/app/logs/$id'
@@ -254,6 +264,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/blobs/$sha256'
     | '/api/og/$id'
+    | '/api/transcripts/$id'
     | '/api/transcripts/clear'
     | '/app'
     | '/app/logs/$id'
@@ -278,6 +289,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/blobs/$sha256'
     | '/api/og/$id'
+    | '/api/transcripts/$id'
     | '/api/transcripts/clear'
     | '/_app/app/'
     | '/_app/app/logs/$id'
@@ -372,6 +384,13 @@ declare module '@tanstack/react-router' {
       path: '/clear'
       fullPath: '/api/transcripts/clear'
       preLoaderRoute: typeof ApiTranscriptsClearRouteImport
+      parentRoute: typeof ApiTranscriptsRoute
+    }
+    '/api/transcripts/$id': {
+      id: '/api/transcripts/$id'
+      path: '/$id'
+      fullPath: '/api/transcripts/$id'
+      preLoaderRoute: typeof ApiTranscriptsIdRouteImport
       parentRoute: typeof ApiTranscriptsRoute
     }
     '/api/og/$id': {
@@ -488,10 +507,12 @@ const AppRouteChildren: AppRouteChildren = {
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 interface ApiTranscriptsRouteChildren {
+  ApiTranscriptsIdRoute: typeof ApiTranscriptsIdRoute
   ApiTranscriptsClearRoute: typeof ApiTranscriptsClearRoute
 }
 
 const ApiTranscriptsRouteChildren: ApiTranscriptsRouteChildren = {
+  ApiTranscriptsIdRoute: ApiTranscriptsIdRoute,
   ApiTranscriptsClearRoute: ApiTranscriptsClearRoute,
 }
 
