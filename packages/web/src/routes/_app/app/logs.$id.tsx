@@ -71,8 +71,11 @@ export const Route = createFileRoute("/_app/app/logs/$id")({
     const title = loaderData.summary || loaderData.preview || "Untitled Thread";
     const description = loaderData.preview || "View this AI agent transcript on AgentLogs";
     const baseUrl = loaderData.baseUrl || "";
-    const ogImageUrl = `${baseUrl}/api/og/${loaderData.id}.png?title=${encodeURIComponent(title)}`;
     const pageUrl = `${baseUrl}/app/logs/${loaderData.id}`;
+    const isPublic = loaderData.visibility === "public";
+
+    // Only include OG image for public transcripts (avoids 404s that get cached by social platforms)
+    const ogImageUrl = isPublic ? `${baseUrl}/api/og/${loaderData.id}.png` : undefined;
 
     return {
       meta: [
@@ -81,17 +84,21 @@ export const Route = createFileRoute("/_app/app/logs/$id")({
         // Open Graph
         { property: "og:title", content: title },
         { property: "og:description", content: description },
-        { property: "og:image", content: ogImageUrl },
-        { property: "og:image:width", content: "1200" },
-        { property: "og:image:height", content: "630" },
+        ...(ogImageUrl
+          ? [
+              { property: "og:image", content: ogImageUrl },
+              { property: "og:image:width", content: "1200" },
+              { property: "og:image:height", content: "630" },
+            ]
+          : []),
         { property: "og:url", content: pageUrl },
         { property: "og:type", content: "article" },
         { property: "og:site_name", content: "AgentLogs" },
         // Twitter Card
-        { name: "twitter:card", content: "summary_large_image" },
+        { name: "twitter:card", content: isPublic ? "summary_large_image" : "summary" },
         { name: "twitter:title", content: title },
         { name: "twitter:description", content: description },
-        { name: "twitter:image", content: ogImageUrl },
+        ...(ogImageUrl ? [{ name: "twitter:image", content: ogImageUrl }] : []),
       ],
     };
   },
