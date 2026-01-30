@@ -1,13 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ButtonLink, PlainButtonLink } from "../components/oatmeal/elements/button";
 import { Container } from "../components/oatmeal/elements/container";
-import { InstallCommand } from "../components/oatmeal/elements/install-command";
 import { Main } from "../components/oatmeal/elements/main";
 import { Screenshot } from "../components/oatmeal/elements/screenshot";
 import { ArrowNarrowRightIcon } from "../components/oatmeal/icons/arrow-narrow-right-icon";
 import { FeatureThreeColumnWithDemos, Features } from "../components/oatmeal/sections/features-three-column-with-demos";
 import { FooterLink, FooterSimple, SocialLink } from "../components/oatmeal/sections/footer-simple";
 import { ClaudeCodeIcon, CodexIcon, DiscordIcon, Logo, OpenCodeIcon } from "../components/icons/source-icons";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../components/ui/tooltip";
 
 export const Route = createFileRoute("/home")({
   component: LandingPage,
@@ -56,15 +56,39 @@ function Hero() {
           <h1 className="max-w-2xl font-serif text-5xl/12 tracking-tight text-white sm:text-[5rem]/20">
             Coding agents, visible to your team.{" "}
             <span className="group/icons inline-flex items-center align-middle">
-              <span className="inline-flex size-14 items-center justify-center rounded-full border-4 border-neutral-950 bg-[#e87b35] transition-transform duration-200 [.group\\/icons:has(:nth-child(2):hover)_&]:-translate-x-2 [.group\\/icons:has(:nth-child(3):hover)_&]:-translate-x-3">
-                <ClaudeCodeIcon className="size-7 text-white" />
-              </span>
-              <span className="-ml-2 inline-flex size-14 items-center justify-center rounded-full border-4 border-neutral-950 bg-black transition-transform duration-200">
-                <CodexIcon className="size-7 text-white" />
-              </span>
-              <span className="-ml-2 inline-flex size-14 items-center justify-center rounded-full border-4 border-neutral-950 bg-white transition-transform duration-200 [.group\\/icons:has(:nth-child(1):hover)_&]:translate-x-3 [.group\\/icons:has(:nth-child(2):hover)_&]:translate-x-2">
-                <OpenCodeIcon className="size-7 text-black" />
-              </span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    data-icon="claude"
+                    className="isolate inline-flex size-14 cursor-pointer items-center justify-center rounded-full border-4 border-neutral-950 bg-[#e87b35] transition-transform duration-200 group-has-[[data-icon=codex]:hover]/icons:-translate-x-1.5 group-has-[[data-icon=opencode]:hover]/icons:-translate-x-1.5"
+                  >
+                    <ClaudeCodeIcon className="size-7 text-white" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Claude Code</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    data-icon="codex"
+                    className="isolate -ml-2 inline-flex size-14 cursor-pointer items-center justify-center rounded-full border-4 border-neutral-950 bg-black transition-transform duration-200 group-has-[[data-icon=claude]:hover]/icons:translate-x-1.5 group-has-[[data-icon=opencode]:hover]/icons:-translate-x-1.5"
+                  >
+                    <CodexIcon className="size-7 text-white" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Codex CLI</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    data-icon="opencode"
+                    className="isolate -ml-2 inline-flex size-14 cursor-pointer items-center justify-center rounded-full border-4 border-neutral-950 bg-white transition-transform duration-200 group-has-[[data-icon=claude]:hover]/icons:translate-x-1.5 group-has-[[data-icon=codex]:hover]/icons:translate-x-1.5"
+                  >
+                    <OpenCodeIcon className="size-7 text-black" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">OpenCode</TooltipContent>
+              </Tooltip>
             </span>
           </h1>
           <p className="max-w-xl text-lg/8 text-neutral-400">
@@ -72,7 +96,9 @@ function Hero() {
             commits, and help your team learn from each other.
           </p>
           <div className="flex flex-wrap items-center gap-4">
-            <InstallCommand snippet="npx agentlogs login" />
+            <ButtonLink href="/waitlist" size="lg">
+              Join the waitlist
+            </ButtonLink>
             <PlainButtonLink href="https://agentlogs.ai/docs">
               Read the docs
               <ArrowNarrowRightIcon />
