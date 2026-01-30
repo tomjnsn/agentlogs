@@ -628,6 +628,7 @@ export async function getPublicTranscript(db: DrizzleDB, id: string) {
       linesRemoved: transcripts.linesRemoved,
       linesModified: transcripts.linesModified,
       userName: user.name,
+      userUsername: user.username,
       userImage: user.image,
       repoName: repos.repo,
     })
