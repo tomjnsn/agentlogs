@@ -199,7 +199,7 @@ export const commitTracking = sqliteTable(
       .references(() => user.id, { onDelete: "cascade" }),
     transcriptId: text("transcript_id")
       .notNull()
-      .references(() => transcripts.id, { onDelete: "cascade" }),
+      .references(() => transcripts.id),
     repoPath: text("repo_path").notNull(),
     timestamp: text("timestamp").notNull(),
     commitSha: text("commit_sha"),

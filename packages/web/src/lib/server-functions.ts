@@ -916,66 +916,6 @@ export const updateVisibility = createServerFn({ method: "POST" })
     return { success: true, visibility, sharedWithTeamId };
   });
 
-/**
- * Delete a transcript
- * Only owners and admins can delete transcripts
- * Deletes the transcript record and the unified transcript file from R2
- * Does NOT delete associated blobs (they may be shared with other transcripts)
- */
-export const deleteTranscript = createServerFn({ method: "POST" })
-  .inputValidator((input: { transcriptId: string }) => input)
-  .handler(async ({ data: { transcriptId } }) => {
-    const db = createDrizzle(env.DB);
-    const userId = await getAuthenticatedUserId();
-
-    // Get user role to check if admin
-    const userRole = await queries.getUserRole(db, userId);
-    const isAdmin = userRole === "admin";
-
-    // Get transcript with repo info for R2 key construction
-    const transcript = await db.query.transcripts.findFirst({
-      where: eq(transcripts.id, transcriptId),
-      with: {
-        repo: {
-          columns: { repo: true },
-        },
-      },
-    });
-
-    if (!transcript) {
-      throw new Error("Transcript not found");
-    }
-
-    // Check if user is owner or admin
-    if (transcript.userId !== userId && !isAdmin) {
-      throw new Error("You can only delete your own transcripts");
-    }
-
-    // Construct R2 key based on whether it's a repo or private transcript
-    const repoName = transcript.repo?.repo;
-    const r2Key = repoName
-      ? `${repoName}/${transcript.transcriptId}.json`
-      : `private/${transcript.userId}/${transcript.transcriptId}.json`;
-
-    // Delete from R2 first
-    await env.BUCKET.delete(r2Key);
-    logger.info("Deleted unified transcript from R2", { r2Key });
-
-    // Delete transcript record from database
-    // Note: Associated transcript_blobs will be cascade deleted
-    // but we do NOT delete the blobs themselves (they may be shared)
-    await db.delete(transcripts).where(eq(transcripts.id, transcriptId));
-
-    logger.info("Transcript deleted successfully", {
-      transcriptId,
-      transcriptUuid: transcript.transcriptId,
-      deletedBy: userId,
-      isAdmin,
-    });
-
-    return { success: true };
-  });
-
 // =============================================================================
 // Orchestrating Server Functions (one per loader)
 // =============================================================================
