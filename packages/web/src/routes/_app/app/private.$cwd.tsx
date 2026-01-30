@@ -5,7 +5,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { getTranscriptsByCwd } from "../../../lib/server-functions";
-import { getAgentDisplayName } from "@/lib/formatters";
 
 type PrivateTranscripts = Awaited<ReturnType<typeof getTranscriptsByCwd>>;
 
@@ -17,6 +16,16 @@ export const Route = createFileRoute("/_app/app/private/$cwd")({
 function PrivateDetailComponent() {
   const transcripts = Route.useLoaderData() as PrivateTranscripts;
   const { cwd } = Route.useParams();
+  const formatSource = (source: PrivateTranscripts[number]["source"]) => {
+    switch (source) {
+      case "claude-code":
+        return "Claude Code";
+      case "codex":
+        return "Codex";
+      default:
+        return "Unknown";
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -68,7 +77,7 @@ function PrivateDetailComponent() {
                     <code className="font-mono text-sm">{transcript.transcriptId?.slice(0, 8) || "N/A"}...</code>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline">{getAgentDisplayName(transcript.source)}</Badge>
+                    <Badge variant="outline">{formatSource(transcript.source)}</Badge>
                   </TableCell>
                   <TableCell className="max-w-md truncate text-muted-foreground">
                     {transcript.preview || "No preview"}

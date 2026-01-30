@@ -20,9 +20,9 @@ import {
   getTeamPageData,
   leaveTeam,
   removeMember,
-} from "@/lib/server-functions";
+} from "../../../lib/server-functions";
 
-export const Route = createFileRoute("/_app/app/team/")({
+export const Route = createFileRoute("/_app/app/team")({
   loader: () => getTeamPageData(),
   component: TeamPage,
 });
