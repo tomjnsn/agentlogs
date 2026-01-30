@@ -375,9 +375,7 @@ function TranscriptDetailComponent() {
             </TooltipTrigger>
             {unifiedTranscript.model && (
               <TooltipContent side="bottom" className="whitespace-pre-line">
-                {unifiedTranscript.model.includes("/")
-                  ? unifiedTranscript.model.split("/").slice(1).join("/")
-                  : unifiedTranscript.model}
+                {unifiedTranscript.model}
                 {unifiedTranscript.clientVersion && `\nClaude Code ${unifiedTranscript.clientVersion}`}
               </TooltipContent>
             )}

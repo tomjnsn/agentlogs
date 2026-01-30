@@ -160,10 +160,10 @@ describe("convertClaudeCodeFile", () => {
               "type": "command",
             },
           ],
-          "model": "claude-sonnet-4-5-20250929",
+          "model": "anthropic/claude-sonnet-4-5-20250929",
           "modelUsage": [
             {
-              "model": "claude-sonnet-4-5-20250929",
+              "model": "anthropic/claude-sonnet-4-5-20250929",
               "usage": {
                 "cachedInputTokens": 13522,
                 "inputTokens": 15660,
@@ -680,10 +680,10 @@ describe("convertClaudeCodeFile", () => {
               "type": "agent",
             },
           ],
-          "model": "claude-sonnet-4-5-20250929",
+          "model": "anthropic/claude-sonnet-4-5-20250929",
           "modelUsage": [
             {
-              "model": "claude-sonnet-4-5-20250929",
+              "model": "anthropic/claude-sonnet-4-5-20250929",
               "usage": {
                 "cachedInputTokens": 148958,
                 "inputTokens": 161576,
@@ -832,10 +832,10 @@ describe("convertClaudeCodeFile", () => {
               "type": "agent",
             },
           ],
-          "model": "claude-sonnet-4-5-20250929",
+          "model": "anthropic/claude-sonnet-4-5-20250929",
           "modelUsage": [
             {
-              "model": "claude-sonnet-4-5-20250929",
+              "model": "anthropic/claude-sonnet-4-5-20250929",
               "usage": {
                 "cachedInputTokens": 20952,
                 "inputTokens": 31689,
@@ -1191,10 +1191,10 @@ describe("convertClaudeCodeFile", () => {
               "type": "agent",
             },
           ],
-          "model": "claude-sonnet-4-5-20250929",
+          "model": "anthropic/claude-sonnet-4-5-20250929",
           "modelUsage": [
             {
-              "model": "claude-sonnet-4-5-20250929",
+              "model": "anthropic/claude-sonnet-4-5-20250929",
               "usage": {
                 "cachedInputTokens": 87863,
                 "inputTokens": 90038,
@@ -1356,10 +1356,10 @@ describe("convertClaudeCodeFile", () => {
               "type": "agent",
             },
           ],
-          "model": "claude-opus-4-5-20251101",
+          "model": "anthropic/claude-opus-4-5-20251101",
           "modelUsage": [
             {
-              "model": "claude-opus-4-5-20251101",
+              "model": "anthropic/claude-opus-4-5-20251101",
               "usage": {
                 "cachedInputTokens": 67843,
                 "inputTokens": 73796,

@@ -307,7 +307,10 @@ export function convertClaudeCodeTranscript(
     messageCount: messages.length,
     ...stats,
     tokenUsage,
-    modelUsage: Array.from(modelUsageMap.entries()).map(([model, usage]) => ({ model, usage })),
+    modelUsage: Array.from(modelUsageMap.entries()).map(([model, usage]) => ({
+      model: standardizeModelName(model),
+      usage,
+    })),
     git: gitContext,
     cwd: formattedCwd,
     messages,
@@ -380,7 +383,10 @@ export async function convertClaudeCodeFile(
     messageCount: messages.length,
     ...stats,
     tokenUsage,
-    modelUsage: Array.from(modelUsageMap.entries()).map(([model, usage]) => ({ model, usage })),
+    modelUsage: Array.from(modelUsageMap.entries()).map(([model, usage]) => ({
+      model: standardizeModelName(model),
+      usage,
+    })),
     git: gitContext,
     cwd: formattedCwd,
     messages,
@@ -913,6 +919,17 @@ function findSessionId(transcript: ClaudeMessageRecord[]): string | null {
   return null;
 }
 
+/**
+ * Standardize model name by ensuring it has a provider prefix.
+ * If the model name doesn't contain a `/`, prepends `anthropic/`.
+ */
+function standardizeModelName(model: string): string {
+  if (model.includes("/")) {
+    return model;
+  }
+  return `anthropic/${model}`;
+}
+
 function selectPrimaryModel(modelUsage: Map<string, TokenUsage>): string | null {
   let primaryModel: string | null = null;
   let highestTokens = -1;
@@ -923,7 +940,7 @@ function selectPrimaryModel(modelUsage: Map<string, TokenUsage>): string | null 
       primaryModel = modelName;
     }
   }
-  return primaryModel;
+  return primaryModel ? standardizeModelName(primaryModel) : null;
 }
 
 function getNormalizedMessageText(message: ClaudeMessageRecord): string | null {
