@@ -453,8 +453,8 @@ function TranscriptDetailComponent() {
           </div>
         )}
 
-        {/* OG Image Preview (debug mode only) */}
-        {showDebugInfo && (
+        {/* OG Image Preview (debug mode only, public transcripts only) */}
+        {showDebugInfo && data.visibility === "public" && (
           <div className="mb-4 overflow-hidden rounded-lg border border-dashed border-yellow-500/30">
             <div className="bg-yellow-950/10 px-3 py-1.5 text-xs font-medium text-yellow-500">OG Image Preview</div>
             <img
