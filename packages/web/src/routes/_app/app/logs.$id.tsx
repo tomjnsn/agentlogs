@@ -154,12 +154,17 @@ function getSourceIcon(source: string, className?: string) {
 function getModelDisplayName(model: string | null): string {
   if (!model) return "Unknown";
 
+  // Only format models with provider prefix (e.g., "anthropic/claude-...")
+  if (!model.includes("/")) return model;
+
+  const modelWithoutProvider = model.split("/").slice(1).join("/");
+
   // Parse model strings like:
   // - claude-opus-4-5-20251101 → Claude Opus 4.5
   // - claude-sonnet-4-20250514 → Claude Sonnet 4
   // - claude-3-5-haiku-20241022 → Claude Haiku 3.5
-  const match = model.match(/^claude-(?:(\d+)-(\d+)-)?(opus|sonnet|haiku)(?:-(\d+)(?:-(\d+))?)?-\d{8}$/);
-  if (!match) return model;
+  const match = modelWithoutProvider.match(/^claude-(?:(\d+)-(\d+)-)?(opus|sonnet|haiku)(?:-(\d+)(?:-(\d+))?)?-\d{8}$/);
+  if (!match) return modelWithoutProvider;
 
   const [, oldMajor, oldMinor, family, newMajor, newMinor] = match;
   const major = newMajor ?? oldMajor;
@@ -344,10 +349,15 @@ function TranscriptDetailComponent() {
         {/* Log Metadata */}
         <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground md:mb-8">
           {/* Author */}
-          <div className="flex items-center gap-1.5">
-            <img src={data.userImage || undefined} alt={data.userName || "User"} className="h-4 w-4 rounded-full" />
-            <span>{data.userName || "Unknown"}</span>
-          </div>
+          <a
+            href={`https://github.com/${data.userUsername}`}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1.5 hover:text-foreground"
+          >
+            <img src={data.userImage || undefined} alt={data.userUsername || "User"} className="h-4 w-4 rounded-full" />
+            <span>@{data.userUsername || "unknown"}</span>
+          </a>
           {/* Change time */}
           <div className="flex items-center gap-1.5">
             <Clock className="h-4 w-4" />
@@ -363,7 +373,14 @@ function TranscriptDetailComponent() {
                 <span>{getModelDisplayName(unifiedTranscript.model)}</span>
               </div>
             </TooltipTrigger>
-            {unifiedTranscript.model && <TooltipContent side="bottom">{unifiedTranscript.model}</TooltipContent>}
+            {unifiedTranscript.model && (
+              <TooltipContent side="bottom" className="whitespace-pre-line">
+                {unifiedTranscript.model.includes("/")
+                  ? unifiedTranscript.model.split("/").slice(1).join("/")
+                  : unifiedTranscript.model}
+                {unifiedTranscript.clientVersion && `\nClaude Code ${unifiedTranscript.clientVersion}`}
+              </TooltipContent>
+            )}
           </Tooltip>
           {/* Git */}
           {repoInfo &&
@@ -470,7 +487,7 @@ function TranscriptDetailComponent() {
       </div>
 
       {/* Sidebar - vertically centered TOC with independent scroll */}
-      <aside className="sticky top-0 hidden h-screen w-1/4 shrink-0 lg:flex lg:items-start">
+      <aside className="sticky top-0 hidden max-h-screen w-1/4 shrink-0 self-start lg:flex lg:items-start">
         <div className="max-h-screen space-y-6 overflow-y-auto p-2">
           {/* User Prompts Navigation */}
           {userMessages.length > 0 && (

@@ -581,6 +581,7 @@ export async function getTranscriptWithAccess(db: DrizzleDB, viewerId: string, i
       linesRemoved: transcripts.linesRemoved,
       linesModified: transcripts.linesModified,
       userName: user.name,
+      userUsername: user.username,
       userImage: user.image,
       repoName: repos.repo,
     })

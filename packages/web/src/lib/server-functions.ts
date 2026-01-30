@@ -259,6 +259,7 @@ export const getTranscript = createServerFn({ method: "GET" })
       visibility: transcript.visibility,
       unifiedTranscript,
       userName: transcript.userName,
+      userUsername: transcript.userUsername,
       userImage: transcript.userImage,
       isOwner: viewerId ? transcript.userId === viewerId : false,
       isAdmin,
