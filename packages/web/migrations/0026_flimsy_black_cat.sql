@@ -16,6 +16,7 @@ CREATE TABLE `__new_commit_tracking` (
 INSERT INTO `__new_commit_tracking`("id", "user_id", "transcript_id", "repo_path", "timestamp", "commit_sha", "commit_title", "branch", "created_at") SELECT "id", "user_id", "transcript_id", "repo_path", "timestamp", "commit_sha", "commit_title", "branch", "created_at" FROM `commit_tracking`;--> statement-breakpoint
 DROP TABLE `commit_tracking`;--> statement-breakpoint
 ALTER TABLE `__new_commit_tracking` RENAME TO `commit_tracking`;--> statement-breakpoint
+PRAGMA foreign_keys=ON;--> statement-breakpoint
 CREATE INDEX `idx_commit_tracking_transcript` ON `commit_tracking` (`transcript_id`);--> statement-breakpoint
 CREATE INDEX `idx_commit_tracking_user` ON `commit_tracking` (`user_id`);--> statement-breakpoint
 CREATE TABLE `__new_user` (
@@ -34,5 +35,4 @@ CREATE TABLE `__new_user` (
 INSERT INTO `__new_user`("id", "name", "username", "email", "email_verified", "image", "role", "welcome_email_sent_at", "created_at", "updated_at") SELECT "id", "name", "username", "email", "email_verified", "image", "role", "welcome_email_sent_at", "created_at", "updated_at" FROM `user`;--> statement-breakpoint
 DROP TABLE `user`;--> statement-breakpoint
 ALTER TABLE `__new_user` RENAME TO `user`;--> statement-breakpoint
-CREATE UNIQUE INDEX `user_email_unique` ON `user` (`email`);--> statement-breakpoint
-PRAGMA foreign_keys=ON;
+CREATE UNIQUE INDEX `user_email_unique` ON `user` (`email`);
