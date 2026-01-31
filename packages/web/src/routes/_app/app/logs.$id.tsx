@@ -12,6 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
@@ -22,7 +23,9 @@ import {
   ArrowDownToLine,
   ArrowUpFromLine,
   Asterisk,
+  Check,
   Coins,
+  Copy,
   Database,
   Download,
   Hash,
@@ -471,6 +474,8 @@ function TranscriptDetailComponent() {
       {/* Sidebar - vertically centered TOC with independent scroll */}
       <aside className="sticky top-0 hidden max-h-screen w-1/4 shrink-0 self-start lg:flex lg:items-start">
         <div className="max-h-screen space-y-6 overflow-y-auto p-2">
+          {/* Share URL */}
+          <ShareUrlInput transcriptId={data.id} permalinkedIndex={permalinkedIndex} />
           {/* User Prompts Navigation */}
           {userMessages.length > 0 && (
             <PromptsList
@@ -577,6 +582,35 @@ function PromptsList({
         ))}
       </div>
     </section>
+  );
+}
+
+function ShareUrlInput({ transcriptId, permalinkedIndex }: { transcriptId: string; permalinkedIndex: number | null }) {
+  const [copied, setCopied] = useState(false);
+
+  const shareUrl =
+    permalinkedIndex !== null
+      ? `https://agentlogs.ai/s/${transcriptId}#msg-${permalinkedIndex + 1}`
+      : `https://agentlogs.ai/s/${transcriptId}`;
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(shareUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="relative">
+      <Input readOnly value={shareUrl} className="h-7 truncate px-2 py-0 pr-8 text-xs text-muted-foreground" />
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={handleCopy}
+        className="absolute top-1/2 right-0.5 h-5 -translate-y-1/2 px-1 text-muted-foreground"
+      >
+        {copied ? <Check className="h-2 w-2" /> : <Copy className="h-2 w-2" />}
+      </Button>
+    </div>
   );
 }
 
