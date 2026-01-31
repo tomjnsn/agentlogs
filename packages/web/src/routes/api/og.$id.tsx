@@ -353,7 +353,7 @@ function OgImage({ data }: { data: TranscriptData }) {
 export const Route = createFileRoute("/api/og/$id" as any)({
   server: {
     handlers: {
-      GET: async ({ request, params }: { request: Request; params: { id: string } }) => {
+      GET: async ({ params }: { params: { id: string } }) => {
         // Strip .png suffix if present (e.g., "abc123.png" -> "abc123")
         const id = params.id.replace(/\.png$/, "");
         logger.debug("OG image request", { id, rawId: params.id });
@@ -388,34 +388,19 @@ export const Route = createFileRoute("/api/og/$id" as any)({
             createdAt: transcript.createdAt,
           };
 
-          // Load fonts from public folder
-          const origin = new URL(request.url).origin;
+          // Fetch fonts from external CDN to avoid self-fetch timeout issues in Workers
+          // (fetching from own origin causes HTTP 522 timeouts)
           const [serifResponse, sansResponse] = await Promise.all([
-            fetch(`${origin}/fonts/instrument-serif.ttf`),
-            fetch(`${origin}/fonts/inter.ttf`),
+            fetch("https://cdn.jsdelivr.net/fontsource/fonts/instrument-serif@latest/latin-400-normal.ttf"),
+            fetch("https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.ttf"),
           ]);
 
-          // Debug: Log font fetch results
-          logger.debug("Font fetch results", {
-            serifStatus: serifResponse.status,
-            serifContentType: serifResponse.headers.get("content-type"),
-            sansStatus: sansResponse.status,
-            sansContentType: sansResponse.headers.get("content-type"),
-          });
-
           if (!serifResponse.ok || !sansResponse.ok) {
-            logger.error(
-              `Font fetch failed: serif=${serifResponse.status} (${serifResponse.headers.get("content-type")}), sans=${sansResponse.status} (${sansResponse.headers.get("content-type")}), origin=${origin}`,
-            );
+            logger.error(`Font fetch failed: serif=${serifResponse.status}, sans=${sansResponse.status}`);
             return new Response("Font loading failed", { status: 500 });
           }
 
           const [serifFont, sansFont] = await Promise.all([serifResponse.arrayBuffer(), sansResponse.arrayBuffer()]);
-
-          logger.debug("Font data loaded", {
-            serifSize: serifFont.byteLength,
-            sansSize: sansFont.byteLength,
-          });
 
           const response = new ImageResponse(<OgImage data={data} />, {
             width: 1200,
