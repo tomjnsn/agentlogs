@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/u
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import type { UnifiedTranscriptMessage } from "@agentlogs/shared/claudecode";
+import { getModelDisplayName } from "@agentlogs/shared/models";
 import { unifiedTranscriptSchema } from "@agentlogs/shared/schemas";
 import {
   ArrowDownToLine,
@@ -156,30 +157,6 @@ function getSourceIcon(source: string, className?: string) {
     default:
       return <Terminal className={className} />;
   }
-}
-
-function getModelDisplayName(model: string | null): string {
-  if (!model) return "Unknown";
-
-  // Only format models with provider prefix (e.g., "anthropic/claude-...")
-  if (!model.includes("/")) return model;
-
-  const modelWithoutProvider = model.split("/").slice(1).join("/");
-
-  // Parse model strings like:
-  // - claude-opus-4-5-20251101 → Claude Opus 4.5
-  // - claude-sonnet-4-20250514 → Claude Sonnet 4
-  // - claude-3-5-haiku-20241022 → Claude Haiku 3.5
-  const match = modelWithoutProvider.match(/^claude-(?:(\d+)-(\d+)-)?(opus|sonnet|haiku)(?:-(\d+)(?:-(\d+))?)?-\d{8}$/);
-  if (!match) return modelWithoutProvider;
-
-  const [, oldMajor, oldMinor, family, newMajor, newMinor] = match;
-  const major = newMajor ?? oldMajor;
-  const minor = newMinor ?? oldMinor;
-  const version = minor ? `${major}.${minor}` : major;
-  const familyName = family.charAt(0).toUpperCase() + family.slice(1);
-
-  return `Claude ${familyName} ${version}`;
 }
 
 function formatRepoName(repo: string): { label: string; isGitHub: boolean } {

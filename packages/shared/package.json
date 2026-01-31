@@ -15,7 +15,8 @@
     "./codex": "./src/codex.ts",
     "./opencode": "./src/opencode.ts",
     "./pricing": "./src/pricing.ts",
-    "./redact": "./src/redact.ts"
+    "./redact": "./src/redact.ts",
+    "./models": "./src/models.ts"
   },
   "scripts": {
     "check": "tsgo --project tsconfig.json"
