@@ -394,7 +394,29 @@ export const Route = createFileRoute("/api/og/$id" as any)({
             fetch(`${origin}/fonts/instrument-serif.ttf`),
             fetch(`${origin}/fonts/inter.ttf`),
           ]);
+
+          // Debug: Log font fetch results
+          logger.debug("Font fetch results", {
+            serifStatus: serifResponse.status,
+            serifContentType: serifResponse.headers.get("content-type"),
+            sansStatus: sansResponse.status,
+            sansContentType: sansResponse.headers.get("content-type"),
+          });
+
+          if (!serifResponse.ok || !sansResponse.ok) {
+            logger.error("Font fetch failed", {
+              serifStatus: serifResponse.status,
+              sansStatus: sansResponse.status,
+            });
+            return new Response("Font loading failed", { status: 500 });
+          }
+
           const [serifFont, sansFont] = await Promise.all([serifResponse.arrayBuffer(), sansResponse.arrayBuffer()]);
+
+          logger.debug("Font data loaded", {
+            serifSize: serifFont.byteLength,
+            sansSize: sansFont.byteLength,
+          });
 
           const response = new ImageResponse(<OgImage data={data} />, {
             width: 1200,
