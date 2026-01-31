@@ -404,10 +404,9 @@ export const Route = createFileRoute("/api/og/$id" as any)({
           });
 
           if (!serifResponse.ok || !sansResponse.ok) {
-            logger.error("Font fetch failed", {
-              serifStatus: serifResponse.status,
-              sansStatus: sansResponse.status,
-            });
+            logger.error(
+              `Font fetch failed: serif=${serifResponse.status} (${serifResponse.headers.get("content-type")}), sans=${sansResponse.status} (${sansResponse.headers.get("content-type")}), origin=${origin}`,
+            );
             return new Response("Font loading failed", { status: 500 });
           }
 
