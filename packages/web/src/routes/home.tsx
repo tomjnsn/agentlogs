@@ -78,7 +78,7 @@ function HeroSection() {
                   <CodexIcon className="size-7 text-white" />
                 </span>
               </TooltipTrigger>
-              <TooltipContent side="bottom">Codex CLI</TooltipContent>
+              <TooltipContent side="bottom">Codex CLI (experimental)</TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
