@@ -138,11 +138,11 @@ function FeatureSection() {
           <FeatureThreeColumnWithDemos
             demo={
               <Screenshot wallpaper="green" placement="bottom-right" className="h-56">
-                <img src="/features/list.png" alt="Team session list" />
+                <img src="/features/dashboard.png" alt="Team dashboard" />
               </Screenshot>
             }
-            headline="Team Dashboard"
-            subheadline="See what your team is working on. Share sessions, learn from each other's prompts, and build institutional knowledge."
+            headline="Team Observability"
+            subheadline="Full visibility into your team's AI coding sessions. Track activity, measure productivity, and understand how your team uses AI tools."
           />
           <FeatureThreeColumnWithDemos
             demo={
@@ -156,11 +156,11 @@ function FeatureSection() {
           <FeatureThreeColumnWithDemos
             demo={
               <Screenshot wallpaper="purple" placement="bottom-left" className="h-56">
-                <img src="/features/diff.png" alt="Share sessions" />
+                <img src="/features/list.png" alt="Session list" />
               </Screenshot>
             }
-            headline="Beautiful Sharing"
-            subheadline="Share sessions with a link. Clean, readable pages with syntax highlighting and rich previews that make your prompts look as good as they work."
+            headline="Learn From Each Other"
+            subheadline="See what prompts your teammates are using and how they're solving problems. Build shared knowledge from real sessions."
           />
         </>
       }
