@@ -11,6 +11,7 @@ import {
   teamMembers,
   teams,
   transcripts,
+  user,
   userRoles,
   visibilityOptions,
   type UserRole,
@@ -686,13 +687,21 @@ export const addMemberByEmail = createServerFn({ method: "POST" })
       throw new Error("User is already in a team");
     }
 
-    // Add member
-    await db.insert(teamMembers).values({
-      teamId,
-      userId: targetUser.id,
-    });
+    // Add member and upgrade from waitlist if needed
+    const insertMember = db.insert(teamMembers).values({ teamId, userId: targetUser.id });
+    const targetRole = await queries.getUserRole(db, targetUser.id);
+    if (targetRole === "waitlist") {
+      await db.batch([insertMember, db.update(user).set({ role: "user" }).where(eq(user.id, targetUser.id))]);
+      logger.info("Member added to team and upgraded from waitlist", {
+        teamId,
+        memberId: targetUser.id,
+        addedBy: userId,
+      });
+    } else {
+      await insertMember;
+      logger.info("Member added to team", { teamId, memberId: targetUser.id, addedBy: userId });
+    }
 
-    logger.info("Member added to team", { teamId, memberId: targetUser.id, addedBy: userId });
     return { success: true, userId: targetUser.id };
   });
 
@@ -822,13 +831,21 @@ export const acceptInvite = createServerFn({ method: "POST" })
       throw new Error("Already in a team. Leave current team first.");
     }
 
-    // Add user to team
-    await db.insert(teamMembers).values({
-      teamId: invite.teamId,
-      userId,
-    });
+    // Add user to team and upgrade from waitlist if needed
+    const insertMember = db.insert(teamMembers).values({ teamId: invite.teamId, userId });
+    const currentRole = await queries.getUserRole(db, userId);
+    if (currentRole === "waitlist") {
+      await db.batch([insertMember, db.update(user).set({ role: "user" }).where(eq(user.id, userId))]);
+      logger.info("User joined team via invite and upgraded from waitlist", {
+        teamId: invite.teamId,
+        userId,
+        code,
+      });
+    } else {
+      await insertMember;
+      logger.info("User joined team via invite", { teamId: invite.teamId, userId, code });
+    }
 
-    logger.info("User joined team via invite", { teamId: invite.teamId, userId, code });
     return { success: true, teamId: invite.teamId };
   });
 
