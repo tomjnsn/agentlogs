@@ -183,6 +183,44 @@ describe("convertCodexFile", () => {
       }
       `);
   });
+
+  test("images.jsonl", async () => {
+    const serialized = await loadSerializedTranscript("images.jsonl");
+
+    expect(serialized.blobs.count).toBe(1);
+    expect(serialized.blobs.sha256s[0]).toMatch(/^[a-f0-9]{64}$/);
+
+    const isUserWithImages = (
+      message: (typeof serialized.transcript.messages)[number],
+    ): message is Extract<(typeof serialized.transcript.messages)[number], { type: "user" }> & {
+      images: Array<{ sha256: string; mediaType: string }>;
+    } => message.type === "user" && Array.isArray(message.images) && message.images.length > 0;
+
+    const userWithImage = serialized.transcript.messages.find(isUserWithImages);
+    expect(userWithImage).toBeTruthy();
+    expect(userWithImage?.images).toEqual([{ sha256: serialized.blobs.sha256s[0], mediaType: "image/png" }]);
+    expect(userWithImage?.text).not.toContain("[Image");
+    expect(userWithImage?.text).not.toContain("<image");
+    expect(userWithImage?.text).not.toContain("</image>");
+
+    const grepCall = serialized.transcript.messages.find(
+      (message) => message.type === "tool-call" && message.toolName === "Grep",
+    );
+    expect(grepCall).toBeTruthy();
+    expect((grepCall as { input?: Record<string, unknown> }).input?.pattern).toBe(
+      "Agent Usage|Claude Code|Codex CLI|OpenCode",
+    );
+
+    const readWithRange = serialized.transcript.messages.find((message) => {
+      if (message.type !== "tool-call" || message.toolName !== "Read") {
+        return false;
+      }
+      const output = message.output as Record<string, unknown> | undefined;
+      const file = output?.file as Record<string, unknown> | undefined;
+      return typeof file?.startLine === "number" && file.startLine > 1;
+    });
+    expect(readWithRange).toBeTruthy();
+  });
 });
 
 async function loadSerializedTranscript(fileName: string) {

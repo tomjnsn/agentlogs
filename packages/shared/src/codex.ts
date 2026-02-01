@@ -1,8 +1,10 @@
+import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import {
   calculateTranscriptStats,
   type ConversionResult,
+  type TranscriptBlob,
   type UnifiedGitContext,
   type UnifiedModelUsage,
   type UnifiedTokenUsage,
@@ -87,6 +89,9 @@ const IGNORED_USER_PREFIXES = [
   "<permissions instructions>",
 ];
 
+const IMAGE_PLACEHOLDER_PATTERN = /^<image name=\[Image #\d+\]>$/i;
+const IMAGE_PLACEHOLDER_REGEXES = [/<image[^>]*>/gi, /<\/image>/gi, /\[\s*image\s*#?\d+\s*\]/gi];
+
 /**
  * Convert a Codex transcript from an in-memory event array.
  */
@@ -103,6 +108,7 @@ export function convertCodexTranscript(
   const seenMessageSignatures = new Set<string>();
   const messages: UnifiedTranscriptMessage[] = [];
   const userMessages: string[] = [];
+  const blobs = new Map<string, TranscriptBlob>();
 
   let sessionMeta: CodexSessionMeta | null = null;
   let cwd: string | null = null;
@@ -195,32 +201,47 @@ export function convertCodexTranscript(
     switch (payloadType) {
       case "message": {
         const role = asString(payload.role);
-        const texts = extractTextPieces(payload.content);
-        if (texts.length === 0) {
-          break;
-        }
-
-        const text = collapseWhitespace(texts.join("\n\n"));
-        if (!text) {
-          break;
-        }
-
         if (role === "user") {
-          if (isIgnorableUserText(text)) {
+          const { texts, images } = extractUserContent(payload.content, blobs);
+          const text = collapseWhitespace(texts.join("\n\n"));
+          if (!text && images.length === 0) {
             break;
           }
-          userMessages.push(text);
+          if (text && isIgnorableUserText(text)) {
+            break;
+          }
+          if (text) {
+            userMessages.push(text);
+          }
           const id = asString(payload.id);
-          const candidate: { type: "user"; text: string; timestamp?: string; id?: string } = {
+          const candidate: {
+            type: "user";
+            text: string;
+            timestamp?: string;
+            id?: string;
+            images?: Array<{ sha256: string; mediaType: string }>;
+          } = {
             type: "user",
             timestamp,
-            text,
+            text: text || "",
           };
           if (id) {
             candidate.id = id;
           }
+          if (images.length > 0) {
+            candidate.images = images;
+          }
           addMessage(candidate, messages, seenMessageSignatures);
         } else if (role === "assistant") {
+          const texts = extractTextPieces(payload.content);
+          if (texts.length === 0) {
+            break;
+          }
+
+          const text = collapseWhitespace(texts.join("\n\n"));
+          if (!text) {
+            break;
+          }
           const id = asString(payload.id);
           const candidate: { type: "agent"; text: string; timestamp?: string; id?: string; model?: string } = {
             type: "agent",
@@ -376,7 +397,7 @@ export function convertCodexTranscript(
     messages,
   });
 
-  return { transcript, blobs: new Map() };
+  return { transcript, blobs };
 }
 
 /**
@@ -519,6 +540,124 @@ function extractTextPieces(value: unknown): string[] {
     }
   }
   return results;
+}
+
+function computeSha256(data: Buffer): string {
+  return crypto.createHash("sha256").update(data).digest("hex");
+}
+
+function extractUserContent(
+  value: unknown,
+  blobs: Map<string, TranscriptBlob>,
+): { texts: string[]; images: Array<{ sha256: string; mediaType: string }> } {
+  const texts: string[] = [];
+  const images: Array<{ sha256: string; mediaType: string }> = [];
+
+  const pushText = (text: string | null) => {
+    if (!text) {
+      return;
+    }
+    const cleaned = stripImagePlaceholders(text);
+    const trimmed = cleaned.trim();
+    if (!trimmed || IMAGE_PLACEHOLDER_PATTERN.test(trimmed)) {
+      return;
+    }
+    texts.push(cleaned);
+  };
+
+  if (typeof value === "string") {
+    pushText(value);
+    return { texts, images };
+  }
+
+  if (!Array.isArray(value)) {
+    return { texts, images };
+  }
+
+  for (const part of value) {
+    if (!part) {
+      continue;
+    }
+    if (typeof part === "string") {
+      pushText(part);
+      continue;
+    }
+    if (typeof part !== "object") {
+      continue;
+    }
+
+    const record = part as Record<string, unknown>;
+    const type = asString(record.type);
+
+    if (type === "input_text" || type === "text" || type === "output_text") {
+      pushText(asString(record.text ?? record.content));
+      continue;
+    }
+
+    if (type === "input_image" || type === "image") {
+      const imageRef = extractImageReference(record, blobs);
+      if (imageRef) {
+        images.push(imageRef);
+      }
+      continue;
+    }
+
+    if (record.image_url || record.imageUrl || record.url) {
+      const imageRef = extractImageReference(record, blobs);
+      if (imageRef) {
+        images.push(imageRef);
+        continue;
+      }
+    }
+
+    pushText(asString(record.text ?? record.content));
+  }
+
+  return { texts, images };
+}
+
+function stripImagePlaceholders(text: string): string {
+  let result = text;
+  for (const pattern of IMAGE_PLACEHOLDER_REGEXES) {
+    result = result.replace(pattern, "");
+  }
+  return result;
+}
+
+function extractImageReference(
+  record: Record<string, unknown>,
+  blobs: Map<string, TranscriptBlob>,
+): { sha256: string; mediaType: string } | null {
+  const rawUrl = record.image_url ?? record.imageUrl ?? record.url;
+  const imageUrl =
+    typeof rawUrl === "string"
+      ? rawUrl
+      : rawUrl && typeof rawUrl === "object"
+        ? asString((rawUrl as Record<string, unknown>).url)
+        : undefined;
+
+  if (!imageUrl) {
+    return null;
+  }
+
+  const match = imageUrl.match(/^data:([^;]+);base64,([\s\S]+)$/);
+  if (!match) {
+    return null;
+  }
+
+  const mediaType = match[1] || "image/unknown";
+  const base64Data = match[2];
+  if (!base64Data) {
+    return null;
+  }
+
+  const data = Buffer.from(base64Data, "base64");
+  const sha256 = computeSha256(data);
+  if (!blobs.has(sha256)) {
+    blobs.set(sha256, { data, mediaType });
+  }
+
+  return { sha256, mediaType };
 }
 
 function extractReasoning(payload: Record<string, unknown>): string[] {
@@ -710,7 +849,257 @@ function convertBashToTool(toolCall: UnifiedTranscriptMessage, cwd: string | nul
     });
   }
 
+  const args = splitShellArgs(cmdString);
+  if (args.length > 0 && args[0] === "rg") {
+    const parsed = parseRgArgs(args, cwd);
+    if (parsed) {
+      const stdout = extractStdout(toolCall.output);
+      let output: Record<string, unknown> | undefined;
+      if (stdout) {
+        const lines = stdout.split("\n").filter((line) => line.trim().length > 0);
+        if (parsed.input.output_mode === "files_with_matches") {
+          output = {
+            mode: "files_with_matches",
+            filenames: lines,
+            numMatches: lines.length,
+          };
+        } else {
+          output = {
+            mode: "content",
+            content: stdout,
+            numMatches: lines.length,
+            numLines: lines.length,
+          };
+        }
+      }
+
+      return unifiedTranscriptMessageSchema.parse({
+        ...toolCall,
+        toolName: "Grep",
+        input: parsed.input,
+        output,
+      });
+    }
+  }
+
+  if (args.length >= 4 && args[0] === "sed") {
+    const sedMatch = parseSedArgs(args, cwd);
+    if (sedMatch) {
+      const { filePath, startLine } = sedMatch;
+      const stdout = extractStdout(toolCall.output);
+      let output: Record<string, unknown> | undefined;
+      if (stdout) {
+        const numLines = stdout.split("\n").length;
+        output = {
+          file: {
+            content: stdout,
+            numLines,
+            startLine,
+          },
+        };
+      }
+
+      return unifiedTranscriptMessageSchema.parse({
+        ...toolCall,
+        toolName: "Read",
+        input: {
+          file_path: filePath,
+        },
+        output,
+      });
+    }
+  }
+
   return null;
+}
+
+function splitShellArgs(command: string): string[] {
+  const args: string[] = [];
+  let current = "";
+  let quote: "'" | '"' | null = null;
+  let escapeNext = false;
+
+  for (const char of command) {
+    if (escapeNext) {
+      current += char;
+      escapeNext = false;
+      continue;
+    }
+
+    if (char === "\\" && quote !== "'") {
+      escapeNext = true;
+      continue;
+    }
+
+    if (quote) {
+      if (char === quote) {
+        quote = null;
+      } else {
+        current += char;
+      }
+      continue;
+    }
+
+    if (char === "'" || char === '"') {
+      quote = char;
+      continue;
+    }
+
+    if (/\s/.test(char)) {
+      if (current.length > 0) {
+        args.push(current);
+        current = "";
+      }
+      continue;
+    }
+
+    current += char;
+  }
+
+  if (current.length > 0) {
+    args.push(current);
+  }
+
+  return args;
+}
+
+function extractStdout(output: unknown): string | undefined {
+  if (typeof output === "string") {
+    return output;
+  }
+  if (output && typeof output === "object") {
+    const record = output as Record<string, unknown>;
+    const stdout = asString(record.stdout);
+    if (stdout) {
+      return stdout;
+    }
+  }
+  return undefined;
+}
+
+function parseRgArgs(args: string[], cwd: string | null): { input: Record<string, unknown> } | null {
+  if (args.length < 2) {
+    return null;
+  }
+
+  const input: Record<string, unknown> = {};
+  let pattern: string | null = null;
+  let pathArg: string | null = null;
+
+  for (let i = 1; i < args.length; i += 1) {
+    const arg = args[i];
+
+    if (arg === "--") {
+      continue;
+    }
+
+    if (arg.startsWith("-")) {
+      switch (arg) {
+        case "-i":
+          input["-i"] = true;
+          break;
+        case "-U":
+          input.multiline = true;
+          break;
+        case "-A":
+        case "-B":
+        case "-C": {
+          const value = args[i + 1];
+          if (value) {
+            input[arg] = value;
+            i += 1;
+          }
+          break;
+        }
+        case "-l":
+        case "--files-with-matches":
+          input.output_mode = "files_with_matches";
+          break;
+        case "-c":
+        case "--count":
+          input.output_mode = "count";
+          break;
+        case "-g":
+        case "--glob": {
+          const value = args[i + 1];
+          if (value) {
+            input.glob = value;
+            i += 1;
+          }
+          break;
+        }
+        case "-t":
+        case "--type": {
+          const value = args[i + 1];
+          if (value) {
+            input.type = value;
+            i += 1;
+          }
+          break;
+        }
+        case "-e":
+        case "--regexp": {
+          const value = args[i + 1];
+          if (value) {
+            pattern = value;
+            i += 1;
+          }
+          break;
+        }
+        default:
+          break;
+      }
+      continue;
+    }
+
+    if (!pattern) {
+      pattern = arg;
+      continue;
+    }
+
+    if (!pathArg) {
+      pathArg = arg;
+      continue;
+    }
+  }
+
+  if (!pattern) {
+    return null;
+  }
+
+  input.pattern = pattern;
+  if (pathArg) {
+    input.path = cwd ? relativizePath(pathArg, cwd) : pathArg;
+  }
+
+  return { input };
+}
+
+function parseSedArgs(args: string[], cwd: string | null): { filePath: string; startLine: number } | null {
+  const nIndex = args.indexOf("-n");
+  if (nIndex === -1) {
+    return null;
+  }
+
+  const range = args[nIndex + 1];
+  const fileArg = args[nIndex + 2];
+  if (!range || !fileArg) {
+    return null;
+  }
+
+  const rangeMatch = range.match(/^(\d+)(?:,(\d+))?p$/);
+  if (!rangeMatch) {
+    return null;
+  }
+
+  const startLine = parseInt(rangeMatch[1], 10);
+  if (!Number.isFinite(startLine) || startLine <= 0) {
+    return null;
+  }
+
+  const filePath = cwd ? relativizePath(fileArg, cwd) : fileArg;
+
+  return { filePath, startLine };
 }
 
 function sanitizeToolCall(

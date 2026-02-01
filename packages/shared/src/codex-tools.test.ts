@@ -330,4 +330,124 @@ describe("Codex tool calls", () => {
       }
     `);
   });
+
+  test("rg command converted to Grep tool", () => {
+    const events = [
+      ...buildBaseEvents(),
+      {
+        type: "response_item",
+        timestamp: "2025-10-17T21:01:00.000Z",
+        payload: {
+          type: "function_call",
+          name: "exec_command",
+          call_id: "call-rg",
+          arguments: JSON.stringify({
+            cmd: 'rg -n "Agent Usage" -S packages',
+          }),
+        },
+      },
+      {
+        type: "response_item",
+        timestamp: "2025-10-17T21:01:00.500Z",
+        payload: {
+          type: "function_call_output",
+          call_id: "call-rg",
+          output: [
+            "Chunk ID: abc123",
+            "Wall time: 0.0123 seconds",
+            "Process exited with code 0",
+            "Original token count: 0",
+            "Output:",
+            "packages/web/src/app.tsx:12:Agent Usage",
+          ].join("\n"),
+        },
+      },
+    ];
+
+    const transcript = convertCodexTranscript(events);
+    expect(transcript).not.toBeNull();
+    const toolCall = transcript!.transcript.messages.find((m) => m.type === "tool-call" && m.id === "call-rg");
+    expect(toolCall).toMatchInlineSnapshot(`
+      {
+        "id": "call-rg",
+        "input": {
+          "path": "./packages",
+          "pattern": "Agent Usage",
+        },
+        "model": "openai/gpt-5-codex",
+        "output": {
+          "content": "packages/web/src/app.tsx:12:Agent Usage",
+          "mode": "content",
+          "numLines": 1,
+          "numMatches": 1,
+        },
+        "timestamp": "2025-10-17T21:01:00.000Z",
+        "toolName": "Grep",
+        "type": "tool-call",
+      }
+    `);
+  });
+
+  test("sed -n read converted to Read tool", () => {
+    const events = [
+      ...buildBaseEvents(),
+      {
+        type: "response_item",
+        timestamp: "2025-10-17T21:01:10.000Z",
+        payload: {
+          type: "function_call",
+          name: "exec_command",
+          call_id: "call-sed",
+          arguments: JSON.stringify({
+            cmd: "sed -n '3,5p' src/example.txt",
+          }),
+        },
+      },
+      {
+        type: "response_item",
+        timestamp: "2025-10-17T21:01:10.500Z",
+        payload: {
+          type: "function_call_output",
+          call_id: "call-sed",
+          output: [
+            "Chunk ID: def456",
+            "Wall time: 0.0100 seconds",
+            "Process exited with code 0",
+            "Original token count: 0",
+            "Output:",
+            "line3",
+            "line4",
+            "line5",
+          ].join("\n"),
+        },
+      },
+    ];
+
+    const transcript = convertCodexTranscript(events);
+    expect(transcript).not.toBeNull();
+    const toolCall = transcript!.transcript.messages.find((m) => m.type === "tool-call" && m.id === "call-sed");
+    expect(toolCall).toMatchInlineSnapshot(`
+      {
+        "id": "call-sed",
+        "input": {
+          "file_path": "./src/example.txt",
+        },
+        "model": "openai/gpt-5-codex",
+        "output": {
+          "file": {
+            "content": 
+      "line3
+      line4
+      line5"
+      ,
+            "numLines": 3,
+            "startLine": 3,
+          },
+        },
+        "timestamp": "2025-10-17T21:01:10.000Z",
+        "toolName": "Read",
+        "type": "tool-call",
+      }
+    `);
+  });
 });
