@@ -660,7 +660,14 @@ export const addMemberByEmail = createServerFn({ method: "POST" })
   .inputValidator((input: { teamId: string; email: string }) => input)
   .handler(async ({ data: { teamId, email } }) => {
     const db = createDrizzle(env.DB);
-    const userId = await getAuthenticatedUserId();
+    const auth = createAuth();
+    const headers = getRequestHeaders();
+
+    const session = await auth.api.getSession({ headers });
+    if (!session?.user) {
+      throw new Error("Unauthorized");
+    }
+    const userId = session.user.id;
 
     // Verify team exists and user is owner
     const team = await db.query.teams.findFirst({
@@ -701,6 +708,14 @@ export const addMemberByEmail = createServerFn({ method: "POST" })
       await insertMember;
       logger.info("Member added to team", { teamId, memberId: targetUser.id, addedBy: userId });
     }
+
+    // Send notification email to the added member
+    const { sendTeamAddedEmail } = await import("./email/send");
+    sendTeamAddedEmail(targetUser.email, targetUser.name, team.name, session.user.name ?? "A team member").catch(
+      (err) => {
+        logger.error("Failed to send team added email", { error: err });
+      },
+    );
 
     return { success: true, userId: targetUser.id };
   });
@@ -1051,7 +1066,7 @@ export const getAdminPageData = createServerFn({ method: "GET" }).handler(async 
 });
 
 /**
- * Get all data needed for the team page
+ * Get all data needed for the team members page
  * Consolidates getTeam and getSession into a single RPC call
  */
 export const getTeamPageData = createServerFn({ method: "GET" }).handler(async () => {
@@ -1068,6 +1083,97 @@ export const getTeamPageData = createServerFn({ method: "GET" }).handler(async (
 
   return { team, session };
 });
+
+/**
+ * Get all data needed for the team dashboard page
+ * Includes team info, aggregate stats, member stats, daily activity, model usage, and agent usage
+ */
+export const getTeamDashboardData = createServerFn({ method: "GET" })
+  .inputValidator((input: { days?: number }) => ({ days: input.days ?? 30 }))
+  .handler(async ({ data: { days } }) => {
+    const db = createDrizzle(env.DB);
+    const auth = createAuth();
+    const headers = getRequestHeaders();
+
+    const session = await auth.api.getSession({ headers });
+    if (!session?.user) {
+      throw new Error("Unauthorized");
+    }
+
+    const team = await queries.getUserTeam(db, session.user.id);
+
+    // If no team, return early with null stats
+    if (!team) {
+      return {
+        team: null,
+        stats: null,
+        memberStats: [],
+        activity: [],
+        userNames: [],
+        isHourly: false,
+        modelUsage: [],
+        agentUsage: [],
+        session,
+      };
+    }
+
+    // Fetch all dashboard data in parallel
+    const [stats, memberStats, activityByUser, modelUsage, agentUsage] = await Promise.all([
+      queries.getTeamStats(db, team.id, days),
+      queries.getTeamMemberStats(db, team.id, days),
+      queries.getTeamActivityByUser(db, team.id, days),
+      queries.getTeamModelUsage(db, team.id, days),
+      queries.getTeamAgentUsage(db, team.id, days),
+    ]);
+
+    // Transform per-user activity into chart format
+    // Each row: { period, [userName]: count, ... }
+    const userNames = [...new Set(activityByUser.map((r) => r.userName))];
+    const periodMap = new Map<string, Record<string, number>>();
+
+    for (const row of activityByUser) {
+      if (!periodMap.has(row.period)) {
+        periodMap.set(row.period, {});
+      }
+      const periodData = periodMap.get(row.period)!;
+      periodData[row.userName || "Unknown"] = row.count;
+    }
+
+    // Fill in missing periods (hours for 24h, days otherwise)
+    const activity: Array<Record<string, string | number>> = [];
+    const now = new Date();
+    const isHourly = days === 1;
+
+    if (isHourly) {
+      // Fill 24 hours
+      for (let i = 23; i >= 0; i--) {
+        const date = new Date(now);
+        date.setHours(date.getHours() - i, 0, 0, 0);
+        const key = `${date.toISOString().split("T")[0]} ${String(date.getHours()).padStart(2, "0")}:00`;
+        const periodData = periodMap.get(key) ?? {};
+        const row: Record<string, string | number> = { period: key };
+        for (const name of userNames) {
+          row[name || "Unknown"] = periodData[name || "Unknown"] ?? 0;
+        }
+        activity.push(row);
+      }
+    } else {
+      // Fill days
+      for (let i = days - 1; i >= 0; i--) {
+        const date = new Date(now);
+        date.setDate(date.getDate() - i);
+        const key = date.toISOString().split("T")[0];
+        const periodData = periodMap.get(key) ?? {};
+        const row: Record<string, string | number> = { period: key };
+        for (const name of userNames) {
+          row[name || "Unknown"] = periodData[name || "Unknown"] ?? 0;
+        }
+        activity.push(row);
+      }
+    }
+
+    return { team, stats, memberStats, activity, userNames, isHourly, modelUsage, agentUsage, session };
+  });
 
 /**
  * Get all data needed for the home page

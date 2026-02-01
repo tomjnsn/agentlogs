@@ -1,30 +1,32 @@
 import { Button, Section, Text } from "@react-email/components";
 import { EmailLayout } from "./layout";
 
-interface WelcomePreviewEmailProps {
+interface TeamAddedEmailProps {
   name: string;
+  teamName: string;
+  addedByName: string;
 }
 
-export function WelcomePreviewEmail({ name }: WelcomePreviewEmailProps) {
+export function TeamAddedEmail({ name, teamName, addedByName }: TeamAddedEmailProps) {
   return (
-    <EmailLayout preview={`Welcome to AgentLogs, ${name}!`}>
+    <EmailLayout preview={`You've been added to ${teamName}`}>
       <Text style={greeting}>Hi {name},</Text>
 
       <Text style={text}>
-        You're in! Your AgentLogs account is now active. Install the CLI plugin to start tracking your AI coding
-        sessions.
+        {addedByName} added you to <strong style={highlight}>{teamName}</strong> on AgentLogs. You can now see
+        transcripts shared with the team.
       </Text>
 
       <Section style={buttonContainer}>
-        <Button style={button} href="https://agentlogs.ai/docs">
-          Get started
+        <Button style={button} href="https://agentlogs.ai/app">
+          View team
         </Button>
       </Section>
     </EmailLayout>
   );
 }
 
-export default WelcomePreviewEmail;
+export default TeamAddedEmail;
 
 const greeting = {
   color: "#ffffff",
@@ -38,6 +40,10 @@ const text = {
   fontSize: "14px",
   lineHeight: "1.6",
   margin: "0 0 24px",
+};
+
+const highlight = {
+  color: "#ffffff",
 };
 
 const buttonContainer = {
