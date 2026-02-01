@@ -105,7 +105,7 @@ function HeroSection() {
           <ButtonLink href="/waitlist" size="lg">
             Join the waitlist
           </ButtonLink>
-          <PlainButtonLink href="https://agentlogs.ai/s/hpnyf840l453gx4ojuoygbme">
+          <PlainButtonLink href="https://agentlogs.ai/s/hpnyf840l453gx4ojuoygbme" size="lg">
             See it in action
             <ArrowNarrowRightIcon />
           </PlainButtonLink>
