@@ -17,7 +17,7 @@ export const Route = createFileRoute("/home")({
 
 function LandingPage() {
   return (
-    <div className="min-h-screen bg-neutral-950">
+    <div className="min-h-screen bg-background">
       <Header />
       <Main>
         <HeroSection />
@@ -32,7 +32,7 @@ function LandingPage() {
 
 function Header() {
   return (
-    <header className="sticky top-0 z-10 bg-neutral-950">
+    <header className="sticky top-0 z-10 bg-background">
       <nav className="mx-auto flex h-20 max-w-7xl items-center gap-4 px-6 lg:px-10">
         <div className="flex flex-1 items-center gap-6">
           <a href="/" className="flex items-center gap-2">
