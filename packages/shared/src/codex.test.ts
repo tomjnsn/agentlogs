@@ -53,7 +53,7 @@ describe("convertCodexFile", () => {
               "type": "user",
             },
             {
-              "model": "gpt-5.2-codex",
+              "model": "openai/gpt-5.2-codex",
               "text": "**Planning file operations and command sequence**",
               "timestamp": "2026-01-25T10:32:03.661Z",
               "type": "thinking",
@@ -72,7 +72,7 @@ describe("convertCodexFile", () => {
       ,
                 "file_path": "./JOKE.md",
               },
-              "model": "gpt-5.2-codex",
+              "model": "openai/gpt-5.2-codex",
               "output": undefined,
               "timestamp": "2026-01-25T10:32:04.513Z",
               "toolName": "Write",
@@ -83,7 +83,7 @@ describe("convertCodexFile", () => {
               "input": {
                 "file_path": "./JOKE.md",
               },
-              "model": "gpt-5.2-codex",
+              "model": "openai/gpt-5.2-codex",
               "output": 
       "# The Late Comedian
 
@@ -97,7 +97,7 @@ describe("convertCodexFile", () => {
               "type": "tool-call",
             },
             {
-              "model": "gpt-5.2-codex",
+              "model": "openai/gpt-5.2-codex",
               "text": "**Modifying footer text**",
               "timestamp": "2026-01-25T10:32:07.754Z",
               "type": "thinking",
@@ -113,7 +113,7 @@ describe("convertCodexFile", () => {
       ,
                 "file_path": "./JOKE.md",
               },
-              "model": "gpt-5.2-codex",
+              "model": "openai/gpt-5.2-codex",
               "output": {
                 "exitCode": 0,
                 "message": 
@@ -126,7 +126,7 @@ describe("convertCodexFile", () => {
               "type": "tool-call",
             },
             {
-              "model": "gpt-5.2-codex",
+              "model": "openai/gpt-5.2-codex",
               "text": "**Deleting file**",
               "timestamp": "2026-01-25T10:32:10.017Z",
               "type": "thinking",
@@ -136,7 +136,7 @@ describe("convertCodexFile", () => {
               "input": {
                 "command": "rm ./JOKE.md",
               },
-              "model": "gpt-5.2-codex",
+              "model": "openai/gpt-5.2-codex",
               "output": {
                 "durationSeconds": 0.0522,
                 "exitCode": 0,
@@ -146,16 +146,16 @@ describe("convertCodexFile", () => {
               "type": "tool-call",
             },
             {
-              "model": "gpt-5.2-codex",
+              "model": "openai/gpt-5.2-codex",
               "text": "Created \`JOKE.md\`, read it, updated the footer line, and deleted the file.",
               "timestamp": "2026-01-25T10:32:11.486Z",
               "type": "agent",
             },
           ],
-          "model": "gpt-5.2-codex",
+          "model": "openai/gpt-5.2-codex",
           "modelUsage": [
             {
-              "model": "gpt-5.2-codex",
+              "model": "openai/gpt-5.2-codex",
               "usage": {
                 "cachedInputTokens": 78848,
                 "inputTokens": 84834,

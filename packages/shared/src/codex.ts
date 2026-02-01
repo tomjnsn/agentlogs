@@ -136,7 +136,7 @@ export function convertCodexTranscript(
       }
       const model = asString(payload.model);
       if (model) {
-        primaryModel = model;
+        primaryModel = standardizeModelName(model);
       }
       continue;
     }
@@ -1077,6 +1077,17 @@ function createFallbackId(timestamp: Date): string {
   return `codex-${timestamp.getTime()}`;
 }
 
+/**
+ * Standardize model name by ensuring it has a provider prefix.
+ * If the model name doesn't contain a `/`, prepends `openai/`.
+ */
+function standardizeModelName(model: string): string {
+  if (model.includes("/")) {
+    return model;
+  }
+  return `openai/${model}`;
+}
+
 export type { UnifiedGitContext, UnifiedModelUsage, UnifiedTokenUsage, UnifiedTranscript, UnifiedTranscriptMessage };
 
 function calculateCostFromUsage(
@@ -1117,8 +1128,17 @@ function resolvePricingForModel(
 
   const candidates = new Set<string>();
   candidates.add(normalizedName);
+
+  // Add variants with prefixes
   for (const prefix of PROVIDER_PREFIXES) {
     candidates.add(`${prefix}${normalizedName}`);
+  }
+
+  // Also try stripping known prefixes (e.g., openai/gpt-5.2-codex -> gpt-5.2-codex)
+  for (const prefix of PROVIDER_PREFIXES) {
+    if (normalizedName.startsWith(prefix)) {
+      candidates.add(normalizedName.slice(prefix.length));
+    }
   }
 
   for (const candidate of candidates) {

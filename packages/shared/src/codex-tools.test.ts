@@ -86,7 +86,7 @@ describe("Codex tool calls", () => {
         "input": {
           "command": "pwd",
         },
-        "model": "gpt-5-codex",
+        "model": "openai/gpt-5-codex",
         "output": {
           "durationSeconds": 0.12,
           "exitCode": 0,
@@ -152,7 +152,7 @@ describe("Codex tool calls", () => {
 ,
     "file_path": "./src/example.txt",
   },
-  "model": "gpt-5-codex",
+  "model": "openai/gpt-5-codex",
   "output": {
     "exitCode": 0,
     "message": "Success. Updated the following files:\\nM src/example.txt\\n",
@@ -212,7 +212,7 @@ describe("Codex tool calls", () => {
       ,
           "file_path": "./test.md",
         },
-        "model": "gpt-5-codex",
+        "model": "openai/gpt-5-codex",
         "output": undefined,
         "timestamp": "2025-10-17T21:00:30.000Z",
         "toolName": "Write",
@@ -263,7 +263,7 @@ describe("Codex tool calls", () => {
         "input": {
           "file_path": "./test.md",
         },
-        "model": "gpt-5-codex",
+        "model": "openai/gpt-5-codex",
         "output": 
       "# Hello World
 
@@ -318,7 +318,7 @@ describe("Codex tool calls", () => {
         "input": {
           "file_path": "./test.md",
         },
-        "model": "gpt-5-codex",
+        "model": "openai/gpt-5-codex",
         "output": 
       "# Hello World
 
