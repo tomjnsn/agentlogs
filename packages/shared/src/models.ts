@@ -34,5 +34,24 @@ export function getModelDisplayName(model: string | null | undefined): string {
     return `GPT-${version}-Codex`;
   }
 
+  // Try to match base GPT models (e.g., gpt-5.2, gpt-5)
+  const gptMatch = modelWithoutProvider.match(/^gpt-([\d.]+)$/i);
+  if (gptMatch) {
+    const version = gptMatch[1];
+    return `GPT-${version}`;
+  }
+
+  // Try to match Gemini models (e.g., gemini-3-preview, gemini-2.5-pro)
+  const geminiMatch = modelWithoutProvider.match(/^gemini-([\d.]+)(?:-(.+))?$/i);
+  if (geminiMatch) {
+    const version = geminiMatch[1];
+    const suffix = geminiMatch[2];
+    if (suffix) {
+      const suffixName = suffix.charAt(0).toUpperCase() + suffix.slice(1);
+      return `Gemini ${version} ${suffixName}`;
+    }
+    return `Gemini ${version}`;
+  }
+
   return modelWithoutProvider;
 }
