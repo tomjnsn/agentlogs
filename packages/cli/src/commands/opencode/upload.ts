@@ -103,7 +103,6 @@ export async function opencodeUploadCommand(sessionId: string): Promise<void> {
   console.log(`Session: "${title}" (${messageCount} messages)`);
 
   // Fetch pricing data
-  console.log("Fetching pricing data...");
   const pricingFetcher = new LiteLLMPricingFetcher();
   const pricingData = await pricingFetcher.fetchModelPricing();
   const pricing = Object.fromEntries(pricingData);
