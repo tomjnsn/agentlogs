@@ -33,7 +33,6 @@ export async function interactiveUploadCommand(directory?: string, options: Uplo
   const cwdFilter = directory ? resolve(directory) : undefined;
 
   // Discover transcripts
-  console.log("Discovering transcripts...");
   const transcripts = await discoverAllTranscripts({
     sources: options.source ? [options.source] : undefined,
     cwd: cwdFilter,
@@ -64,18 +63,19 @@ export async function interactiveUploadCommand(directory?: string, options: Uplo
   }
 
   if (!selected) {
-    console.log("No transcript selected.");
-    return;
+    process.exit(0);
   }
 
   // Upload the selected transcript
-  await uploadTranscript(selected);
+  const success = await uploadTranscript(selected);
+  process.exit(success ? 0 : 1);
 }
 
 /**
  * Upload a single discovered transcript
+ * Returns true on success, false on failure
  */
-async function uploadTranscript(transcript: DiscoveredTranscript): Promise<void> {
+async function uploadTranscript(transcript: DiscoveredTranscript): Promise<boolean> {
   console.log("");
   console.log(`Uploading ${transcript.source} transcript: ${transcript.id}`);
 
@@ -86,23 +86,20 @@ async function uploadTranscript(transcript: DiscoveredTranscript): Promise<void>
   try {
     switch (transcript.source) {
       case "claude-code":
-        await uploadClaudeCodeTranscript(transcript);
-        break;
+        return await uploadClaudeCodeTranscript(transcript);
       case "codex":
-        await uploadCodexTranscript(transcript);
-        break;
+        return await uploadCodexTranscript(transcript);
       case "opencode":
-        await uploadOpenCodeTranscript(transcript);
-        break;
+        return await uploadOpenCodeTranscript(transcript);
     }
   } catch (error) {
     console.error("");
     console.error("Upload failed:", error instanceof Error ? error.message : String(error));
-    process.exit(1);
+    return false;
   }
 }
 
-async function uploadClaudeCodeTranscript(transcript: DiscoveredTranscript): Promise<void> {
+async function uploadClaudeCodeTranscript(transcript: DiscoveredTranscript): Promise<boolean> {
   const result = await performUploadToAllEnvs({
     transcriptPath: transcript.path,
     sessionId: transcript.id,
@@ -110,10 +107,10 @@ async function uploadClaudeCodeTranscript(transcript: DiscoveredTranscript): Pro
     source: "claude-code",
   });
 
-  printUploadResult(result, transcript.source);
+  return printUploadResult(result);
 }
 
-async function uploadCodexTranscript(transcript: DiscoveredTranscript): Promise<void> {
+async function uploadCodexTranscript(transcript: DiscoveredTranscript): Promise<boolean> {
   const result = await performUploadToAllEnvs({
     transcriptPath: transcript.path,
     sessionId: transcript.id,
@@ -121,10 +118,10 @@ async function uploadCodexTranscript(transcript: DiscoveredTranscript): Promise<
     source: "codex",
   });
 
-  printUploadResult(result, transcript.source);
+  return printUploadResult(result);
 }
 
-async function uploadOpenCodeTranscript(transcript: DiscoveredTranscript): Promise<void> {
+async function uploadOpenCodeTranscript(transcript: DiscoveredTranscript): Promise<boolean> {
   // Read the session from OpenCode storage
   const exportData = readOpenCodeSession(transcript.id);
 
@@ -169,7 +166,7 @@ async function uploadOpenCodeTranscript(transcript: DiscoveredTranscript): Promi
   if (result.skipped) {
     console.log("");
     console.log("Skipped: Repository not in allowlist");
-    return;
+    return true; // Skipped is not a failure
   }
 
   if (result.anySuccess && result.id) {
@@ -183,7 +180,7 @@ async function uploadOpenCodeTranscript(transcript: DiscoveredTranscript): Promi
         console.log(`View: ${url}`);
       }
     }
-    process.exit(0);
+    return true;
   } else {
     console.error("");
     console.error("Upload failed:");
@@ -192,7 +189,7 @@ async function uploadOpenCodeTranscript(transcript: DiscoveredTranscript): Promi
         console.error(`  ${envResult.envName}: ${envResult.error}`);
       }
     }
-    process.exit(1);
+    return false;
   }
 }
 
@@ -212,9 +209,14 @@ function readOpenCodeSession(sessionId: string): OpenCodeExport | null {
   for (const projectId of readdirSync(sessionDir)) {
     const sessionFile = join(sessionDir, projectId, `${sessionId}.json`);
     if (existsSync(sessionFile)) {
-      sessionInfo = JSON.parse(readFileSync(sessionFile, "utf-8")) as Record<string, unknown>;
-      sessionFilePath = sessionFile;
-      break;
+      try {
+        sessionInfo = JSON.parse(readFileSync(sessionFile, "utf-8")) as Record<string, unknown>;
+        sessionFilePath = sessionFile;
+        break;
+      } catch {
+        // Skip files with invalid JSON
+        continue;
+      }
     }
   }
 
@@ -244,23 +246,31 @@ function readOpenCodeSession(sessionId: string): OpenCodeExport | null {
     if (!msgFile.endsWith(".json")) continue;
 
     const msgPath = join(messageDir, msgFile);
-    const msgInfo = JSON.parse(readFileSync(msgPath, "utf-8")) as MessageInfo;
-    const msgId = msgInfo.id;
+    try {
+      const msgInfo = JSON.parse(readFileSync(msgPath, "utf-8")) as MessageInfo;
+      const msgId = msgInfo.id;
 
-    // Read parts for this message
-    const partDir = join(OPENCODE_STORAGE, "part", msgId);
-    const parts: PartInfo[] = [];
+      // Read parts for this message
+      const partDir = join(OPENCODE_STORAGE, "part", msgId);
+      const parts: PartInfo[] = [];
 
-    if (existsSync(partDir)) {
-      for (const partFile of readdirSync(partDir)) {
-        if (!partFile.endsWith(".json")) continue;
-        const partPath = join(partDir, partFile);
-        const part = JSON.parse(readFileSync(partPath, "utf-8")) as PartInfo;
-        parts.push(part);
+      if (existsSync(partDir)) {
+        for (const partFile of readdirSync(partDir)) {
+          if (!partFile.endsWith(".json")) continue;
+          const partPath = join(partDir, partFile);
+          try {
+            const part = JSON.parse(readFileSync(partPath, "utf-8")) as PartInfo;
+            parts.push(part);
+          } catch {
+            // Skip parts with invalid JSON
+          }
+        }
       }
-    }
 
-    messages.push({ info: msgInfo, parts });
+      messages.push({ info: msgInfo, parts });
+    } catch {
+      // Skip messages with invalid JSON
+    }
   }
 
   // Sort messages by creation time
@@ -285,7 +295,10 @@ interface MultiEnvResult {
   allSuccess: boolean;
 }
 
-function printUploadResult(result: MultiEnvResult, _source: TranscriptSource): void {
+/**
+ * Print upload result and return success status
+ */
+function printUploadResult(result: MultiEnvResult): boolean {
   if (result.anySuccess && result.id) {
     console.log("");
     console.log("Upload successful!");
@@ -297,11 +310,11 @@ function printUploadResult(result: MultiEnvResult, _source: TranscriptSource): v
         console.log(`View: ${url}`);
       }
     }
-    process.exit(0);
+    return true;
   } else if (result.results.length === 0) {
     console.log("");
     console.log("Skipped: Repository not in allowlist");
-    process.exit(0);
+    return true; // Skipped is not a failure
   } else {
     console.error("");
     console.error("Upload failed:");
@@ -310,6 +323,6 @@ function printUploadResult(result: MultiEnvResult, _source: TranscriptSource): v
         console.error(`  ${envResult.envName}: ${envResult.error}`);
       }
     }
-    process.exit(1);
+    return false;
   }
 }

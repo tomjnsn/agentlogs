@@ -44,3 +44,20 @@ The plugin captures transcripts and tracks commits using Claude Code hooks:
 Transcripts are automatically deduplicated server-side based on session ID.
 
 The PreToolUse and PostToolUse hooks work together to track commits: PreToolUse captures the current HEAD before a Bash command runs, and PostToolUse compares it after to detect any commits made by Claude Code.
+
+## Manual Upload
+
+You can manually upload transcripts using the CLI:
+
+```bash
+# Interactive picker to browse and upload any transcript
+npx agentlogs upload
+
+# Upload a specific transcript file
+npx agentlogs claudecode upload ~/.claude/projects/-path-to-project/session-id.jsonl
+
+# Sync all transcripts from a specific project
+npx agentlogs claudecode sync --cwd /path/to/project
+```
+
+The interactive `upload` command discovers transcripts from all agents and lets you pick one to upload.

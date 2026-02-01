@@ -49,3 +49,20 @@ args = ["-y", "agentlogs", "mcp"]
 The MCP server is spawned by Codex and connects to a background service that watches `~/.codex/sessions` for changes. When an agent response completes, the transcript is uploaded.
 
 The MCP server doesn't expose any tools or prompts—it exists purely for lifecycle management. The background service shuts down automatically after all Codex sessions close.
+
+## Manual Upload
+
+You can manually upload transcripts using the CLI:
+
+```bash
+# Interactive picker to browse and upload any transcript
+npx agentlogs upload
+
+# Filter to only Codex transcripts
+npx agentlogs upload --source codex
+
+# Upload a specific transcript file
+npx agentlogs codex upload ~/.codex/sessions/2025/01/25/session-abc123.jsonl
+```
+
+The interactive `upload` command discovers transcripts from all agents and lets you pick one to upload.

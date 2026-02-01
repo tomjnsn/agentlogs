@@ -17,7 +17,7 @@ By default, AgentLogs captures transcripts from **all repositories** except thos
 
 ```bash
 # Deny a specific repo from being captured
-agentlogs deny /path/to/private-repo
+npx agentlogs deny /path/to/private-repo
 ```
 
 ### Allowlist Mode
@@ -26,10 +26,10 @@ For stricter control, you can enable allowlist mode where **only explicitly allo
 
 ```bash
 # Enable allowlist mode
-agentlogs settings --mode allowlist
+npx agentlogs settings --mode allowlist
 
 # Allow a specific repo
-agentlogs allow /path/to/my-repo
+npx agentlogs allow /path/to/my-repo
 ```
 
 <Warning>When switching to allowlist mode, no repositories will be captured until you explicitly allow them.</Warning>
@@ -57,10 +57,10 @@ You can override the default visibility when allowing a repo:
 
 ```bash
 # Always make transcripts from this repo private
-agentlogs allow /path/to/repo --visibility private
+npx agentlogs allow /path/to/repo --visibility private
 
 # Always make transcripts from this repo public
-agentlogs allow /path/to/repo --visibility public
+npx agentlogs allow /path/to/repo --visibility public
 ```
 
 ## Configuration File

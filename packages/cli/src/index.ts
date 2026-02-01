@@ -6,6 +6,8 @@ import { loginCommand } from "./commands/login";
 import { logoutCommand } from "./commands/logout";
 import { settingsCommand } from "./commands/settings";
 import { statusCommand } from "./commands/status";
+// Interactive upload command
+import { interactiveUploadCommand } from "./commands/upload";
 // Claude Code commands
 import { hookCommand as claudeCodeHookCommand } from "./commands/claudecode/hook";
 import { syncCommand } from "./commands/claudecode/sync";
@@ -46,6 +48,17 @@ program
   .option("--dev", "Logout from development environment")
   .action(async (options: { dev?: boolean }) => {
     await logoutCommand({ dev: options.dev });
+  });
+
+program
+  .command("upload")
+  .argument("[directory]", "Filter transcripts to this directory")
+  .option("-s, --source <source>", "Filter by source: claude-code, codex, or opencode")
+  .option("-l, --latest", "Upload the most recent transcript without picker")
+  .description("Interactively select and upload a transcript")
+  .action(async (directory: string | undefined, options: { source?: string; latest?: boolean }) => {
+    const source = options.source as "claude-code" | "codex" | "opencode" | undefined;
+    await interactiveUploadCommand(directory, { source, latest: options.latest });
   });
 
 const claudecode = program.command("claudecode").description("Claude Code transcript utilities for AgentLogs");

@@ -12,7 +12,7 @@ description: Complete CLI command reference
 Authenticate with AgentLogs using device authorization.
 
 ```bash
-agentlogs login
+npx agentlogs login
 ```
 
 Opens a browser for authentication. After authorizing, your token is stored locally.
@@ -22,7 +22,7 @@ Opens a browser for authentication. After authorizing, your token is stored loca
 Remove stored authentication credentials.
 
 ```bash
-agentlogs logout
+npx agentlogs logout
 ```
 
 ### status
@@ -30,7 +30,7 @@ agentlogs logout
 Show current authentication status and account info.
 
 ```bash
-agentlogs status
+npx agentlogs status
 ```
 
 **Output:**
@@ -43,6 +43,53 @@ Synced transcripts: 42
 
 ---
 
+## Upload
+
+### upload
+
+Interactively browse and upload transcripts from any agent (Claude Code, Codex, OpenCode).
+
+```bash
+npx agentlogs upload [directory] [options]
+```
+
+**Arguments:**
+
+- `directory` - Optional. Filter to transcripts from this directory
+
+**Options:**
+
+- `-s, --source <source>` - Filter by source: `claude-code`, `codex`, or `opencode`
+- `-l, --latest` - Upload the most recent transcript without showing picker
+
+**Behavior:**
+
+- Discovers transcripts from all installed agents
+- Shows an interactive picker to select a transcript
+- Displays time, source, directory, and preview for each transcript
+- Uploads the selected transcript
+
+**Examples:**
+
+```bash
+# Interactive picker with all transcripts
+npx agentlogs upload
+
+# Only show transcripts from current directory
+npx agentlogs upload .
+
+# Only show Claude Code transcripts
+npx agentlogs upload --source claude-code
+
+# Upload most recent transcript without picker
+npx agentlogs upload --latest
+
+# Upload most recent from current directory
+npx agentlogs upload . --latest
+```
+
+---
+
 ## Claude Code
 
 ### claudecode sync
@@ -50,7 +97,7 @@ Synced transcripts: 42
 Sync all local Claude Code transcripts to AgentLogs.
 
 ```bash
-agentlogs claudecode sync [claudeDir]
+npx agentlogs claudecode sync [claudeDir]
 ```
 
 **Arguments:**
@@ -71,10 +118,10 @@ agentlogs claudecode sync [claudeDir]
 
 ```bash
 # Sync all transcripts
-agentlogs claudecode sync
+npx agentlogs claudecode sync
 
 # Only sync transcripts from a specific project
-agentlogs claudecode sync --cwd /path/to/my-project
+npx agentlogs claudecode sync --cwd /path/to/my-project
 ```
 
 ### claudecode upload
@@ -82,7 +129,7 @@ agentlogs claudecode sync --cwd /path/to/my-project
 Upload a specific transcript file.
 
 ```bash
-agentlogs claudecode upload <transcript>
+npx agentlogs claudecode upload <transcript>
 ```
 
 **Arguments:**
@@ -94,7 +141,7 @@ agentlogs claudecode upload <transcript>
 Hook entry point for Claude Code integration. Called automatically by Claude Code hooks.
 
 ```bash
-agentlogs claudecode hook
+npx agentlogs claudecode hook
 ```
 
 Reads hook data from stdin. This command is meant to be called from Claude Code's hook system, not manually.
@@ -108,7 +155,7 @@ Reads hook data from stdin. This command is meant to be called from Claude Code'
 Upload a Codex transcript file.
 
 ```bash
-agentlogs codex upload <transcript>
+npx agentlogs codex upload <transcript>
 ```
 
 **Arguments:**
@@ -118,7 +165,7 @@ agentlogs codex upload <transcript>
 **Example:**
 
 ```bash
-agentlogs codex upload ~/.codex/sessions/2025/01/25/session-abc123.jsonl
+npx agentlogs codex upload ~/.codex/sessions/2025/01/25/session-abc123.jsonl
 ```
 
 ### mcp
@@ -126,7 +173,7 @@ agentlogs codex upload ~/.codex/sessions/2025/01/25/session-abc123.jsonl
 Run as an MCP server for Codex integration.
 
 ```bash
-agentlogs mcp
+npx agentlogs mcp
 ```
 
 This command is meant to be called by Codex's MCP server system, not manually. It:
@@ -140,7 +187,7 @@ This command is meant to be called by Codex's MCP server system, not manually. I
 Start the background service.
 
 ```bash
-agentlogs service start
+npx agentlogs service start
 ```
 
 The service watches `~/.codex/sessions` for transcript changes and uploads them automatically.
@@ -150,7 +197,7 @@ The service watches `~/.codex/sessions` for transcript changes and uploads them 
 Stop the background service.
 
 ```bash
-agentlogs service stop
+npx agentlogs service stop
 ```
 
 ### service status
@@ -158,7 +205,7 @@ agentlogs service stop
 Show background service status.
 
 ```bash
-agentlogs service status
+npx agentlogs service status
 ```
 
 **Output:**
@@ -176,7 +223,7 @@ Last event: turn_complete (5s ago)
 Tail the watcher event logs.
 
 ```bash
-agentlogs service logs
+npx agentlogs service logs
 ```
 
 Shows recent file system events and turn completions. Press `Ctrl+C` to stop.
@@ -190,7 +237,7 @@ Shows recent file system events and turn completions. Press `Ctrl+C` to stop.
 Upload an OpenCode session.
 
 ```bash
-agentlogs opencode upload <sessionId>
+npx agentlogs opencode upload <sessionId>
 ```
 
 **Arguments:**
@@ -202,7 +249,7 @@ Sessions are read from `~/.local/share/opencode/storage/`.
 **Example:**
 
 ```bash
-agentlogs opencode upload ses_abc123def456
+npx agentlogs opencode upload ses_abc123def456
 ```
 
 ### opencode hook
@@ -210,7 +257,7 @@ agentlogs opencode upload ses_abc123def456
 Hook entry point for OpenCode plugin integration. Called automatically by the OpenCode plugin.
 
 ```bash
-agentlogs opencode hook
+npx agentlogs opencode hook
 ```
 
 Reads hook data from stdin and outputs JSON response. This command handles:
@@ -230,7 +277,7 @@ This command is meant to be called from the OpenCode plugin, not manually.
 View or modify repository settings.
 
 ```bash
-agentlogs settings [options]
+npx agentlogs settings [options]
 ```
 
 **Options:**
@@ -242,10 +289,10 @@ agentlogs settings [options]
 
 ```bash
 # View current settings
-agentlogs settings
+npx agentlogs settings
 
 # Switch to allowlist mode
-agentlogs settings --mode allowlist
+npx agentlogs settings --mode allowlist
 ```
 
 ### allow
@@ -253,7 +300,7 @@ agentlogs settings --mode allowlist
 Allow a repository to be captured.
 
 ```bash
-agentlogs allow <path> [options]
+npx agentlogs allow <path> [options]
 ```
 
 **Arguments:**
@@ -268,10 +315,10 @@ agentlogs allow <path> [options]
 
 ```bash
 # Allow a repo with default visibility
-agentlogs allow /path/to/repo
+npx agentlogs allow /path/to/repo
 
 # Allow with explicit visibility
-agentlogs allow /path/to/repo --visibility private
+npx agentlogs allow /path/to/repo --visibility private
 ```
 
 ### deny
@@ -279,7 +326,7 @@ agentlogs allow /path/to/repo --visibility private
 Deny a repository from being captured.
 
 ```bash
-agentlogs deny <path>
+npx agentlogs deny <path>
 ```
 
 **Arguments:**
@@ -289,7 +336,7 @@ agentlogs deny <path>
 **Example:**
 
 ```bash
-agentlogs deny /path/to/secret-repo
+npx agentlogs deny /path/to/secret-repo
 ```
 
 ---
@@ -308,8 +355,8 @@ These options work with any command:
 
 ```bash
 # Get help for a specific command
-agentlogs claudecode sync --help
+npx agentlogs claudecode sync --help
 
 # Use development environment
-agentlogs --env development claudecode sync
+npx agentlogs --env development claudecode sync
 ```

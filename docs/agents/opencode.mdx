@@ -67,10 +67,17 @@ After a git commit completes, the CLI extracts the commit SHA, branch, and title
 
 ## Manual Upload
 
-You can manually upload a session using the CLI:
+You can manually upload transcripts using the CLI:
 
 ```bash
-agentlogs opencode upload <sessionId>
+# Interactive picker to browse and upload any transcript
+npx agentlogs upload
+
+# Filter to only OpenCode transcripts
+npx agentlogs upload --source opencode
+
+# Upload a specific session by ID
+npx agentlogs opencode upload <sessionId>
 ```
 
-Sessions are read from `~/.local/share/opencode/storage/`.
+The interactive `upload` command discovers transcripts from all agents and lets you pick one to upload. Sessions are read from `~/.local/share/opencode/storage/`.
