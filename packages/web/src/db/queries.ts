@@ -714,6 +714,276 @@ export async function getDailyActivityCounts(db: DrizzleDB, viewerId: string, da
 }
 
 /**
+ * Build condition for transcripts visible to a team.
+ * Includes:
+ * 1. Team-shared transcripts (visibility='team' AND sharedWithTeamId matches)
+ * 2. Public transcripts from any team member
+ */
+function buildTeamVisibleCondition(teamId: string) {
+  return or(
+    // Team-shared transcripts
+    and(eq(transcripts.visibility, "team"), eq(transcripts.sharedWithTeamId, teamId)),
+    // Public transcripts from team members
+    and(
+      eq(transcripts.visibility, "public"),
+      exists(
+        sql`(SELECT 1 FROM ${teamMembers} WHERE ${teamMembers.teamId} = ${teamId} AND ${teamMembers.userId} = ${transcripts.userId})`,
+      ),
+    ),
+  );
+}
+
+/**
+ * Build condition for transcripts visible to a team with date filter.
+ */
+function buildTeamVisibleConditionWithDate(teamId: string, startTimestamp: number) {
+  return and(buildTeamVisibleCondition(teamId), sql`${transcripts.createdAt} >= ${startTimestamp}`);
+}
+
+/**
+ * Get aggregate stats for transcripts visible to a team within a date range.
+ */
+export async function getTeamStats(db: DrizzleDB, teamId: string, days: number) {
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days + 1);
+  startDate.setHours(0, 0, 0, 0);
+  const startTimestamp = Math.floor(startDate.getTime() / 1000);
+
+  const [stats] = await db
+    .select({
+      totalTranscripts: count(transcripts.id),
+      linesAdded: sql<number>`COALESCE(SUM(${transcripts.linesAdded}), 0)`,
+      linesRemoved: sql<number>`COALESCE(SUM(${transcripts.linesRemoved}), 0)`,
+      linesModified: sql<number>`COALESCE(SUM(${transcripts.linesModified}), 0)`,
+    })
+    .from(transcripts)
+    .where(buildTeamVisibleConditionWithDate(teamId, startTimestamp));
+
+  return stats;
+}
+
+/**
+ * Get daily transcript counts for a team for the activity chart.
+ */
+export async function getTeamDailyActivity(db: DrizzleDB, teamId: string, days: number) {
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days + 1);
+  startDate.setHours(0, 0, 0, 0);
+  const startTimestamp = Math.floor(startDate.getTime() / 1000);
+
+  const results = await db
+    .select({
+      date: sql<string>`DATE(${transcripts.createdAt}, 'unixepoch')`.as("date"),
+      count: sql<number>`CAST(COUNT(*) AS INTEGER)`.as("count"),
+    })
+    .from(transcripts)
+    .where(buildTeamVisibleConditionWithDate(teamId, startTimestamp))
+    .groupBy(sql`DATE(${transcripts.createdAt}, 'unixepoch')`)
+    .orderBy(sql`DATE(${transcripts.createdAt}, 'unixepoch')`);
+
+  return results;
+}
+
+/**
+ * Get activity counts grouped by user for a stacked area chart.
+ * When days=1, groups by hour; otherwise groups by day.
+ */
+export async function getTeamActivityByUser(db: DrizzleDB, teamId: string, days: number) {
+  const startDate = new Date();
+  if (days === 1) {
+    // For 24 hours, start from 24 hours ago
+    startDate.setHours(startDate.getHours() - 24);
+  } else {
+    startDate.setDate(startDate.getDate() - days + 1);
+    startDate.setHours(0, 0, 0, 0);
+  }
+  const startTimestamp = Math.floor(startDate.getTime() / 1000);
+
+  // Use hour grouping for 24h, day grouping otherwise
+  const periodSql =
+    days === 1
+      ? sql<string>`STRFTIME('%Y-%m-%d %H:00', ${transcripts.createdAt}, 'unixepoch')`
+      : sql<string>`DATE(${transcripts.createdAt}, 'unixepoch')`;
+
+  const results = await db
+    .select({
+      period: periodSql.as("period"),
+      userId: transcripts.userId,
+      userName: user.name,
+      count: sql<number>`CAST(COUNT(*) AS INTEGER)`.as("count"),
+    })
+    .from(transcripts)
+    .innerJoin(user, eq(transcripts.userId, user.id))
+    .where(buildTeamVisibleConditionWithDate(teamId, startTimestamp))
+    .groupBy(periodSql, transcripts.userId, user.name)
+    .orderBy(periodSql);
+
+  return results;
+}
+
+/**
+ * Get per-member stats for a team with favorite model and agent.
+ */
+export async function getTeamMemberStats(db: DrizzleDB, teamId: string, days: number) {
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days + 1);
+  startDate.setHours(0, 0, 0, 0);
+  const startTimestamp = Math.floor(startDate.getTime() / 1000);
+
+  // Get basic member stats
+  const memberStats = await db
+    .select({
+      ownerId: teams.ownerId,
+      userId: user.id,
+      userName: user.name,
+      userEmail: user.email,
+      userImage: user.image,
+      transcriptCount: sql<number>`CAST(COUNT(${transcripts.id}) AS INTEGER)`.as("transcript_count"),
+      linesAdded: sql<number>`COALESCE(SUM(${transcripts.linesAdded}), 0)`.as("lines_added"),
+      linesRemoved: sql<number>`COALESCE(SUM(${transcripts.linesRemoved}), 0)`.as("lines_removed"),
+      linesModified: sql<number>`COALESCE(SUM(${transcripts.linesModified}), 0)`.as("lines_modified"),
+    })
+    .from(teamMembers)
+    .innerJoin(user, eq(teamMembers.userId, user.id))
+    .innerJoin(teams, eq(teamMembers.teamId, teams.id))
+    .leftJoin(
+      transcripts,
+      and(
+        eq(transcripts.userId, user.id),
+        or(
+          and(eq(transcripts.visibility, "team"), eq(transcripts.sharedWithTeamId, teamId)),
+          eq(transcripts.visibility, "public"),
+        ),
+        sql`${transcripts.createdAt} >= ${startTimestamp}`,
+      ),
+    )
+    .where(eq(teamMembers.teamId, teamId))
+    .groupBy(user.id, teams.ownerId)
+    .orderBy(desc(sql`transcript_count`));
+
+  // Get favorite model per user (most used)
+  const favoriteModels = await db
+    .select({
+      userId: transcripts.userId,
+      model: transcripts.model,
+      count: sql<number>`COUNT(*)`.as("count"),
+    })
+    .from(transcripts)
+    .innerJoin(teamMembers, eq(teamMembers.userId, transcripts.userId))
+    .where(
+      and(
+        eq(teamMembers.teamId, teamId),
+        or(
+          and(eq(transcripts.visibility, "team"), eq(transcripts.sharedWithTeamId, teamId)),
+          eq(transcripts.visibility, "public"),
+        ),
+        sql`${transcripts.createdAt} >= ${startTimestamp}`,
+        sql`${transcripts.model} IS NOT NULL`,
+      ),
+    )
+    .groupBy(transcripts.userId, transcripts.model)
+    .orderBy(desc(sql`count`));
+
+  // Get favorite agent per user (most used source)
+  const favoriteAgents = await db
+    .select({
+      userId: transcripts.userId,
+      agent: transcripts.source,
+      count: sql<number>`COUNT(*)`.as("count"),
+    })
+    .from(transcripts)
+    .innerJoin(teamMembers, eq(teamMembers.userId, transcripts.userId))
+    .where(
+      and(
+        eq(teamMembers.teamId, teamId),
+        or(
+          and(eq(transcripts.visibility, "team"), eq(transcripts.sharedWithTeamId, teamId)),
+          eq(transcripts.visibility, "public"),
+        ),
+        sql`${transcripts.createdAt} >= ${startTimestamp}`,
+      ),
+    )
+    .groupBy(transcripts.userId, transcripts.source)
+    .orderBy(desc(sql`count`));
+
+  // Build maps for favorite model/agent per user (first one is most used)
+  const modelMap = new Map<string, string>();
+  for (const row of favoriteModels) {
+    if (!modelMap.has(row.userId)) {
+      modelMap.set(row.userId, row.model || "");
+    }
+  }
+
+  const agentMap = new Map<string, string>();
+  for (const row of favoriteAgents) {
+    if (!agentMap.has(row.userId)) {
+      agentMap.set(row.userId, row.agent);
+    }
+  }
+
+  return memberStats.map((m) => ({
+    userId: m.userId,
+    userName: m.userName,
+    userEmail: m.userEmail,
+    userImage: m.userImage,
+    isOwner: m.ownerId === m.userId,
+    transcriptCount: m.transcriptCount,
+    linesAdded: m.linesAdded,
+    linesRemoved: m.linesRemoved,
+    linesModified: m.linesModified,
+    favoriteModel: modelMap.get(m.userId) || null,
+    favoriteAgent: agentMap.get(m.userId) || null,
+  }));
+}
+
+/**
+ * Get model usage stats for a team within a date range.
+ */
+export async function getTeamModelUsage(db: DrizzleDB, teamId: string, days: number) {
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days + 1);
+  startDate.setHours(0, 0, 0, 0);
+  const startTimestamp = Math.floor(startDate.getTime() / 1000);
+
+  const results = await db
+    .select({
+      model: transcripts.model,
+      count: sql<number>`CAST(COUNT(*) AS INTEGER)`.as("count"),
+    })
+    .from(transcripts)
+    .where(and(buildTeamVisibleConditionWithDate(teamId, startTimestamp), sql`${transcripts.model} IS NOT NULL`))
+    .groupBy(transcripts.model)
+    .orderBy(desc(sql`count`));
+
+  return results.map((r) => ({
+    model: r.model || "unknown",
+    count: r.count,
+  }));
+}
+
+/**
+ * Get agent (source) usage stats for a team within a date range.
+ */
+export async function getTeamAgentUsage(db: DrizzleDB, teamId: string, days: number) {
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days + 1);
+  startDate.setHours(0, 0, 0, 0);
+  const startTimestamp = Math.floor(startDate.getTime() / 1000);
+
+  const results = await db
+    .select({
+      agent: transcripts.source,
+      count: sql<number>`CAST(COUNT(*) AS INTEGER)`.as("count"),
+    })
+    .from(transcripts)
+    .where(buildTeamVisibleConditionWithDate(teamId, startTimestamp))
+    .groupBy(transcripts.source)
+    .orderBy(desc(sql`count`));
+
+  return results;
+}
+
+/**
  * Check if viewer can access a specific blob via any transcript.
  * Returns true if viewer owns any transcript referencing this blob,
  * OR if any public transcript references it,

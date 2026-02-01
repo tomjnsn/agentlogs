@@ -1089,7 +1089,13 @@ export const getTeamPageData = createServerFn({ method: "GET" }).handler(async (
  * Includes team info, aggregate stats, member stats, daily activity, model usage, and agent usage
  */
 export const getTeamDashboardData = createServerFn({ method: "GET" })
-  .inputValidator((input: { days?: number }) => ({ days: input.days ?? 30 }))
+  .inputValidator((input: { days?: number }) => {
+    const days = input.days ?? 30;
+    if (days < 1 || days > 365) {
+      throw new Error("Days must be between 1 and 365");
+    }
+    return { days };
+  })
   .handler(async ({ data: { days } }) => {
     const db = createDrizzle(env.DB);
     const auth = createAuth();
@@ -1145,11 +1151,11 @@ export const getTeamDashboardData = createServerFn({ method: "GET" })
     const isHourly = days === 1;
 
     if (isHourly) {
-      // Fill 24 hours
+      // Fill 24 hours (using UTC to match SQL unixepoch)
       for (let i = 23; i >= 0; i--) {
         const date = new Date(now);
-        date.setHours(date.getHours() - i, 0, 0, 0);
-        const key = `${date.toISOString().split("T")[0]} ${String(date.getHours()).padStart(2, "0")}:00`;
+        date.setUTCHours(date.getUTCHours() - i, 0, 0, 0);
+        const key = `${date.toISOString().split("T")[0]} ${String(date.getUTCHours()).padStart(2, "0")}:00`;
         const periodData = periodMap.get(key) ?? {};
         const row: Record<string, string | number> = { period: key };
         for (const name of userNames) {
