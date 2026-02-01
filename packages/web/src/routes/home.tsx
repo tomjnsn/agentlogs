@@ -96,8 +96,7 @@ function HeroSection() {
       }
       subheadline={
         <p>
-          Your team's AI coding sessions are invisible. See what prompts work, learn from each other's workflows, and
-          build institutional knowledge that compounds.
+          See what prompts work, learn from each other's workflows, and build institutional knowledge that compounds.
         </p>
       }
       cta={
