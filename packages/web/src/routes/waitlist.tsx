@@ -3,7 +3,7 @@ import { ButtonLink } from "../components/oatmeal/elements/button";
 import { Container } from "../components/oatmeal/elements/container";
 import { Main } from "../components/oatmeal/elements/main";
 import { FooterLink, FooterSimple, SocialLink } from "../components/oatmeal/sections/footer-simple";
-import { DiscordIcon, Logo } from "../components/icons/source-icons";
+import { DiscordIcon, Logo, XIcon } from "../components/icons/source-icons";
 
 export const Route = createFileRoute("/waitlist")({
   beforeLoad: ({ context }) => {
@@ -94,9 +94,14 @@ function Footer() {
         </>
       }
       socialLinks={
-        <SocialLink href="https://discord.gg/yG4TNv3mjG" name="Discord">
-          <DiscordIcon />
-        </SocialLink>
+        <>
+          <SocialLink href="https://x.com/agentlogs" name="X">
+            <XIcon />
+          </SocialLink>
+          <SocialLink href="https://discord.gg/yG4TNv3mjG" name="Discord">
+            <DiscordIcon />
+          </SocialLink>
+        </>
       }
       fineprint={<p>&copy; {new Date().getFullYear()} AgentLogs</p>}
     />

@@ -8,7 +8,7 @@ import { Faq, FAQsTwoColumnAccordion } from "../components/oatmeal/sections/faqs
 import { FeatureThreeColumnWithDemos, Features } from "../components/oatmeal/sections/features-three-column-with-demos";
 import { FooterLink, FooterSimple, SocialLink } from "../components/oatmeal/sections/footer-simple";
 import { HeroLeftAlignedWithDemo } from "../components/oatmeal/sections/hero-left-aligned-with-demo";
-import { ClaudeCodeIcon, CodexIcon, DiscordIcon, Logo, OpenCodeIcon } from "../components/icons/source-icons";
+import { ClaudeCodeIcon, CodexIcon, DiscordIcon, Logo, OpenCodeIcon, XIcon } from "../components/icons/source-icons";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../components/ui/tooltip";
 
 export const Route = createFileRoute("/home")({
@@ -256,9 +256,14 @@ function Footer() {
         </>
       }
       socialLinks={
-        <SocialLink href="https://discord.gg/yG4TNv3mjG" name="Discord">
-          <DiscordIcon />
-        </SocialLink>
+        <>
+          <SocialLink href="https://x.com/agentlogs" name="X">
+            <XIcon />
+          </SocialLink>
+          <SocialLink href="https://discord.gg/yG4TNv3mjG" name="Discord">
+            <DiscordIcon />
+          </SocialLink>
+        </>
       }
       fineprint={<p>&copy; {new Date().getFullYear()} AgentLogs</p>}
     />
