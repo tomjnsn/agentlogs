@@ -90,15 +90,7 @@ function UserIcon() {
 // Calendar icon for date
 function CalendarIcon() {
   return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="#a1a1aa"
-      strokeWidth="2"
-      style={{ marginRight: "10px" }}
-    >
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" strokeWidth="2">
       <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
       <line x1="16" y1="2" x2="16" y2="6" />
       <line x1="8" y1="2" x2="8" y2="6" />
@@ -259,6 +251,20 @@ function OgImage({ data }: { data: TranscriptData }) {
           justifyContent: "center",
         }}
       >
+        {/* Date eyebrow */}
+        {displayDate && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              marginBottom: "24px",
+            }}
+          >
+            <CalendarIcon />
+            <span style={{ fontSize: "20px", color: "#a1a1aa" }}>{displayDate}</span>
+          </div>
+        )}
         <h1
           style={{
             fontSize: "60px",
@@ -286,32 +292,16 @@ function OgImage({ data }: { data: TranscriptData }) {
         )}
       </div>
 
-      {/* Bottom section - date on left, branding on right */}
+      {/* Bottom section - branding */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
+          justifyContent: "flex-end",
           marginTop: "auto",
         }}
       >
-        {/* Left side - date */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-          }}
-        >
-          {displayDate && (
-            <>
-              <CalendarIcon />
-              <span style={{ fontSize: "20px", color: "#a1a1aa" }}>{displayDate}</span>
-            </>
-          )}
-        </div>
-
-        {/* Right side - AgentLogs branding */}
+        {/* AgentLogs branding */}
         <div
           style={{
             display: "flex",
