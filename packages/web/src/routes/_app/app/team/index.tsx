@@ -383,7 +383,7 @@ function TeamDashboardPage() {
                     dataKey="name"
                     tickLine={false}
                     axisLine={false}
-                    width={95}
+                    width={120}
                     fontSize={12}
                     tick={{ style: { whiteSpace: "nowrap" } }}
                   />
