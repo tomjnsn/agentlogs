@@ -151,7 +151,7 @@ function FeatureSection() {
               </Screenshot>
             }
             headline="Git Integration"
-            subheadline="Sessions are automatically linked to the commits they produced. Not every agent supports this yet, but when your clanker commits, you'll see exactly which session created which code."
+            subheadline="See which session wrote which code. Works whenever your clanker is the one committing."
           />
           <FeatureThreeColumnWithDemos
             demo={
