@@ -588,7 +588,7 @@ export async function getTranscriptWithAccess(db: DrizzleDB, viewerId: string, i
     .from(transcripts)
     .leftJoin(user, eq(transcripts.userId, user.id))
     .leftJoin(repos, eq(transcripts.repoId, repos.id))
-    .where(and(eq(transcripts.id, id), buildVisibilityCondition(viewerId)))
+    .where(and(eq(transcripts.id, id), or(buildVisibilityCondition(viewerId), eq(transcripts.visibility, "public"))))
     .limit(1);
 
   return results[0] ?? null;
