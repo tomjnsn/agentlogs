@@ -104,7 +104,7 @@ function HeroSection() {
           <ButtonLink href="/waitlist" size="lg">
             Join the waitlist
           </ButtonLink>
-          <PlainButtonLink href="https://agentlogs.ai/s/hpnyf840l453gx4ojuoygbme" size="lg">
+          <PlainButtonLink href="https://agentlogs.ai/s/ijz0z090jxrmmfjsz9lkcq7j" size="lg">
             See it in action
             <ArrowNarrowRightIcon />
           </PlainButtonLink>
@@ -150,7 +150,7 @@ function FeatureSection() {
               </Screenshot>
             }
             headline="Git Integration"
-            subheadline="See which session wrote which code. Works whenever your clanker is the one committing."
+            subheadline="See which session wrote which code. Works whenever your agent is the one committing."
           />
           <FeatureThreeColumnWithDemos
             demo={
