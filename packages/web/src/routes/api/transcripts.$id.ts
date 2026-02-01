@@ -5,7 +5,7 @@ import { env } from "cloudflare:workers";
 import { eq } from "drizzle-orm";
 import * as queries from "../../db/queries";
 import { transcripts } from "../../db/schema";
-import { createAuth } from "../../lib/auth";
+import { getAuthErrorResponse, requireActiveUser } from "../../lib/access-control";
 import { logger } from "../../lib/logger";
 
 export const Route = createFileRoute("/api/transcripts/$id")({
@@ -14,21 +14,24 @@ export const Route = createFileRoute("/api/transcripts/$id")({
       DELETE: async ({ request, params }: { request: Request; params: { id: string } }) => {
         const { id } = params;
         const db = createDrizzle(env.DB);
-        const auth = createAuth();
 
         logger.debug("Delete transcript request received", { id });
 
-        // Check authentication
-        const session = await auth.api.getSession({
-          headers: request.headers,
-        });
-
-        if (!session?.user) {
-          logger.warn("Delete transcript auth failed: no session");
+        let userId: string;
+        try {
+          const activeUser = await requireActiveUser(request.headers, db);
+          userId = activeUser.userId;
+        } catch (error) {
+          const authError = getAuthErrorResponse(error);
+          if (authError) {
+            logger.warn("Delete transcript auth failed", { status: authError.status, error: authError.message });
+            return json({ error: authError.message }, { status: authError.status });
+          }
+          logger.error("Delete transcript auth failed: unexpected error", {
+            error: error instanceof Error ? error.message : String(error),
+          });
           return json({ error: "Unauthorized" }, { status: 401 });
         }
-
-        const userId = session.user.id;
 
         // Get user role to check if admin
         const userRole = await queries.getUserRole(db, userId);

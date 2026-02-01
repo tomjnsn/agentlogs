@@ -9,6 +9,7 @@ import { and, eq } from "drizzle-orm";
 import { canAccessBlob } from "../../db/queries";
 import { blobs, repos, teamMembers, transcriptBlobs, transcripts, type VisibilityOption } from "../../db/schema";
 import { createAuth } from "../../lib/auth";
+import { getAuthErrorResponse, requireActiveUserFromSession } from "../../lib/access-control";
 import { generateSummary } from "../../lib/ai/summarizer";
 import { checkRepoIsPublic } from "../../lib/github";
 import { logger } from "../../lib/logger";
@@ -27,12 +28,21 @@ export const Route = createFileRoute("/api/ingest")({
             auth.api.getSession({ headers: request.headers }),
           );
 
-          if (!session?.user) {
-            logger.warn("Ingest auth failed: no session");
+          let userId: string;
+          try {
+            const activeUser = await requireActiveUserFromSession(session, db);
+            userId = activeUser.userId;
+          } catch (error) {
+            const authError = getAuthErrorResponse(error);
+            if (authError) {
+              logger.warn("Ingest auth failed", { status: authError.status, error: authError.message });
+              return json({ error: authError.message }, { status: authError.status });
+            }
+            logger.error("Ingest auth failed: unexpected error", {
+              error: error instanceof Error ? error.message : String(error),
+            });
             return json({ error: "Unauthorized" }, { status: 401 });
           }
-
-          const userId = session.user.id;
           Sentry.setUser({ id: userId });
 
           // Parse multipart form data (raw transcript upload)

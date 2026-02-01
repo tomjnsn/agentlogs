@@ -94,6 +94,78 @@ function seedDatabase() {
     })
     .run();
 
+  // Seed second active user (non-owner for authz tests)
+  db.insert(schema.user)
+    .values({
+      id: "other-user-id",
+      name: "Other User",
+      username: "otheruser",
+      email: "other@example.com",
+      emailVerified: true,
+      role: "user",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .run();
+
+  db.insert(schema.session)
+    .values({
+      id: "other-session-id",
+      userId: "other-user-id",
+      token: "other-session-token",
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .run();
+
+  // Seed waitlist user for access control tests
+  db.insert(schema.user)
+    .values({
+      id: "waitlist-user-id",
+      name: "Waitlist User",
+      username: "waitlistuser",
+      email: "waitlist@example.com",
+      emailVerified: true,
+      role: "waitlist",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .run();
+
+  db.insert(schema.session)
+    .values({
+      id: "waitlist-session-id",
+      userId: "waitlist-user-id",
+      token: "waitlist-session-token",
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .run();
+
+  // Seed transcript owned by test user for commit tracking authz checks
+  db.insert(schema.transcripts)
+    .values({
+      id: "seed-transcript-id",
+      userId: "test-user-id",
+      visibility: "private",
+      sha256: "a".repeat(64),
+      transcriptId: "seed-transcript",
+      source: "claude-code",
+      createdAt: new Date(),
+      costUsd: 0,
+      blendedTokens: 0,
+      messageCount: 1,
+      inputTokens: 0,
+      cachedInputTokens: 0,
+      outputTokens: 0,
+      reasoningOutputTokens: 0,
+      totalTokens: 0,
+      cwd: "/tmp",
+    })
+    .run();
+
   sqlite.close();
 }
 

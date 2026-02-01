@@ -2,8 +2,9 @@ import { createDrizzle } from "@/db";
 import { createFileRoute } from "@tanstack/react-router";
 import { json } from "@tanstack/react-start";
 import { env } from "cloudflare:workers";
-import { commitTracking } from "../../db/schema";
-import { createAuth } from "../../lib/auth";
+import { eq } from "drizzle-orm";
+import { commitTracking, transcripts } from "../../db/schema";
+import { requireActiveUser, getAuthErrorResponse } from "../../lib/access-control";
 import { logger } from "../../lib/logger";
 
 interface CommitTrackPayload {
@@ -20,20 +21,25 @@ export const Route = createFileRoute("/api/commit-track")({
     handlers: {
       POST: async ({ request }) => {
         const db = createDrizzle(env.DB);
-        const auth = createAuth();
-
         logger.debug("Commit track request received");
 
-        const session = await auth.api.getSession({
-          headers: request.headers,
-        });
-
-        if (!session?.user) {
-          logger.warn("Commit track auth failed: no session");
+        let userId: string;
+        let userRole: "user" | "admin";
+        try {
+          const activeUser = await requireActiveUser(request.headers, db);
+          userId = activeUser.userId;
+          userRole = activeUser.role;
+        } catch (error) {
+          const authError = getAuthErrorResponse(error);
+          if (authError) {
+            logger.warn("Commit track auth failed", { status: authError.status, error: authError.message });
+            return json({ error: authError.message }, { status: authError.status });
+          }
+          logger.error("Commit track auth failed: unexpected error", {
+            error: error instanceof Error ? error.message : String(error),
+          });
           return json({ error: "Unauthorized" }, { status: 401 });
         }
-
-        const userId = session.user.id;
 
         let payload: CommitTrackPayload;
         try {
@@ -59,6 +65,25 @@ export const Route = createFileRoute("/api/commit-track")({
         }
 
         try {
+          const transcript = await db.query.transcripts.findFirst({
+            columns: { userId: true },
+            where: eq(transcripts.id, transcript_id),
+          });
+
+          if (!transcript) {
+            logger.warn("Commit track rejected: transcript not found", { transcriptId: transcript_id, userId });
+            return json({ error: "Transcript not found" }, { status: 404 });
+          }
+
+          if (transcript.userId !== userId && userRole !== "admin") {
+            logger.warn("Commit track rejected: not owner", {
+              transcriptId: transcript_id,
+              userId,
+              ownerId: transcript.userId,
+            });
+            return json({ error: "Forbidden: You can only track commits for your own transcripts" }, { status: 403 });
+          }
+
           await db.insert(commitTracking).values({
             userId,
             transcriptId: transcript_id,

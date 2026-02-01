@@ -18,6 +18,7 @@ import {
   type VisibilityOption,
 } from "../db/schema";
 import { createAuth } from "./auth";
+import { requireActiveUser, tryGetActiveUserId } from "./access-control";
 import { logger } from "./logger";
 
 let cuidGenerator: (() => string) | undefined;
@@ -34,19 +35,8 @@ const generateId = () => getCuidGenerator()();
  * Throws if not authenticated
  */
 async function getAuthenticatedUserId() {
-  const auth = createAuth();
-  const headers = getRequestHeaders();
-
-  const session = await auth.api.getSession({
-    headers,
-  });
-
-  if (!session?.user) {
-    logger.error("Authentication failed: No session or user found");
-    throw new Error("Unauthorized");
-  }
-
-  return session.user.id;
+  const { userId } = await requireActiveUser(getRequestHeaders());
+  return userId;
 }
 
 /**
@@ -176,14 +166,7 @@ export const getTranscriptsByCwd = createServerFn()
  * Returns null if not authenticated
  */
 async function tryGetUserId(): Promise<string | null> {
-  try {
-    const auth = createAuth();
-    const headers = getRequestHeaders();
-    const session = await auth.api.getSession({ headers });
-    return session?.user?.id ?? null;
-  } catch {
-    return null;
-  }
+  return tryGetActiveUserId(getRequestHeaders());
 }
 
 /**
@@ -541,20 +524,13 @@ export const createTeam = createServerFn({ method: "POST" })
   .inputValidator((input: { name: string }) => input)
   .handler(async ({ data: { name } }) => {
     const db = createDrizzle(env.DB);
-    const auth = createAuth();
-    const headers = getRequestHeaders();
-
-    const session = await auth.api.getSession({ headers });
-    if (!session?.user) {
-      throw new Error("Unauthorized");
-    }
+    const { userId } = await requireActiveUser(getRequestHeaders(), db);
 
     const trimmedName = name.trim();
     if (!trimmedName) {
       throw new Error("Team name is required");
     }
 
-    const userId = session.user.id;
     const teamName = trimmedName;
 
     // Check if user is already in a team (app-level enforcement)
@@ -660,14 +636,7 @@ export const addMemberByEmail = createServerFn({ method: "POST" })
   .inputValidator((input: { teamId: string; email: string }) => input)
   .handler(async ({ data: { teamId, email } }) => {
     const db = createDrizzle(env.DB);
-    const auth = createAuth();
-    const headers = getRequestHeaders();
-
-    const session = await auth.api.getSession({ headers });
-    if (!session?.user) {
-      throw new Error("Unauthorized");
-    }
-    const userId = session.user.id;
+    const { userId, session } = await requireActiveUser(getRequestHeaders(), db);
 
     // Verify team exists and user is owner
     const team = await db.query.teams.findFirst({
@@ -1071,16 +1040,8 @@ export const getAdminPageData = createServerFn({ method: "GET" }).handler(async 
  */
 export const getTeamPageData = createServerFn({ method: "GET" }).handler(async () => {
   const db = createDrizzle(env.DB);
-  const auth = createAuth();
-  const headers = getRequestHeaders();
-
-  const session = await auth.api.getSession({ headers });
-  if (!session?.user) {
-    throw new Error("Unauthorized");
-  }
-
-  const team = await queries.getUserTeam(db, session.user.id);
-
+  const { userId, session } = await requireActiveUser(getRequestHeaders(), db);
+  const team = await queries.getUserTeam(db, userId);
   return { team, session };
 });
 
@@ -1098,15 +1059,8 @@ export const getTeamDashboardData = createServerFn({ method: "GET" })
   })
   .handler(async ({ data: { days } }) => {
     const db = createDrizzle(env.DB);
-    const auth = createAuth();
-    const headers = getRequestHeaders();
-
-    const session = await auth.api.getSession({ headers });
-    if (!session?.user) {
-      throw new Error("Unauthorized");
-    }
-
-    const team = await queries.getUserTeam(db, session.user.id);
+    const { userId, session } = await requireActiveUser(getRequestHeaders(), db);
+    const team = await queries.getUserTeam(db, userId);
 
     // If no team, return early with null stats
     if (!team) {

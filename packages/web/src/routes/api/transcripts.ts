@@ -4,7 +4,7 @@ import { json } from "@tanstack/react-start";
 import { env } from "cloudflare:workers";
 import { eq } from "drizzle-orm";
 import { repos, transcripts } from "../../db/schema";
-import { createAuth } from "../../lib/auth";
+import { getAuthErrorResponse, requireActiveUser } from "../../lib/access-control";
 import { logger } from "../../lib/logger";
 
 export const Route = createFileRoute("/api/transcripts")({
@@ -12,20 +12,26 @@ export const Route = createFileRoute("/api/transcripts")({
     handlers: {
       GET: async ({ request }) => {
         const db = createDrizzle(env.DB);
-        const auth = createAuth();
-
         logger.debug("Transcripts metadata request received");
 
-        const session = await auth.api.getSession({
-          headers: request.headers,
-        });
-
-        if (!session?.user) {
-          logger.warn("Transcripts metadata request unauthorized");
+        let userId: string;
+        try {
+          const activeUser = await requireActiveUser(request.headers, db);
+          userId = activeUser.userId;
+        } catch (error) {
+          const authError = getAuthErrorResponse(error);
+          if (authError) {
+            logger.warn("Transcripts metadata request unauthorized", {
+              status: authError.status,
+              error: authError.message,
+            });
+            return json({ error: authError.message }, { status: authError.status });
+          }
+          logger.error("Transcripts metadata request failed: unexpected error", {
+            error: error instanceof Error ? error.message : String(error),
+          });
           return json({ error: "Unauthorized" }, { status: 401 });
         }
-
-        const userId = session.user.id;
 
         try {
           const records = await db
