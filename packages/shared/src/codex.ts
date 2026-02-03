@@ -233,12 +233,12 @@ export function convertCodexTranscript(
           }
           addMessage(candidate, messages, seenMessageSignatures);
         } else if (role === "assistant") {
-          const texts = extractTextPieces(payload.content);
+          const texts = extractTextPieces(payload.content, true);
           if (texts.length === 0) {
             break;
           }
 
-          const text = collapseWhitespace(texts.join("\n\n"));
+          const text = texts.join("\n\n").trim();
           if (!text) {
             break;
           }
@@ -506,9 +506,16 @@ function extractTokenUsage(
   };
 }
 
-function extractTextPieces(value: unknown): string[] {
+function extractTextPieces(value: unknown, preserveNewlines = false): string[] {
+  const normalize = (text: string): string => {
+    if (preserveNewlines) {
+      return text.trim();
+    }
+    return collapseWhitespace(text);
+  };
+
   if (typeof value === "string") {
-    const normalized = collapseWhitespace(value);
+    const normalized = normalize(value);
     return normalized ? [normalized] : [];
   }
 
@@ -522,7 +529,7 @@ function extractTextPieces(value: unknown): string[] {
       continue;
     }
     if (typeof part === "string") {
-      const normalized = collapseWhitespace(part);
+      const normalized = normalize(part);
       if (normalized) {
         results.push(normalized);
       }
@@ -532,7 +539,7 @@ function extractTextPieces(value: unknown): string[] {
       const record = part as Record<string, unknown>;
       const text = asString(record.text ?? record.content);
       if (text) {
-        const normalized = collapseWhitespace(text);
+        const normalized = normalize(text);
         if (normalized) {
           results.push(normalized);
         }
@@ -669,10 +676,7 @@ function extractReasoning(payload: Record<string, unknown>): string[] {
       if (entry && typeof entry === "object") {
         const text = asString((entry as Record<string, unknown>).text);
         if (text) {
-          const normalized = collapseWhitespace(text);
-          if (normalized) {
-            pieces.push(normalized);
-          }
+          pieces.push(text);
         }
       }
     }
@@ -686,10 +690,7 @@ function extractReasoning(payload: Record<string, unknown>): string[] {
         if (asString(record.type) === "reasoning" || asString(record.type) === "text") {
           const text = asString(record.text ?? record.content);
           if (text) {
-            const normalized = collapseWhitespace(text);
-            if (normalized) {
-              pieces.push(normalized);
-            }
+            pieces.push(text);
           }
         }
       }
