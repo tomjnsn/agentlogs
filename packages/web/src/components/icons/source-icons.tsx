@@ -69,7 +69,7 @@ export function PiIcon({ className, ...props }: IconProps) {
       xmlns="http://www.w3.org/2000/svg"
       width="24"
       height="24"
-      viewBox="0 0 800 800"
+      viewBox="165.29 165.29 469.43 469.43"
       fill="currentColor"
       className={className}
       {...props}
