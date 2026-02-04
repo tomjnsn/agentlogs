@@ -52,6 +52,7 @@ const toolCallMessageSchema = z.object({
   toolName: z.string().nullable(),
   input: z.unknown().optional(),
   output: z.unknown().optional(),
+  images: z.array(imageReferenceSchema).optional(),
   error: z.string().optional(),
   isError: z.union([z.boolean(), z.string()]).optional(),
   id: z.string().optional(),

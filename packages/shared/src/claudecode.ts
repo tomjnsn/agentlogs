@@ -1167,6 +1167,49 @@ function sanitizeImagesInValue(value: unknown, blobs: Map<string, TranscriptBlob
   return value;
 }
 
+/**
+ * Extract image references from a sanitized value.
+ * Looks for { type: "image", source: { type: "sha256", sha256, mediaType } } objects.
+ */
+function extractImageReferencesFromValue(value: unknown): Array<{ sha256: string; mediaType: string }> {
+  const images: Array<{ sha256: string; mediaType: string }> = [];
+
+  function traverse(v: unknown): void {
+    if (v === null || v === undefined) return;
+
+    if (Array.isArray(v)) {
+      for (const item of v) {
+        traverse(item);
+      }
+      return;
+    }
+
+    if (typeof v === "object") {
+      const obj = v as Record<string, unknown>;
+
+      // Check if this is a sanitized image reference
+      if (obj.type === "image" && obj.source && typeof obj.source === "object") {
+        const source = obj.source as Record<string, unknown>;
+        if (source.type === "sha256" && typeof source.sha256 === "string") {
+          images.push({
+            sha256: source.sha256,
+            mediaType: typeof source.mediaType === "string" ? source.mediaType : "image/unknown",
+          });
+          return;
+        }
+      }
+
+      // Recursively check object properties
+      for (const val of Object.values(obj)) {
+        traverse(val);
+      }
+    }
+  }
+
+  traverse(value);
+  return images;
+}
+
 function calculateCostFromUsageDetails(
   usageDetails: ClaudeUsageDetail[],
   pricingData: Record<string, LiteLLMModelPricing> | undefined,
@@ -1521,7 +1564,15 @@ function convertTranscriptToMessages(transcript: ClaudeMessageRecord[]): Convert
           const toolCallMessage = messages[linkedTool.index] as (typeof messages)[number] & {
             type: "tool-call";
           };
-          toolCallMessage.output = sanitizeImagesInValue(result.output, blobs);
+          const sanitizedOutput = sanitizeImagesInValue(result.output, blobs);
+          toolCallMessage.output = sanitizedOutput;
+
+          // Extract images from sanitized output and add to message
+          const outputImages = extractImageReferencesFromValue(sanitizedOutput);
+          if (outputImages.length > 0) {
+            (toolCallMessage as typeof toolCallMessage & { images?: typeof outputImages }).images = outputImages;
+          }
+
           if (result.error) {
             toolCallMessage.error = result.error;
           }

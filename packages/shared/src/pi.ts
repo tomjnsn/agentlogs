@@ -588,8 +588,11 @@ function convertMessageEntry(entry: PiMessageEntry, state: ConversionState): voi
       const toolCallIndex = state.toolCallsById.get(msg.toolCallId);
       if (toolCallIndex !== undefined) {
         const toolCall = state.messages[toolCallIndex] as UnifiedTranscriptMessage & { type: "tool-call" };
-        const output = sanitizeToolOutput(msg.toolName, msg.content, msg.details, cwd);
+        const { output, images } = sanitizeToolOutput(msg.toolName, msg.content, msg.details, cwd, state.blobs);
         (toolCall as Record<string, unknown>).output = output;
+        if (images.length > 0) {
+          (toolCall as Record<string, unknown>).images = images;
+        }
         if (msg.isError) {
           (toolCall as Record<string, unknown>).isError = true;
         }
@@ -719,12 +722,21 @@ function sanitizeToolOutput(
   content: PiContentBlock[],
   details: unknown,
   cwd: string | null,
-): unknown {
-  // Extract text from content
+  blobs: Map<string, TranscriptBlob>,
+): { output: unknown; images: Array<{ sha256: string; mediaType: string }> } {
+  // Extract text and images from content
   const texts: string[] = [];
+  const images: Array<{ sha256: string; mediaType: string }> = [];
   for (const block of content) {
     if (block.type === "text" && block.text) {
       texts.push(block.text);
+    } else if (block.type === "image") {
+      const data = Buffer.from(block.data, "base64");
+      const sha256 = computeSha256(data);
+      if (!blobs.has(sha256)) {
+        blobs.set(sha256, { data, mediaType: block.mimeType });
+      }
+      images.push({ sha256, mediaType: block.mimeType });
     }
   }
 
@@ -734,24 +746,28 @@ function sanitizeToolOutput(
   if (toolName === "edit" && details && typeof details === "object") {
     const d = details as Record<string, unknown>;
     if (d.diff) {
-      return { diff: d.diff };
+      return { output: { diff: d.diff }, images };
     }
   }
 
-  // For Read tool, format as file object
+  // For Read tool, format as file object (only if we have text, not just images)
   if (toolName === "read" && textOutput) {
     const numLines = textOutput.split("\n").length;
     return {
-      file: {
-        content: textOutput,
-        numLines,
-        totalLines: numLines,
+      output: {
+        file: {
+          content: textOutput,
+          numLines,
+          totalLines: numLines,
+        },
       },
+      images,
     };
   }
 
   // Default: return text output or details
-  return textOutput || (cwd ? relativizePaths(details, cwd) : details);
+  const defaultOutput = textOutput || (cwd ? relativizePaths(details, cwd) : details);
+  return { output: defaultOutput, images };
 }
 
 function relativizePath(target: string, cwd: string): string {
@@ -775,7 +791,8 @@ function relativizePath(target: string, cwd: string): string {
     return `./${relative}`;
   }
 
-  return normalizedTarget;
+  // For paths outside cwd, replace home directory with ~
+  return formatCwdWithTilde(normalizedTarget);
 }
 
 // ============================================================================

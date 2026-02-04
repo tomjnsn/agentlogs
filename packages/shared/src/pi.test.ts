@@ -129,4 +129,61 @@ describe("convertPiTranscript", () => {
       expect(parts.length).toBeGreaterThan(5); // UUID has 5 parts, plus anchor
     });
   });
+
+  describe("image fixture", () => {
+    it("should convert session with image in tool result", () => {
+      const session = loadFixture("image.jsonl");
+      const result = convertPiTranscript(session);
+
+      expect(result).not.toBeNull();
+      expect(result!.transcript.source).toBe("pi");
+      expect(result!.transcript.id).toBe(session.header.id);
+    });
+
+    it("should extract blob from tool result", () => {
+      const session = loadFixture("image.jsonl");
+      const result = convertPiTranscript(session);
+
+      // Should have extracted the image blob
+      expect(result!.blobs.size).toBe(1);
+
+      // Get the blob entry
+      const [sha256, blob] = [...result!.blobs.entries()][0];
+      expect(sha256).toMatch(/^[a-f0-9]{64}$/);
+      expect(blob.mediaType).toBe("image/png");
+      expect(blob.data.length).toBeGreaterThan(0);
+    });
+
+    it("should have image reference in tool call", () => {
+      const session = loadFixture("image.jsonl");
+      const result = convertPiTranscript(session);
+
+      // Find the Read tool call
+      const readCall = result!.transcript.messages.find(
+        (m) => m.type === "tool-call" && (m as { toolName: string }).toolName === "Read",
+      );
+      expect(readCall).toBeTruthy();
+
+      // Should have images array with reference to the blob
+      const images = (readCall as { images?: Array<{ sha256: string; mediaType: string }> }).images;
+      expect(images).toBeTruthy();
+      expect(images!.length).toBe(1);
+      expect(images![0].sha256).toMatch(/^[a-f0-9]{64}$/);
+      expect(images![0].mediaType).toBe("image/png");
+    });
+
+    it("should have agent response about the image", () => {
+      const session = loadFixture("image.jsonl");
+      const result = convertPiTranscript(session);
+
+      // Find agent message mentioning OpenAI logo
+      const agentMessages = result!.transcript.messages.filter((m) => m.type === "agent");
+      expect(agentMessages.length).toBeGreaterThan(0);
+
+      const hasOpenAIMention = agentMessages.some((m) =>
+        (m as { text: string }).text?.toLowerCase().includes("openai"),
+      );
+      expect(hasOpenAIMention).toBe(true);
+    });
+  });
 });

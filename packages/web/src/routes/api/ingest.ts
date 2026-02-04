@@ -394,12 +394,14 @@ export const Route = createFileRoute("/api/ingest")({
             ? { visibility: clientVisibility, sharedWithTeamId: null }
             : await getDefaultVisibility(db, repoDbId, repoId, userId);
 
-          // Extract first user message's first image for preview thumbnail
-          const firstUserWithImage = unifiedTranscript.messages.find(
-            (m) => m.type === "user" && m.images && m.images.length > 0,
+          // Extract first image for preview thumbnail (from user message or tool-call)
+          const firstMessageWithImage = unifiedTranscript.messages.find(
+            (m) => (m.type === "user" || m.type === "tool-call") && m.images && m.images.length > 0,
           );
           const previewBlobSha256 =
-            firstUserWithImage?.type === "user" ? (firstUserWithImage.images?.[0]?.sha256 ?? null) : null;
+            firstMessageWithImage && "images" in firstMessageWithImage
+              ? (firstMessageWithImage.images?.[0]?.sha256 ?? null)
+              : null;
 
           const metadata = {
             preview: unifiedTranscript.preview,
@@ -611,7 +613,8 @@ function extractBlobReferences(transcript: {
 }): string[] {
   const sha256s: string[] = [];
   for (const message of transcript.messages) {
-    if (message.type === "user" && message.images) {
+    // Check images on user messages and tool-call messages
+    if ((message.type === "user" || message.type === "tool-call") && message.images) {
       for (const image of message.images) {
         sha256s.push(image.sha256);
       }

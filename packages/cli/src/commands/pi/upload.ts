@@ -7,7 +7,7 @@
 import { existsSync, readFileSync, readdirSync } from "fs";
 import { join, basename } from "path";
 import { homedir } from "os";
-import { convertPiTranscript, type PiSessionEntry, type PiSessionHeader } from "@agentlogs/shared";
+import { convertPiTranscript, type PiSessionEntry, type PiSessionHeader, type UploadBlob } from "@agentlogs/shared";
 import { LiteLLMPricingFetcher } from "@agentlogs/shared/pricing";
 import { resolveGitContext } from "@agentlogs/shared/claudecode";
 import { uploadUnifiedToAllEnvs } from "../../lib/perform-upload";
@@ -198,6 +198,16 @@ export async function piUploadCommand(sessionIdOrPath?: string): Promise<void> {
     process.exit(1);
   }
 
+  // Convert blobs Map to UploadBlob array
+  const uploadBlobs: UploadBlob[] = [];
+  for (const [sha256, blob] of result.blobs) {
+    uploadBlobs.push({
+      sha256,
+      data: new Uint8Array(blob.data),
+      mediaType: blob.mediaType,
+    });
+  }
+
   // Upload
   console.log("Uploading...");
   const uploadResult = await uploadUnifiedToAllEnvs({
@@ -205,6 +215,7 @@ export async function piUploadCommand(sessionIdOrPath?: string): Promise<void> {
     sessionId: sessionData.header.id,
     cwd,
     rawTranscript: JSON.stringify(sessionData),
+    blobs: uploadBlobs.length > 0 ? uploadBlobs : undefined,
   });
 
   // Handle results

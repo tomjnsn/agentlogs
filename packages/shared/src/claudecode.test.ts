@@ -1298,6 +1298,12 @@ describe("convertClaudeCodeFile", () => {
             },
             {
               "id": "msg_01GdcnSwUkXNbiDskvwoAAug",
+              "images": [
+                {
+                  "mediaType": "image/png",
+                  "sha256": "13aed6cfe60716c6fc987f11f73b8e200937a08fd927f69836d4a99665694e00",
+                },
+              ],
               "input": {},
               "model": "claude-opus-4-5-20251101",
               "output": [

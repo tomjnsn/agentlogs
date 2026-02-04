@@ -1162,18 +1162,24 @@ function MessageBlock({ message, index, showDebugInfo, isPermalinked, onPermalin
     return <ThinkingBlock messageId={messageId} text={message.text} />;
   }
 
-  // Tool call - collapsible with icon
+  // Tool call - collapsible with icon, images displayed underneath
   if (message.type === "tool-call") {
+    // Use direct images array (pi format) or extract from output (claudecode format)
+    const toolImages = message.images ?? extractImageReferences(message.output);
     return (
-      <ToolCallBlock
-        messageId={messageId}
-        toolName={message.toolName}
-        input={message.input}
-        output={message.output}
-        error={message.error}
-        isError={message.isError}
-        showDebugInfo={showDebugInfo}
-      />
+      <div className={toolImages.length > 0 ? "flex flex-col gap-3" : undefined}>
+        <ToolCallBlock
+          messageId={messageId}
+          toolName={message.toolName}
+          input={message.input}
+          output={message.output}
+          images={message.images}
+          error={message.error}
+          isError={message.isError}
+          showDebugInfo={showDebugInfo}
+        />
+        {toolImages.length > 0 && <ImageGallery images={toolImages} />}
+      </div>
     );
   }
 
@@ -1326,6 +1332,7 @@ interface ToolCallBlockProps {
   toolName: string | null;
   input: unknown;
   output: unknown;
+  images?: ImageReference[];
   error?: string;
   isError?: boolean | string;
   showDebugInfo?: boolean;
@@ -1401,14 +1408,23 @@ function AdminDebugSection({ input, output, error }: { input: unknown; output: u
   );
 }
 
-function ToolCallBlock({ messageId, toolName, input, output, error, isError, showDebugInfo }: ToolCallBlockProps) {
+function ToolCallBlock({
+  messageId,
+  toolName,
+  input,
+  output,
+  images,
+  error,
+  isError,
+  showDebugInfo,
+}: ToolCallBlockProps) {
   const Icon = getToolIcon(toolName);
   const description = getToolDescription(toolName, input);
   const displayName = getToolDisplayName(toolName);
 
-  // Extract images from input/output
+  // Extract images from input/output (for claudecode format) or use direct images prop (for pi format)
   const inputImages = extractImageReferences(input);
-  const outputImages = extractImageReferences(output);
+  const outputImages = images ?? extractImageReferences(output);
 
   const inputObj = input as Record<string, unknown> | undefined;
   const outputObj = output as Record<string, unknown> | undefined;
@@ -1851,9 +1867,6 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, sho
       }
     }
 
-    // Get images from output
-    const taskOutputImages = extractImageReferences(output);
-
     return (
       <div className="flex flex-col gap-3">
         <Collapsible id={messageId} defaultOpen={false} className={collapsibleClassName}>
@@ -1898,7 +1911,6 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, sho
             </div>
           </CollapsibleContent>
         </Collapsible>
-        {taskOutputImages.length > 0 && <ImageGallery images={taskOutputImages} />}
       </div>
     );
   }
@@ -2121,7 +2133,6 @@ function ToolCallBlock({ messageId, toolName, input, output, error, isError, sho
             <div>
               <div className="mb-1.5 text-xs font-medium text-muted-foreground">Output</div>
               <CodeBlock content={JSON.stringify(replaceImageReferencesForDisplay(output), null, 2)} language="json" />
-              <ImageGallery images={outputImages} />
             </div>
           )}
           {error && (
