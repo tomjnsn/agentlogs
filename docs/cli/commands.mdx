@@ -47,7 +47,7 @@ Synced transcripts: 42
 
 ### upload
 
-Interactively browse and upload transcripts from any agent (Claude Code, Codex, OpenCode).
+Interactively browse and upload transcripts from any agent (Claude Code, Codex, OpenCode, Pi).
 
 ```bash
 npx agentlogs upload [directory] [options]
@@ -59,7 +59,7 @@ npx agentlogs upload [directory] [options]
 
 **Options:**
 
-- `-s, --source <source>` - Filter by source: `claude-code`, `codex`, or `opencode`
+- `-s, --source <source>` - Filter by source: `claude-code`, `codex`, `opencode`, or `pi`
 - `-l, --latest` - Upload the most recent transcript without showing picker
 
 **Behavior:**
@@ -267,6 +267,59 @@ Reads hook data from stdin and outputs JSON response. This command handles:
 - **session.idle** - Uploads the complete transcript
 
 This command is meant to be called from the OpenCode plugin, not manually.
+
+---
+
+## Pi
+
+### pi upload
+
+Upload a Pi session transcript.
+
+```bash
+npx agentlogs pi upload [sessionIdOrPath]
+```
+
+**Arguments:**
+
+- `sessionIdOrPath` - Optional. Session ID or path to session file
+
+**Behavior:**
+
+- With no argument: lists recent Pi sessions
+- With session ID: finds and uploads that session
+- With file path: uploads the specified JSONL file
+
+Sessions are read from `~/.pi/agent/sessions/`.
+
+**Examples:**
+
+```bash
+# List recent sessions
+npx agentlogs pi upload
+
+# Upload by session ID (partial match works)
+npx agentlogs pi upload abc123
+
+# Upload by file path
+npx agentlogs pi upload ~/.pi/agent/sessions/--myproject--/2025-01-25_abc123.jsonl
+```
+
+### pi hook
+
+Hook entry point for Pi extension integration. Called automatically by the Pi extension.
+
+```bash
+npx agentlogs pi hook
+```
+
+Reads hook data from stdin and outputs JSON response. This command handles:
+
+- **tool_call** - Intercepts git commits to add transcript links
+- **tool_result** - Tracks commit metadata (SHA, branch, title)
+- **session_shutdown** - Uploads the complete transcript
+
+This command is meant to be called from the Pi extension, not manually.
 
 ---
 

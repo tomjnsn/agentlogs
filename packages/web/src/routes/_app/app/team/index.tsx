@@ -33,7 +33,7 @@ import {
   leaveTeam,
   removeMember,
 } from "../../../../lib/server-functions";
-import { ClaudeCodeIcon, CodexIcon, OpenCodeIcon } from "../../../../components/icons/source-icons";
+import { ClaudeCodeIcon, CodexIcon, OpenCodeIcon, PiIcon } from "../../../../components/icons/source-icons";
 import { getModelDisplayName } from "@agentlogs/shared/models";
 
 type PeriodDays = 1 | 7 | 30 | 90 | 365;
@@ -116,6 +116,8 @@ function getAgentIcon(agent: string | null) {
       return CodexIcon;
     case "opencode":
       return OpenCodeIcon;
+    case "pi":
+      return PiIcon;
     default:
       return null;
   }

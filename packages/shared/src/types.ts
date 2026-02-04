@@ -2,7 +2,7 @@
 
 import type { UnifiedTranscript } from "./claudecode";
 
-export type TranscriptSource = "claude-code" | "codex" | "opencode";
+export type TranscriptSource = "claude-code" | "codex" | "opencode" | "pi";
 
 /**
  * Blob data ready for upload (binary + metadata)

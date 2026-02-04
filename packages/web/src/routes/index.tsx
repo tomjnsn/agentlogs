@@ -8,7 +8,15 @@ import { Faq, FAQsTwoColumnAccordion } from "../components/oatmeal/sections/faqs
 import { FeatureThreeColumnWithDemos, Features } from "../components/oatmeal/sections/features-three-column-with-demos";
 import { FooterLink, FooterSimple, SocialLink } from "../components/oatmeal/sections/footer-simple";
 import { HeroLeftAlignedWithDemo } from "../components/oatmeal/sections/hero-left-aligned-with-demo";
-import { ClaudeCodeIcon, CodexIcon, DiscordIcon, Logo, OpenCodeIcon, XIcon } from "../components/icons/source-icons";
+import {
+  ClaudeCodeIcon,
+  CodexIcon,
+  DiscordIcon,
+  Logo,
+  OpenCodeIcon,
+  PiIcon,
+  XIcon,
+} from "../components/icons/source-icons";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../components/ui/tooltip";
 
 export const Route = createFileRoute("/")({
@@ -62,7 +70,7 @@ function HeroSection() {
               <TooltipTrigger asChild>
                 <span
                   data-icon="claude"
-                  className="isolate inline-flex size-14 cursor-pointer items-center justify-center rounded-full border-4 border-neutral-950 bg-[#e87b35] transition-transform duration-200 group-has-[[data-icon=codex]:hover]/icons:-translate-x-1.5 group-has-[[data-icon=opencode]:hover]/icons:-translate-x-1.5"
+                  className="isolate inline-flex size-14 cursor-pointer items-center justify-center rounded-full border-4 border-neutral-950 bg-[#e87b35] transition-transform duration-200 group-has-[[data-icon=codex]:hover]/icons:-translate-x-1.5 group-has-[[data-icon=opencode]:hover]/icons:-translate-x-1.5 group-has-[[data-icon=pi]:hover]/icons:-translate-x-1.5"
                 >
                   <ClaudeCodeIcon className="size-7 text-white" />
                 </span>
@@ -73,7 +81,7 @@ function HeroSection() {
               <TooltipTrigger asChild>
                 <span
                   data-icon="codex"
-                  className="isolate -ml-2 inline-flex size-14 cursor-pointer items-center justify-center rounded-full border-4 border-neutral-950 bg-black transition-transform duration-200 group-has-[[data-icon=claude]:hover]/icons:translate-x-1.5 group-has-[[data-icon=opencode]:hover]/icons:-translate-x-1.5"
+                  className="isolate -ml-2 inline-flex size-14 cursor-pointer items-center justify-center rounded-full border-4 border-neutral-950 bg-black transition-transform duration-200 group-has-[[data-icon=claude]:hover]/icons:translate-x-1.5 group-has-[[data-icon=opencode]:hover]/icons:-translate-x-1.5 group-has-[[data-icon=pi]:hover]/icons:-translate-x-1.5"
                 >
                   <CodexIcon className="size-7 text-white" />
                 </span>
@@ -84,12 +92,23 @@ function HeroSection() {
               <TooltipTrigger asChild>
                 <span
                   data-icon="opencode"
-                  className="isolate -ml-2 inline-flex size-14 cursor-pointer items-center justify-center rounded-full border-4 border-neutral-950 bg-white transition-transform duration-200 group-has-[[data-icon=claude]:hover]/icons:translate-x-1.5 group-has-[[data-icon=codex]:hover]/icons:translate-x-1.5"
+                  className="isolate -ml-2 inline-flex size-14 cursor-pointer items-center justify-center rounded-full border-4 border-neutral-950 bg-white transition-transform duration-200 group-has-[[data-icon=claude]:hover]/icons:translate-x-1.5 group-has-[[data-icon=codex]:hover]/icons:translate-x-1.5 group-has-[[data-icon=pi]:hover]/icons:-translate-x-1.5"
                 >
                   <OpenCodeIcon className="size-7 text-black" />
                 </span>
               </TooltipTrigger>
               <TooltipContent side="bottom">OpenCode</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  data-icon="pi"
+                  className="isolate -ml-2 inline-flex size-14 cursor-pointer items-center justify-center rounded-full border-4 border-neutral-950 bg-black transition-transform duration-200 group-has-[[data-icon=claude]:hover]/icons:translate-x-1.5 group-has-[[data-icon=codex]:hover]/icons:translate-x-1.5 group-has-[[data-icon=opencode]:hover]/icons:translate-x-1.5"
+                >
+                  <PiIcon className="size-7 text-white" />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Pi</TooltipContent>
             </Tooltip>
           </span>
         </>

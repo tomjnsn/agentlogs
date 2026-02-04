@@ -3,6 +3,31 @@ title: "Changelog"
 description: "Product updates and announcements"
 ---
 
+<Update label="February 4, 2025">
+## Pi Support
+
+Added support for [Pi](https://github.com/mariozechner/pi-coding-agent) transcripts.
+
+- **Automatic sync**: Transcripts upload after each turn and on session exit
+- **Git commit enhancement**: Automatically adds transcript links to commit messages
+- **Branch-aware**: Properly handles Pi's conversation branching feature
+- **Interactive upload**: Pi sessions now appear in `npx agentlogs upload`
+
+Install the extension:
+```bash
+npm install -g @agentlogs/pi
+```
+
+Add to your Pi settings (`~/.pi/agent/settings.json`):
+```json
+{
+  "extensions": ["@agentlogs/pi"]
+}
+```
+
+See the [Pi integration guide](/agents/pi) for full setup instructions.
+</Update>
+
 <Update label="February 1, 2025">
 ## Interactive Upload Command
 

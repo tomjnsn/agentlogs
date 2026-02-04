@@ -63,6 +63,7 @@ const NON_PROMPT_PREFIXES = [
 const DEFAULT_CLAUDE_HOME = join(homedir(), ".claude");
 const DEFAULT_CODEX_HOME = join(homedir(), ".codex");
 const DEFAULT_OPENCODE_STORAGE = join(homedir(), ".local", "share", "opencode", "storage");
+const DEFAULT_PI_SESSIONS = join(homedir(), ".pi", "agent", "sessions");
 
 /**
  * Discover Claude Code transcripts from ~/.claude/projects/
@@ -244,10 +245,69 @@ export async function discoverOpenCodeSessions(options?: { limit?: number }): Pr
 }
 
 /**
+ * Discover Pi sessions from ~/.pi/agent/sessions/
+ */
+export async function discoverPiSessions(options?: { limit?: number }): Promise<DiscoveredTranscript[]> {
+  const limit = options?.limit ?? DEFAULT_LIMIT;
+  const sessionsRoot = process.env.PI_SESSIONS ?? DEFAULT_PI_SESSIONS;
+
+  if (!(await isDirectory(sessionsRoot))) {
+    return [];
+  }
+
+  const allTranscripts: DiscoveredTranscript[] = [];
+
+  try {
+    const projectDirs = await fs.readdir(sessionsRoot, { withFileTypes: true });
+
+    for (const projectDir of projectDirs) {
+      if (!projectDir.isDirectory()) continue;
+
+      const projectPath = join(sessionsRoot, projectDir.name);
+
+      try {
+        const files = await fs.readdir(projectPath, { withFileTypes: true });
+
+        for (const file of files) {
+          if (!file.isFile() || !file.name.endsWith(".jsonl")) continue;
+
+          const filePath = join(projectPath, file.name);
+
+          try {
+            const info = await parsePiSession(filePath);
+            if (!info) continue;
+
+            allTranscripts.push({
+              id: info.sessionId,
+              source: "pi",
+              path: filePath,
+              timestamp: info.timestamp,
+              preview: info.preview,
+              cwd: info.cwd,
+              repoId: null,
+              stats: null,
+            });
+          } catch {
+            // Skip invalid files
+          }
+        }
+      } catch {
+        // Skip inaccessible project directories
+      }
+    }
+  } catch {
+    // Directory not accessible
+  }
+
+  // Sort by timestamp descending, then apply limit
+  return allTranscripts.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()).slice(0, limit);
+}
+
+/**
  * Discover transcripts from all sources
  */
 export async function discoverAllTranscripts(options?: DiscoveryOptions): Promise<DiscoveredTranscript[]> {
-  const sources = options?.sources ?? ["claude-code", "codex", "opencode"];
+  const sources = options?.sources ?? ["claude-code", "codex", "opencode", "pi"];
   const limit = options?.limit ?? DEFAULT_LIMIT;
   const cwdFilter = options?.cwd ? resolve(options.cwd) : null;
 
@@ -259,6 +319,7 @@ export async function discoverAllTranscripts(options?: DiscoveryOptions): Promis
     sources.includes("claude-code") ? discoverClaudeCodeTranscripts({ limit: perSourceLimit }) : [],
     sources.includes("codex") ? discoverCodexTranscripts({ limit: perSourceLimit }) : [],
     sources.includes("opencode") ? discoverOpenCodeSessions({ limit: perSourceLimit }) : [],
+    sources.includes("pi") ? discoverPiSessions({ limit: perSourceLimit }) : [],
   ]);
 
   let allTranscripts: DiscoveredTranscript[] = [];
@@ -705,4 +766,129 @@ async function parseOpenCodeSession(filePath: string): Promise<OpenCodeSessionIn
     preview: title ? truncatePreview(title) : null,
     stats,
   };
+}
+
+// --- Pi parsing ---
+
+interface PiSessionInfo {
+  sessionId: string;
+  timestamp: Date;
+  cwd: string | null;
+  preview: string | null;
+}
+
+async function parsePiSession(filePath: string): Promise<PiSessionInfo | null> {
+  const fileHandle = await fs.open(filePath, "r");
+  try {
+    const stat = await fileHandle.stat();
+    const fileSize = stat.size;
+
+    let sessionId: string | null = null;
+    let headerTimestamp: Date | null = null;
+    let cwd: string | null = null;
+    let preview: string | null = null;
+    let latestTimestamp: Date | null = null;
+
+    // Read head of file for header and first user message
+    const headBuffer = Buffer.alloc(Math.min(HEAD_READ_SIZE, fileSize));
+    await fileHandle.read(headBuffer, 0, headBuffer.length, 0);
+    const headContent = headBuffer.toString("utf8");
+
+    const lines = headContent.split(/\r?\n/);
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line.trim()) continue;
+      if (!line.endsWith("}")) break; // Stop at incomplete line
+
+      try {
+        const record = JSON.parse(line) as Record<string, unknown>;
+
+        // First line is the header
+        if (i === 0 && record.id && record.timestamp) {
+          sessionId = record.id as string;
+          cwd = (record.cwd as string) ?? null;
+          headerTimestamp = new Date(record.timestamp as string);
+          latestTimestamp = headerTimestamp;
+          continue;
+        }
+
+        // Track timestamps from entries
+        if (record.timestamp) {
+          const ts = new Date(record.timestamp as string);
+          if (!Number.isNaN(ts.getTime())) {
+            if (!latestTimestamp || ts > latestTimestamp) {
+              latestTimestamp = ts;
+            }
+          }
+        }
+
+        // Extract preview from first user message
+        if (!preview && record.type === "message") {
+          const message = record.message as Record<string, unknown> | undefined;
+          if (message?.role === "user") {
+            const content = message.content;
+            if (Array.isArray(content)) {
+              for (const part of content) {
+                if (part && typeof part === "object" && (part as Record<string, unknown>).type === "text") {
+                  const text = (part as Record<string, unknown>).text as string;
+                  if (text) {
+                    preview = truncatePreview(text);
+                    break;
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        // Stop early if we have what we need
+        if (sessionId && cwd && preview) break;
+      } catch {
+        continue;
+      }
+    }
+
+    // Read tail for latest timestamp
+    if (fileSize > HEAD_READ_SIZE) {
+      const tailOffset = Math.max(0, fileSize - TAIL_READ_SIZE);
+      const tailBuffer = Buffer.alloc(Math.min(TAIL_READ_SIZE, fileSize - tailOffset));
+      await fileHandle.read(tailBuffer, 0, tailBuffer.length, tailOffset);
+      const tailContent = tailBuffer.toString("utf8");
+
+      const tailLines = tailContent.split(/\r?\n/);
+      if (tailOffset > 0 && tailLines.length > 0) {
+        tailLines.shift(); // Remove potentially incomplete first line
+      }
+
+      for (const line of tailLines) {
+        if (!line.trim()) continue;
+
+        try {
+          const record = JSON.parse(line) as Record<string, unknown>;
+
+          if (record.timestamp) {
+            const ts = new Date(record.timestamp as string);
+            if (!Number.isNaN(ts.getTime())) {
+              if (!latestTimestamp || ts > latestTimestamp) {
+                latestTimestamp = ts;
+              }
+            }
+          }
+        } catch {
+          continue;
+        }
+      }
+    }
+
+    if (!sessionId) return null;
+
+    return {
+      sessionId,
+      timestamp: latestTimestamp ?? headerTimestamp ?? new Date(0),
+      cwd,
+      preview,
+    };
+  } finally {
+    await fileHandle.close();
+  }
 }

@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Globe, Loader2, Lock, MessageSquare, Search, Terminal } from "lucide-react";
-import { ClaudeCodeIcon, CodexIcon, GitHubIcon, OpenCodeIcon } from "../../../components/icons/source-icons";
+import { ClaudeCodeIcon, CodexIcon, GitHubIcon, OpenCodeIcon, PiIcon } from "../../../components/icons/source-icons";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getHomePageData, getTranscriptsPaginated } from "../../../lib/server-functions";
 import { useInfiniteScroll } from "../../../hooks/use-infinite-scroll";
@@ -130,6 +130,8 @@ function getSourceIcon(source: string, className?: string) {
       return <ClaudeCodeIcon className={className} />;
     case "opencode":
       return <OpenCodeIcon className={className} />;
+    case "pi":
+      return <PiIcon className={className} />;
     default:
       return <Terminal className={className} />;
   }

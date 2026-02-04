@@ -4,6 +4,7 @@ import { join } from "path";
 import { homedir } from "os";
 import { discoverAllTranscripts, type DiscoveredTranscript, type TranscriptSource } from "@agentlogs/shared";
 import { convertOpenCodeTranscript, type OpenCodeExport } from "@agentlogs/shared/opencode";
+import { convertPiTranscript, type PiSessionEntry, type PiSessionHeader } from "@agentlogs/shared";
 import { LiteLLMPricingFetcher } from "@agentlogs/shared/pricing";
 import { resolveGitContext } from "@agentlogs/shared/claudecode";
 import { pickTranscript } from "../tui/transcript-picker";
@@ -91,6 +92,8 @@ async function uploadTranscript(transcript: DiscoveredTranscript): Promise<boole
         return await uploadCodexTranscript(transcript);
       case "opencode":
         return await uploadOpenCodeTranscript(transcript);
+      case "pi":
+        return await uploadPiTranscript(transcript);
     }
   } catch (error) {
     console.error("");
@@ -191,6 +194,107 @@ async function uploadOpenCodeTranscript(transcript: DiscoveredTranscript): Promi
     }
     return false;
   }
+}
+
+async function uploadPiTranscript(transcript: DiscoveredTranscript): Promise<boolean> {
+  // Read the session file
+  const sessionData = readPiSession(transcript.path);
+
+  if (!sessionData) {
+    throw new Error(`Failed to read Pi session: ${transcript.path}`);
+  }
+
+  // Fetch pricing data
+  const pricingFetcher = new LiteLLMPricingFetcher();
+  const pricingData = await pricingFetcher.fetchModelPricing();
+  const pricing = Object.fromEntries(pricingData);
+
+  // Resolve git context
+  const cwd = sessionData.header.cwd ?? process.cwd();
+  const gitContext = await resolveGitContext(cwd, undefined);
+
+  if (gitContext?.repo) {
+    console.log(`Repository: ${gitContext.repo}`);
+  }
+
+  // Convert to unified format
+  console.log("Converting transcript...");
+  const result = convertPiTranscript(sessionData, {
+    pricing,
+    gitContext,
+    cwd,
+  });
+
+  if (!result) {
+    throw new Error("Failed to convert Pi transcript");
+  }
+
+  // Upload
+  console.log("Uploading...");
+  const uploadResult = await uploadUnifiedToAllEnvs({
+    unifiedTranscript: result.transcript,
+    sessionId: transcript.id,
+    cwd,
+    rawTranscript: JSON.stringify(sessionData),
+  });
+
+  if (uploadResult.skipped) {
+    console.log("");
+    console.log("Skipped: Repository not in allowlist");
+    return true;
+  }
+
+  if (uploadResult.anySuccess && uploadResult.id) {
+    console.log("");
+    console.log("Upload successful!");
+    console.log(`Transcript ID: ${uploadResult.id}`);
+
+    for (const envResult of uploadResult.results) {
+      if (envResult.success) {
+        const url = `${envResult.baseURL}/s/${uploadResult.id}`;
+        console.log(`View: ${url}`);
+      }
+    }
+    return true;
+  } else {
+    console.error("");
+    console.error("Upload failed:");
+    for (const envResult of uploadResult.results) {
+      if (!envResult.success && envResult.error) {
+        console.error(`  ${envResult.envName}: ${envResult.error}`);
+      }
+    }
+    return false;
+  }
+}
+
+/**
+ * Read a Pi session from a JSONL file
+ */
+function readPiSession(filePath: string): { header: PiSessionHeader; entries: PiSessionEntry[] } | null {
+  if (!existsSync(filePath)) {
+    return null;
+  }
+
+  const content = readFileSync(filePath, "utf-8");
+  const lines = content.split("\n").filter((l) => l.trim());
+
+  if (lines.length === 0) {
+    return null;
+  }
+
+  const header = JSON.parse(lines[0]) as PiSessionHeader;
+  const entries: PiSessionEntry[] = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    try {
+      entries.push(JSON.parse(lines[i]) as PiSessionEntry);
+    } catch {
+      // Skip malformed lines
+    }
+  }
+
+  return { header, entries };
 }
 
 /**

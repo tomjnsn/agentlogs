@@ -15,6 +15,14 @@ export {
   type OpenCodeSessionInfo,
   type OpenCodeToolState,
 } from "./opencode";
+export {
+  convertPiTranscript,
+  convertPiFile,
+  type ConvertPiOptions,
+  type PiSessionHeader,
+  type PiSessionEntry,
+  type PiAgentMessage,
+} from "./pi";
 export * from "./pricing";
 export * from "./transcripts";
 export * from "./redact";

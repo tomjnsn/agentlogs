@@ -63,6 +63,19 @@ function OpenCodeIcon() {
   );
 }
 
+// Pi icon
+function PiIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 800 800" fill="#a1a1aa">
+      <path
+        fillRule="evenodd"
+        d="M165.29 165.29H517.36V400H400V517.36H282.65V634.72H165.29ZM282.65 282.65V400H400V282.65Z"
+      />
+      <path d="M517.36 400H634.72V634.72H517.36Z" />
+    </svg>
+  );
+}
+
 // Get source icon component based on source string
 function SourceIcon({ source }: { source: string }) {
   switch (source) {
@@ -72,6 +85,8 @@ function SourceIcon({ source }: { source: string }) {
       return <CodexIcon />;
     case "opencode":
       return <OpenCodeIcon />;
+    case "pi":
+      return <PiIcon />;
     default:
       return null;
   }

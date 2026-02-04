@@ -134,7 +134,7 @@ export async function pickTranscript(transcripts: DiscoveredTranscript[]): Promi
     }));
 
     // Create header text
-    const header = new Text(chalk.gray("Select a transcript to upload (↑↓ navigate, Enter select, Esc cancel)\n"), 1);
+    const header = new Text(chalk.gray("Select a transcript to upload (↑↓ navigate, Enter select, Esc cancel)"), 1);
 
     // Create the select list
     const list = new SelectList(items, VISIBLE_ITEMS, theme);

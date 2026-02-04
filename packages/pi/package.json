@@ -1,0 +1,38 @@
+{
+  "name": "@agentlogs/pi",
+  "version": "0.0.1",
+  "description": "AgentLogs extension for Pi - automatically captures and uploads AI coding session transcripts",
+  "keywords": [
+    "agentlogs",
+    "ai-coding",
+    "extension",
+    "pi",
+    "transcript"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/agentlogs/agentlogs.git",
+    "directory": "packages/pi"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "publishConfig": {
+    "access": "public",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts"
+  },
+  "scripts": {
+    "build": "bun build ./src/index.ts --outdir ./dist --target node --define 'process.env.NODE_ENV=\"production\"' --minify",
+    "prepublishOnly": "bun run build",
+    "check": "tsgo --project tsconfig.json"
+  },
+  "peerDependencies": {
+    "bun": ">=1.0.0"
+  }
+}

@@ -1,0 +1,124 @@
+---
+title: Pi
+description: Set up AgentLogs with Pi for automatic transcript capture
+icon: /icons/pi.svg
+---
+
+# Pi Integration
+
+[Pi](https://github.com/mariozechner/pi-coding-agent) is an open-source AI coding agent. AgentLogs provides an extension for Pi that automatically uploads transcripts and enhances git commits with transcript links.
+
+## Features
+
+- **Automatic sync** - Transcripts are uploaded automatically when you exit a session
+- **Git commit enhancement** - Automatically adds transcript links to git commit messages
+- **Commit tracking** - Tracks which commits were made during each session
+- **Branch-aware** - Properly handles Pi's conversation branching feature
+
+## Installation
+
+### 1. Authentication
+
+Run the following command in the terminal:
+
+```bash
+npx agentlogs login
+```
+
+### 2. Install the Extension
+
+```bash
+npm install -g @agentlogs/pi
+```
+
+### 3. Configure Pi
+
+Add the extension to your Pi settings. You can do this globally or per-project:
+
+**Global** (`~/.pi/agent/settings.json`):
+
+```json
+{
+  "extensions": ["@agentlogs/pi"]
+}
+```
+
+**Project-local** (`.pi/settings.json`):
+
+```json
+{
+  "extensions": ["@agentlogs/pi"]
+}
+```
+
+The extension will be loaded automatically when you start Pi.
+
+## How It Works
+
+The extension is lightweight and shells out to the AgentLogs CLI for all processing:
+
+### Transcript Upload
+
+When you exit a Pi session (Ctrl+D), the extension triggers the CLI to upload the transcript. Transcripts are automatically deduplicated server-side based on session ID.
+
+### Git Commit Enhancement
+
+When a git commit is detected:
+
+1. The extension intercepts the command before execution
+2. Generates a stable transcript ID
+3. Appends a transcript link to the commit message
+4. Uploads a partial transcript so the link works immediately
+
+**Example commit message:**
+
+```
+Fix authentication bug
+
+🔮 View transcript: https://agentlogs.ai/s/abc123xyz
+```
+
+### Commit Tracking
+
+After a git commit completes, the CLI extracts the commit SHA, branch, and title, then associates them with the transcript for easy navigation.
+
+### Branch Handling
+
+Pi supports conversation branching via the `/tree` command. The extension handles this by:
+
+- Generating unique transcript IDs for each branch
+- Only uploading the current branch (from leaf to root)
+- Preserving links to parent branches when you navigate
+
+| Session Type | Transcript ID              |
+| ------------ | -------------------------- |
+| Linear       | `sessionId`                |
+| Branched     | `sessionId-branchAnchorId` |
+
+## Manual Upload
+
+You can manually upload transcripts using the CLI:
+
+```bash
+# List recent Pi sessions
+npx agentlogs pi upload
+
+# Upload a specific session by ID
+npx agentlogs pi upload <sessionId>
+
+# Upload from a session file path
+npx agentlogs pi upload /path/to/session.jsonl
+
+# Interactive picker (all agents)
+npx agentlogs upload --source pi
+```
+
+Sessions are read from `~/.pi/agent/sessions/`.
+
+## Debug Logging
+
+Debug logs are written to `/tmp/agentlogs-pi.log`. To watch logs in real-time:
+
+```bash
+tail -f /tmp/agentlogs-pi.log
+```

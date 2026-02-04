@@ -17,6 +17,9 @@ import { codexUploadCommand } from "./commands/codex/upload";
 // OpenCode commands
 import { opencodeUploadCommand } from "./commands/opencode/upload";
 import { hookCommand as openCodeHookCommand } from "./commands/opencode/hook";
+// Pi commands
+import { piUploadCommand } from "./commands/pi/upload";
+import { piHookCommand } from "./commands/pi/hook";
 // Service and MCP commands
 import { startService, stopService, serviceStatus, serviceLogs } from "./commands/service";
 import { mcpCommand } from "./commands/mcp";
@@ -53,7 +56,7 @@ program
 program
   .command("upload")
   .argument("[directory]", "Filter transcripts to this directory")
-  .option("-s, --source <source>", "Filter by source: claude-code, codex, or opencode")
+  .option("-s, --source <source>", "Filter by source: claude-code, codex, opencode, or pi")
   .option("-l, --latest", "Upload the most recent transcript without picker")
   .description("Interactively select and upload a transcript")
   .action(async (directory: string | undefined, options: { source?: string; latest?: boolean }) => {
@@ -103,6 +106,21 @@ opencode
   .description("Process OpenCode hook input from stdin")
   .action(async () => {
     await openCodeHookCommand();
+  });
+
+const pi = program.command("pi").description("Pi transcript utilities for AgentLogs");
+
+pi.command("upload")
+  .argument("[sessionIdOrPath]", "Pi session ID or path to session file")
+  .description("Upload a Pi session transcript to AgentLogs")
+  .action(async (sessionIdOrPath?: string) => {
+    await piUploadCommand(sessionIdOrPath);
+  });
+
+pi.command("hook")
+  .description("Process Pi hook input from stdin")
+  .action(async () => {
+    await piHookCommand();
   });
 
 claudecode

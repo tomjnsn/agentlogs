@@ -49,7 +49,14 @@ import {
   Trash2,
   Users,
 } from "lucide-react";
-import { ClaudeCodeIcon, CodexIcon, GitHubIcon, MCPIcon, OpenCodeIcon } from "../../../components/icons/source-icons";
+import {
+  ClaudeCodeIcon,
+  CodexIcon,
+  GitHubIcon,
+  MCPIcon,
+  OpenCodeIcon,
+  PiIcon,
+} from "../../../components/icons/source-icons";
 import { CodeBlock, DiffViewer, FileViewer, GrepContentViewer, ShellOutput } from "../../../components/diff-viewer";
 import { useEffect, useRef, useState } from "react";
 import { MarkdownRenderer } from "../../../components/markdown-renderer";
@@ -157,6 +164,8 @@ function getSourceIcon(source: string, className?: string) {
       return <ClaudeCodeIcon className={className} />;
     case "opencode":
       return <OpenCodeIcon className={className} />;
+    case "pi":
+      return <PiIcon className={className} />;
     default:
       return <Terminal className={className} />;
   }
