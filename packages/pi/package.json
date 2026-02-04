@@ -1,6 +1,6 @@
 {
   "name": "@agentlogs/pi",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "AgentLogs extension for Pi - automatically captures and uploads AI coding session transcripts",
   "keywords": [
     "agentlogs",
