@@ -1,6 +1,6 @@
 {
   "name": "@agentlogs/opencode",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "AgentLogs plugin for OpenCode - automatically captures and uploads AI coding session transcripts",
   "keywords": [
     "agentlogs",
@@ -16,8 +16,7 @@
     "directory": "packages/opencode"
   },
   "files": [
-    "dist",
-    "src"
+    "dist"
   ],
   "type": "module",
   "main": "src/index.ts",
