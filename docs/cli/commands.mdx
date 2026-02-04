@@ -317,6 +317,7 @@ Reads hook data from stdin and outputs JSON response. This command handles:
 
 - **tool_call** - Intercepts git commits to add transcript links
 - **tool_result** - Tracks commit metadata (SHA, branch, title)
+- **agent_end** - Uploads the transcript after each agent turn completes
 - **session_shutdown** - Uploads the complete transcript
 
 This command is meant to be called from the Pi extension, not manually.

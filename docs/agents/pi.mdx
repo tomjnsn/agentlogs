@@ -6,7 +6,7 @@ icon: /icons/pi.svg
 
 # Pi Integration
 
-[Pi](https://github.com/mariozechner/pi-coding-agent) is an open-source AI coding agent. AgentLogs provides an extension for Pi that automatically uploads transcripts and enhances git commits with transcript links.
+[Pi](https://pi.dev) is an open-source AI coding agent. AgentLogs provides an extension for Pi that automatically uploads transcripts and enhances git commits with transcript links.
 
 ## Features
 
@@ -88,21 +88,12 @@ Pi supports conversation branching via the `/tree` command. The extension handle
 
 - Generating unique transcript IDs for each branch
 - Only uploading the current branch (from leaf to root)
-- Preserving links to parent branches when you navigate
-
-| Session Type | Transcript ID              |
-| ------------ | -------------------------- |
-| Linear       | `sessionId`                |
-| Branched     | `sessionId-branchAnchorId` |
 
 ## Manual Upload
 
 You can manually upload transcripts using the CLI:
 
 ```bash
-# List recent Pi sessions
-npx agentlogs pi upload
-
 # Upload a specific session by ID
 npx agentlogs pi upload <sessionId>
 
@@ -114,11 +105,3 @@ npx agentlogs upload --source pi
 ```
 
 Sessions are read from `~/.pi/agent/sessions/`.
-
-## Debug Logging
-
-Debug logs are written to `/tmp/agentlogs-pi.log`. To watch logs in real-time:
-
-```bash
-tail -f /tmp/agentlogs-pi.log
-```
