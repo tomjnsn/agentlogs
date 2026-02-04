@@ -16,6 +16,7 @@
     "./opencode": "./src/opencode.ts",
     "./pricing": "./src/pricing.ts",
     "./redact": "./src/redact.ts",
+    "./redact-sensitive-files": "./src/redact-sensitive-files.ts",
     "./models": "./src/models.ts"
   },
   "scripts": {

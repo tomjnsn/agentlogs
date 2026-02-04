@@ -5,6 +5,7 @@ import type { TranscriptSource, TranscriptVisibility, UploadBlob, UploadPayload 
 import { convertClaudeCodeTranscript, resolveGitContext, type UnifiedTranscript } from "@agentlogs/shared/claudecode";
 import { convertCodexTranscript } from "@agentlogs/shared/codex";
 import { redactSecretsDeep, redactSecretsPreserveLength } from "@agentlogs/shared/redact";
+import { redactSensitiveFilesInTranscript } from "@agentlogs/shared/redact-sensitive-files";
 import { LiteLLMPricingFetcher } from "@agentlogs/shared/pricing";
 import { uploadTranscript } from "@agentlogs/shared/upload";
 import type { UploadOptions } from "@agentlogs/shared/upload";
@@ -100,8 +101,11 @@ export async function performUpload(
   // Now do expensive conversion (pass pre-parsed data)
   const converted = await convertTranscriptFile(params, parsed);
 
-  // Redact secrets from transcript messages
-  const redactedTranscript = redactSecretsDeep(converted.unifiedTranscript);
+  // Redact sensitive file contents (e.g., .env, .zshrc) before pattern-based secret redaction
+  const fileRedactedTranscript = redactSensitiveFilesInTranscript(converted.unifiedTranscript);
+
+  // Redact secrets from transcript messages using pattern matching
+  const redactedTranscript = redactSecretsDeep(fileRedactedTranscript);
 
   // Compute sha256 from redacted unified transcript
   const unifiedJson = JSON.stringify(redactedTranscript);
@@ -452,8 +456,11 @@ export async function uploadUnifiedToAllEnvs(params: UploadUnifiedParams): Promi
     throw new Error("No authenticated environments found. Run `agentlogs login` first.");
   }
 
-  // Redact secrets from transcript
-  const redactedTranscript = redactSecretsDeep(unifiedTranscript);
+  // Redact sensitive file contents (e.g., .env, .zshrc) before pattern-based secret redaction
+  const fileRedactedTranscript = redactSensitiveFilesInTranscript(unifiedTranscript);
+
+  // Redact secrets from transcript using pattern matching
+  const redactedTranscript = redactSecretsDeep(fileRedactedTranscript);
 
   // Compute sha256 from redacted unified transcript
   const unifiedJson = JSON.stringify(redactedTranscript);

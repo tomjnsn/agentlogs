@@ -1,0 +1,108 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`redactSensitiveFilesInTranscript snapshot: full transcript redaction 1`] = `
+[
+  {
+    "text": "Read the configuration files",
+    "type": "user",
+  },
+  {
+    "input": {
+      "file_path": ".zshrc",
+    },
+    "output": {
+      "file": {
+        "content": 
+"****** ***************************
+****** *******************************
+***** ****** ****"
+,
+        "numLines": 3,
+        "totalLines": 3,
+      },
+      "type": "file",
+    },
+    "toolName": "Read",
+    "type": "tool-call",
+  },
+  {
+    "input": {
+      "file_path": ".aws/credentials",
+    },
+    "output": {
+      "file": {
+        "content": 
+"*********
+***************** * ********************
+********************* * ****************************************"
+,
+        "numLines": 3,
+        "totalLines": 3,
+      },
+      "type": "file",
+    },
+    "toolName": "Read",
+    "type": "tool-call",
+  },
+  {
+    "input": {
+      "content": 
+"*******************************************************************
+**************************************************
+**************************************"
+,
+      "file_path": ".env.production",
+    },
+    "output": {
+      "type": "success",
+    },
+    "toolName": "Write",
+    "type": "tool-call",
+  },
+  {
+    "input": {
+      "file_path": "README.md",
+    },
+    "output": 
+"# Project
+
+This is a test project."
+,
+    "toolName": "Read",
+    "type": "tool-call",
+  },
+]
+`;
+
+exports[`redactSensitiveFilesInTranscript snapshot: SSH key redaction 1`] = `
+[
+  {
+    "input": {
+      "file_path": "~/.ssh/id_rsa",
+    },
+    "output": 
+"********** *** ******* ********
+**********************************************
+******* **** ***** ** *********
+******** *** ******* ********"
+,
+    "toolName": "Read",
+    "type": "tool-call",
+  },
+  {
+    "input": {
+      "content": 
+"********** ****************
+*******************************************
+******** ****************"
+,
+      "file_path": "deploy.pem",
+    },
+    "output": {
+      "type": "success",
+    },
+    "toolName": "Write",
+    "type": "tool-call",
+  },
+]
+`;

@@ -26,5 +26,6 @@ export {
 export * from "./pricing";
 export * from "./transcripts";
 export * from "./redact";
+export * from "./redact-sensitive-files";
 export * from "./models";
 export * from "./discovery";
