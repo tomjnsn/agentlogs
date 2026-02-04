@@ -180,9 +180,15 @@ export default function agentLogsExtension(pi: ExtensionAPI) {
       return;
     }
 
+    // Skip if already has a transcript link
+    if (command.includes("agentlogs.ai/s/")) {
+      return;
+    }
+
     log("tool_call (git commit)", {
       toolName: event.toolName,
       toolCallId: event.toolCallId,
+      originalCommand: command,
     });
 
     const sessionId = ctx.sessionManager.getSessionId();
@@ -202,13 +208,14 @@ export default function agentLogsExtension(pi: ExtensionAPI) {
     );
 
     if (response.modified && response.updatedInput) {
-      log("tool_call: input modified", { modified: true });
+      const updatedCommand = response.updatedInput.command;
+      if (typeof updatedCommand === "string") {
+        // Try mutating the input directly
+        (event.input as Record<string, unknown>).command = updatedCommand;
+        log("tool_call: mutated input", { updatedCommand });
+      }
       // Track this tool call ID so we know to process the result
       interceptedToolCallIds.add(event.toolCallId);
-
-      // Note: Pi doesn't support modifying tool input from extensions
-      // The CLI will need to handle this differently (pre-upload the transcript)
-      // For now, we just track that we saw this commit
     }
   });
 
