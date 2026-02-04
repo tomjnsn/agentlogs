@@ -16,7 +16,7 @@
     },
     "packages/cli": {
       "name": "agentlogs",
-      "version": "0.0.11",
+      "version": "0.0.12",
       "bin": {
         "agentlogs": "dist/index.js",
       },
@@ -52,6 +52,13 @@
     "packages/opencode": {
       "name": "@agentlogs/opencode",
       "version": "0.0.2",
+      "peerDependencies": {
+        "bun": ">=1.0.0",
+      },
+    },
+    "packages/pi": {
+      "name": "@agentlogs/pi",
+      "version": "0.0.1",
       "peerDependencies": {
         "bun": ">=1.0.0",
       },
@@ -121,6 +128,8 @@
     "@agentlogs/e2e": ["@agentlogs/e2e@workspace:packages/e2e"],
 
     "@agentlogs/opencode": ["@agentlogs/opencode@workspace:packages/opencode"],
+
+    "@agentlogs/pi": ["@agentlogs/pi@workspace:packages/pi"],
 
     "@agentlogs/shared": ["@agentlogs/shared@workspace:packages/shared"],
 
