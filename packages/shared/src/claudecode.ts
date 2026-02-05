@@ -291,6 +291,11 @@ export function convertClaudeCodeTranscript(
     options.gitContext !== undefined ? options.gitContext : extractGitContextFromRecords(flatTranscript);
   const formattedCwd = cwd ? formatCwdWithTilde(cwd) : "";
   const { messages, blobs } = convertTranscriptToMessages(flatTranscript);
+
+  if (messages.length === 0) {
+    return null;
+  }
+
   const stats = calculateTranscriptStats(messages);
 
   const transcriptCandidate = {
@@ -367,6 +372,11 @@ export async function convertClaudeCodeFile(
   const gitContext =
     options.gitContext !== undefined ? options.gitContext : await resolveGitContext(cwd, lastMessage.gitBranch);
   const { messages, blobs } = convertTranscriptToMessages(flatTranscript);
+
+  if (messages.length === 0) {
+    return null;
+  }
+
   const stats = calculateTranscriptStats(messages);
 
   const transcriptCandidate = {
