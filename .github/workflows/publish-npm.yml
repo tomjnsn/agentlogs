@@ -1,0 +1,72 @@
+name: Publish to npm
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "cli-v*"
+      - "pi-v*"
+      - "opencode-v*"
+
+permissions:
+  contents: write # Required for GitHub release
+  id-token: write # Required for OIDC trusted publishing
+
+jobs:
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Determine package from tag
+        id: pkg
+        run: |
+          TAG="${{ github.ref_name }}"
+          # Extract package name and version from tag (format: {name}-v{version})
+          NAME="${TAG%-v*}"
+          VERSION="${TAG#*-v}"
+
+          # Verify package exists
+          PKG_JSON="packages/${NAME}/package.json"
+          if [[ ! -f "$PKG_JSON" ]]; then
+            echo "Package not found: $PKG_JSON"
+            exit 1
+          fi
+
+          # Read npm name from package.json
+          NPM_NAME=$(jq -r .name "$PKG_JSON")
+
+          echo "name=$NAME" >> $GITHUB_OUTPUT
+          echo "npm_name=$NPM_NAME" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup Node.js (for npm publish)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build package
+        run: bun run build
+        working-directory: ./packages/${{ steps.pkg.outputs.name }}
+
+      - name: Publish to npm
+        run: npm publish --provenance --access public
+        working-directory: ./packages/${{ steps.pkg.outputs.name }}
+
+      - name: Create GitHub Release
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --title "${{ steps.pkg.outputs.npm_name }} ${{ steps.pkg.outputs.version }}"
+        env:
+          GH_TOKEN: ${{ github.token }}

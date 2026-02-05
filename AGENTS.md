@@ -94,8 +94,27 @@ beforeLoad: ({ context }) => {
 };
 ```
 
-## Releasing the CLI
+## Releasing npm Packages
 
-1. Bump version in `packages/cli/package.json` and commit: `cli: Release version X.Y.Z`
-2. Push to main
-3. Create and push a tag: `git tag cli-vX.Y.Z && git push origin cli-vX.Y.Z`
+Use the release script to publish packages (`cli`, `pi`, `opencode`):
+
+```bash
+bun release <packages...> <patch|minor|major> [--dry]
+```
+
+Examples:
+
+```bash
+bun release cli patch           # Release cli with patch bump
+bun release cli pi minor        # Release cli and pi with minor bump
+bun release opencode major      # Release opencode with major bump
+bun release cli patch --dry     # Dry run, shows what would happen
+```
+
+The script will:
+
+1. Verify clean working directory and main branch
+2. Bump version in package.json
+3. Commit, tag, and push
+
+GitHub Actions automatically publishes to npm when tags are pushed.

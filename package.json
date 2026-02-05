@@ -24,7 +24,8 @@
     "plugin:switch-prod": "bash scripts/toggle-plugin-dev.sh",
     "plugin:status": "bash scripts/check-plugin-status.sh",
     "prepare": "husky",
-    "agentlogs": "bun packages/cli/src/index.ts"
+    "agentlogs": "bun packages/cli/src/index.ts",
+    "release": "bun scripts/release.ts"
   },
   "devDependencies": {
     "@types/bun": "^1.3.6",
