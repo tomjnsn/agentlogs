@@ -1,7 +1,6 @@
 import { resolve } from "path";
-import { existsSync, readFileSync, readdirSync } from "fs";
-import { join } from "path";
-import { homedir } from "os";
+import { spawnSync } from "child_process";
+import { existsSync, readFileSync } from "fs";
 import { discoverAllTranscripts, type DiscoveredTranscript, type TranscriptSource } from "@agentlogs/shared";
 import { convertOpenCodeTranscript, type OpenCodeExport } from "@agentlogs/shared/opencode";
 import { convertPiTranscript, type PiSessionEntry, type PiSessionHeader } from "@agentlogs/shared";
@@ -10,8 +9,6 @@ import { resolveGitContext } from "@agentlogs/shared/claudecode";
 import { pickTranscript } from "../tui/transcript-picker";
 import { performUploadToAllEnvs, uploadUnifiedToAllEnvs } from "../lib/perform-upload";
 import { getAuthenticatedEnvironments } from "../config";
-
-const OPENCODE_STORAGE = join(homedir(), ".local", "share", "opencode", "storage");
 
 export interface UploadCommandOptions {
   source?: TranscriptSource;
@@ -298,92 +295,30 @@ function readPiSession(filePath: string): { header: PiSessionHeader; entries: Pi
 }
 
 /**
- * Read an OpenCode session from local storage
+ * Read an OpenCode session using the opencode CLI export command.
+ * This abstracts away the storage backend (JSON files or SQLite).
  */
 function readOpenCodeSession(sessionId: string): OpenCodeExport | null {
-  const sessionDir = join(OPENCODE_STORAGE, "session");
-  if (!existsSync(sessionDir)) {
-    return null;
-  }
+  try {
+    const result = spawnSync("opencode", ["export", sessionId], {
+      encoding: "utf-8",
+      timeout: 30000,
+      stdio: ["pipe", "pipe", "pipe"],
+    });
 
-  // Search for session in all project directories
-  let sessionInfo: Record<string, unknown> | null = null;
-  let sessionFilePath: string | null = null;
-
-  for (const projectId of readdirSync(sessionDir)) {
-    const sessionFile = join(sessionDir, projectId, `${sessionId}.json`);
-    if (existsSync(sessionFile)) {
-      try {
-        sessionInfo = JSON.parse(readFileSync(sessionFile, "utf-8")) as Record<string, unknown>;
-        sessionFilePath = sessionFile;
-        break;
-      } catch {
-        // Skip files with invalid JSON
-        continue;
-      }
+    if (result.status !== 0 || result.error) {
+      return null;
     }
-  }
 
-  if (!sessionInfo || !sessionFilePath) {
-    return null;
-  }
-
-  // Read messages for this session
-  const messageDir = join(OPENCODE_STORAGE, "message", sessionId);
-  if (!existsSync(messageDir)) {
-    return null;
-  }
-
-  interface MessageInfo {
-    id: string;
-    time?: { created?: number };
-    [key: string]: unknown;
-  }
-
-  interface PartInfo {
-    [key: string]: unknown;
-  }
-
-  const messages: Array<{ info: MessageInfo; parts: PartInfo[] }> = [];
-
-  for (const msgFile of readdirSync(messageDir)) {
-    if (!msgFile.endsWith(".json")) continue;
-
-    const msgPath = join(messageDir, msgFile);
-    try {
-      const msgInfo = JSON.parse(readFileSync(msgPath, "utf-8")) as MessageInfo;
-      const msgId = msgInfo.id;
-
-      // Read parts for this message
-      const partDir = join(OPENCODE_STORAGE, "part", msgId);
-      const parts: PartInfo[] = [];
-
-      if (existsSync(partDir)) {
-        for (const partFile of readdirSync(partDir)) {
-          if (!partFile.endsWith(".json")) continue;
-          const partPath = join(partDir, partFile);
-          try {
-            const part = JSON.parse(readFileSync(partPath, "utf-8")) as PartInfo;
-            parts.push(part);
-          } catch {
-            // Skip parts with invalid JSON
-          }
-        }
-      }
-
-      messages.push({ info: msgInfo, parts });
-    } catch {
-      // Skip messages with invalid JSON
+    const output = result.stdout.trim();
+    if (!output) {
+      return null;
     }
+
+    return JSON.parse(output) as OpenCodeExport;
+  } catch {
+    return null;
   }
-
-  // Sort messages by creation time
-  messages.sort((a, b) => (a.info.time?.created ?? 0) - (b.info.time?.created ?? 0));
-
-  return {
-    info: sessionInfo as OpenCodeExport["info"],
-    messages: messages as OpenCodeExport["messages"],
-  };
 }
 
 interface MultiEnvResult {

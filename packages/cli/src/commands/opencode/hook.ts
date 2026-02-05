@@ -5,9 +5,7 @@
  * Reads JSON from stdin, processes the event, and outputs JSON response (for before hooks).
  */
 
-import { existsSync, readdirSync, readFileSync } from "fs";
-import { join } from "path";
-import { homedir } from "os";
+import { spawnSync } from "child_process";
 import type { OpenCodeExport } from "@agentlogs/shared";
 import { convertOpenCodeTranscript } from "@agentlogs/shared/opencode";
 import { LiteLLMPricingFetcher } from "@agentlogs/shared/pricing";
@@ -29,8 +27,6 @@ import {
   getCallTranscriptId,
   deleteCallTranscriptId,
 } from "../../lib/hooks-shared";
-
-const OPENCODE_STORAGE = join(homedir(), ".local", "share", "opencode", "storage");
 
 // ============================================================================
 // Types
@@ -284,69 +280,42 @@ async function handleSessionIdle(hookInput: OpenCodeHookInput): Promise<void> {
 }
 
 // ============================================================================
-// Transcript Upload
+// Transcript Export
 // ============================================================================
 
-function readSessionFromStorage(sessionId: string): OpenCodeExport | null {
-  const sessionDir = join(OPENCODE_STORAGE, "session");
-  if (!existsSync(sessionDir)) {
-    return null;
-  }
-
-  let sessionInfo: any = null;
-  for (const projectId of readdirSync(sessionDir)) {
-    const sessionFile = join(sessionDir, projectId, `${sessionId}.json`);
-    if (existsSync(sessionFile)) {
-      sessionInfo = JSON.parse(readFileSync(sessionFile, "utf-8"));
-      break;
-    }
-  }
-
-  if (!sessionInfo) {
-    return null;
-  }
-
-  const messageDir = join(OPENCODE_STORAGE, "message", sessionId);
-  if (!existsSync(messageDir)) {
-    return null;
-  }
-
-  const messages: any[] = [];
-  for (const msgFile of readdirSync(messageDir)) {
-    if (!msgFile.endsWith(".json")) continue;
-
-    const msgPath = join(messageDir, msgFile);
-    const msgInfo = JSON.parse(readFileSync(msgPath, "utf-8"));
-    const msgId = msgInfo.id;
-
-    const partDir = join(OPENCODE_STORAGE, "part", msgId);
-    const parts: any[] = [];
-
-    if (existsSync(partDir)) {
-      for (const partFile of readdirSync(partDir)) {
-        if (!partFile.endsWith(".json")) continue;
-        const partPath = join(partDir, partFile);
-        const part = JSON.parse(readFileSync(partPath, "utf-8"));
-        parts.push(part);
-      }
-    }
-
-    messages.push({
-      info: msgInfo,
-      parts,
+function readSessionFromExport(sessionId: string): OpenCodeExport | null {
+  try {
+    const result = spawnSync("opencode", ["export", sessionId], {
+      encoding: "utf-8",
+      timeout: 30000,
+      stdio: ["pipe", "pipe", "pipe"],
     });
+
+    if (result.status !== 0 || result.error) {
+      logger.warn("OpenCode export failed", {
+        sessionId: sessionId.substring(0, 8),
+        error: result.error?.message || result.stderr,
+      });
+      return null;
+    }
+
+    const output = result.stdout.trim();
+    if (!output) {
+      return null;
+    }
+
+    return JSON.parse(output) as OpenCodeExport;
+  } catch (error) {
+    logger.error("OpenCode export error", {
+      sessionId: sessionId.substring(0, 8),
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return null;
   }
-
-  messages.sort((a, b) => (a.info.time?.created ?? 0) - (b.info.time?.created ?? 0));
-
-  return {
-    info: sessionInfo,
-    messages,
-  };
 }
 
 async function uploadPartialTranscript(sessionId: string, cwd?: string): Promise<void> {
-  const exportData = readSessionFromStorage(sessionId);
+  const exportData = readSessionFromExport(sessionId);
   if (!exportData) {
     logger.warn("OpenCode partial upload: session not found", {
       sessionId: sessionId.substring(0, 8),
@@ -358,7 +327,7 @@ async function uploadPartialTranscript(sessionId: string, cwd?: string): Promise
 }
 
 async function uploadFullTranscript(sessionId: string, cwd?: string): Promise<void> {
-  const exportData = readSessionFromStorage(sessionId);
+  const exportData = readSessionFromExport(sessionId);
   if (!exportData) {
     logger.warn("OpenCode full upload: session not found", {
       sessionId: sessionId.substring(0, 8),

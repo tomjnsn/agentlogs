@@ -1,78 +1,35 @@
-import { existsSync, readdirSync, readFileSync } from "fs";
-import { join } from "path";
-import { homedir } from "os";
+import { spawnSync } from "child_process";
 import type { OpenCodeExport } from "@agentlogs/shared";
 import { convertOpenCodeTranscript } from "@agentlogs/shared/opencode";
 import { LiteLLMPricingFetcher } from "@agentlogs/shared/pricing";
 import { resolveGitContext } from "@agentlogs/shared/claudecode";
 import { uploadUnifiedToAllEnvs } from "../../lib/perform-upload";
 
-const OPENCODE_STORAGE = join(homedir(), ".local", "share", "opencode", "storage");
-
 /**
- * Read a session from OpenCode's local storage and assemble into export format.
+ * Read a session using OpenCode's export command.
+ * This abstracts away the storage backend (JSON files or SQLite).
  */
-function readSessionFromStorage(sessionId: string): OpenCodeExport | null {
-  // Find the session file (need to search across project directories)
-  const sessionDir = join(OPENCODE_STORAGE, "session");
-  if (!existsSync(sessionDir)) {
-    return null;
-  }
-
-  // Search for session in all project directories
-  let sessionInfo: any = null;
-  for (const projectId of readdirSync(sessionDir)) {
-    const sessionFile = join(sessionDir, projectId, `${sessionId}.json`);
-    if (existsSync(sessionFile)) {
-      sessionInfo = JSON.parse(readFileSync(sessionFile, "utf-8"));
-      break;
-    }
-  }
-
-  if (!sessionInfo) {
-    return null;
-  }
-
-  // Read messages for this session
-  const messageDir = join(OPENCODE_STORAGE, "message", sessionId);
-  if (!existsSync(messageDir)) {
-    return null;
-  }
-
-  const messages: any[] = [];
-  for (const msgFile of readdirSync(messageDir)) {
-    if (!msgFile.endsWith(".json")) continue;
-
-    const msgPath = join(messageDir, msgFile);
-    const msgInfo = JSON.parse(readFileSync(msgPath, "utf-8"));
-    const msgId = msgInfo.id;
-
-    // Read parts for this message
-    const partDir = join(OPENCODE_STORAGE, "part", msgId);
-    const parts: any[] = [];
-
-    if (existsSync(partDir)) {
-      for (const partFile of readdirSync(partDir)) {
-        if (!partFile.endsWith(".json")) continue;
-        const partPath = join(partDir, partFile);
-        const part = JSON.parse(readFileSync(partPath, "utf-8"));
-        parts.push(part);
-      }
-    }
-
-    messages.push({
-      info: msgInfo,
-      parts,
+function readSessionFromExport(sessionId: string): OpenCodeExport | null {
+  try {
+    const result = spawnSync("opencode", ["export", sessionId], {
+      encoding: "utf-8",
+      timeout: 30000,
+      stdio: ["pipe", "pipe", "pipe"],
     });
+
+    if (result.status !== 0 || result.error) {
+      return null;
+    }
+
+    const output = result.stdout.trim();
+    if (!output) {
+      return null;
+    }
+
+    return JSON.parse(output) as OpenCodeExport;
+  } catch {
+    return null;
   }
-
-  // Sort messages by creation time
-  messages.sort((a, b) => (a.info.time?.created ?? 0) - (b.info.time?.created ?? 0));
-
-  return {
-    info: sessionInfo,
-    messages,
-  };
 }
 
 export async function opencodeUploadCommand(sessionId: string): Promise<void> {
@@ -84,11 +41,11 @@ export async function opencodeUploadCommand(sessionId: string): Promise<void> {
   console.log(`Uploading OpenCode session: ${sessionId}`);
 
   // Read session from OpenCode storage
-  const exportData = readSessionFromStorage(sessionId);
+  const exportData = readSessionFromExport(sessionId);
 
   if (!exportData) {
     console.error(`Error: Session not found: ${sessionId}`);
-    console.error(`Searched in: ${OPENCODE_STORAGE}`);
+    console.error(`Run 'opencode session list' to see available sessions`);
     process.exit(1);
   }
 

@@ -1,3 +1,4 @@
+import { spawn } from "child_process";
 import { promises as fs } from "fs";
 import { homedir } from "os";
 import { basename, extname, join, resolve } from "path";
@@ -62,7 +63,6 @@ const NON_PROMPT_PREFIXES = [
 
 const DEFAULT_CLAUDE_HOME = join(homedir(), ".claude");
 const DEFAULT_CODEX_HOME = join(homedir(), ".codex");
-const DEFAULT_OPENCODE_STORAGE = join(homedir(), ".local", "share", "opencode", "storage");
 const DEFAULT_PI_SESSIONS = join(homedir(), ".pi", "agent", "sessions");
 
 /**
@@ -185,63 +185,98 @@ export async function discoverCodexTranscripts(options?: { limit?: number }): Pr
 }
 
 /**
- * Discover OpenCode sessions from ~/.local/share/opencode/storage/
+ * Discover OpenCode sessions using the opencode CLI.
+ * This abstracts away the storage backend (JSON files or SQLite).
  */
 export async function discoverOpenCodeSessions(options?: { limit?: number }): Promise<DiscoveredTranscript[]> {
   const limit = options?.limit ?? DEFAULT_LIMIT;
-  const storageRoot = process.env.OPENCODE_STORAGE ?? DEFAULT_OPENCODE_STORAGE;
-  const sessionRoot = join(storageRoot, "session");
-
-  if (!(await isDirectory(sessionRoot))) {
-    return [];
-  }
-
-  const allTranscripts: DiscoveredTranscript[] = [];
 
   try {
-    const projectDirs = await fs.readdir(sessionRoot, { withFileTypes: true });
-
-    for (const projectDir of projectDirs) {
-      if (!projectDir.isDirectory()) continue;
-
-      const projectPath = join(sessionRoot, projectDir.name);
-
-      try {
-        const files = await fs.readdir(projectPath, { withFileTypes: true });
-
-        for (const file of files) {
-          if (!file.isFile() || !file.name.endsWith(".json")) continue;
-
-          const filePath = join(projectPath, file.name);
-
-          try {
-            const info = await parseOpenCodeSession(filePath);
-            if (!info) continue;
-
-            allTranscripts.push({
-              id: info.sessionId,
-              source: "opencode",
-              path: filePath,
-              timestamp: info.timestamp,
-              preview: info.preview,
-              cwd: info.cwd,
-              repoId: null, // Skip expensive git lookup during discovery
-              stats: info.stats,
-            });
-          } catch {
-            // Skip invalid files
-          }
-        }
-      } catch {
-        // Skip inaccessible project directories
-      }
+    const output = await runOpenCodeSessionList(limit * 2);
+    if (!output) {
+      return [];
     }
-  } catch {
-    // Directory not accessible
-  }
 
-  // Sort by timestamp descending, then apply limit
-  return allTranscripts.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()).slice(0, limit);
+    interface OpenCodeSessionListItem {
+      id: string;
+      title?: string;
+      updated?: number;
+      created?: number;
+      directory?: string;
+      parentId?: string;
+    }
+
+    const sessions = JSON.parse(output) as OpenCodeSessionListItem[];
+
+    const transcripts: DiscoveredTranscript[] = [];
+
+    for (const session of sessions) {
+      // Skip subagent sessions
+      if (session.parentId) continue;
+
+      const timestamp = session.updated
+        ? new Date(session.updated)
+        : session.created
+          ? new Date(session.created)
+          : new Date(0);
+
+      transcripts.push({
+        id: session.id,
+        source: "opencode",
+        path: session.id, // Use session ID as path since we use `opencode export` to read
+        timestamp,
+        preview: session.title ? truncatePreview(session.title) : null,
+        cwd: session.directory ?? null,
+        repoId: null,
+        stats: null, // Stats not available from list command
+      });
+    }
+
+    // Sort by timestamp descending and apply limit
+    return transcripts.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()).slice(0, limit);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Run `opencode session list` asynchronously to avoid blocking the event loop.
+ * Returns null if opencode is not installed or the command fails.
+ */
+function runOpenCodeSessionList(maxCount: number): Promise<string | null> {
+  return new Promise((resolve) => {
+    let resolved = false;
+    const done = (result: string | null) => {
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(timeout);
+        resolve(result);
+      }
+    };
+
+    const child = spawn("opencode", ["session", "list", "--format", "json", "-n", String(maxCount)], {
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+
+    let stdout = "";
+
+    const timeout = setTimeout(() => {
+      child.kill();
+      done(null);
+    }, 30000);
+
+    child.stdout.on("data", (data: Buffer) => {
+      stdout += data.toString();
+    });
+
+    child.on("close", (code) => {
+      done(code === 0 ? stdout.trim() || null : null);
+    });
+
+    child.on("error", () => {
+      done(null);
+    });
+  });
 }
 
 /**
@@ -703,69 +738,6 @@ async function parseCodexTranscript(filePath: string): Promise<CodexTranscriptIn
   } finally {
     await fileHandle.close();
   }
-}
-
-// --- OpenCode parsing ---
-
-interface OpenCodeSessionInfo {
-  sessionId: string;
-  timestamp: Date;
-  cwd: string | null;
-  preview: string | null;
-  stats: DiscoveryStats | null;
-}
-
-async function parseOpenCodeSession(filePath: string): Promise<OpenCodeSessionInfo | null> {
-  const content = await fs.readFile(filePath, "utf8");
-
-  let session: Record<string, unknown>;
-  try {
-    session = JSON.parse(content) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-
-  const sessionId = session.id as string | undefined;
-  if (!sessionId) return null;
-
-  // Skip subagent sessions
-  if (session.parentID) return null;
-
-  const directory = session.directory as string | undefined;
-  const title = session.title as string | undefined;
-
-  const timeObj = session.time as Record<string, unknown> | undefined;
-  const createdMs = timeObj?.created as number | undefined;
-  const updatedMs = timeObj?.updated as number | undefined;
-
-  const timestamp = updatedMs ? new Date(updatedMs) : createdMs ? new Date(createdMs) : new Date(0);
-
-  // Extract stats from summary if available
-  const summary = session.summary as Record<string, unknown> | undefined;
-  let stats: DiscoveryStats | null = null;
-
-  if (summary) {
-    const additions = typeof summary.additions === "number" ? summary.additions : 0;
-    const deletions = typeof summary.deletions === "number" ? summary.deletions : 0;
-    const files = typeof summary.files === "number" ? summary.files : 0;
-
-    if (additions > 0 || deletions > 0 || files > 0) {
-      stats = {
-        filesChanged: files,
-        linesAdded: additions,
-        linesRemoved: deletions,
-        linesModified: 0, // OpenCode doesn't track this separately
-      };
-    }
-  }
-
-  return {
-    sessionId,
-    timestamp,
-    cwd: directory ?? null,
-    preview: title ? truncatePreview(title) : null,
-    stats,
-  };
 }
 
 // --- Pi parsing ---
