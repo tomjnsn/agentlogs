@@ -61,7 +61,7 @@ jobs:
         working-directory: ./packages/${{ steps.pkg.outputs.name }}
 
       - name: Publish to npm
-        run: npm publish --provenance --access public
+        run: npm publish --access public
         working-directory: ./packages/${{ steps.pkg.outputs.name }}
 
       - name: Create GitHub Release
