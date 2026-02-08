@@ -1,13 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ButtonLink, PlainButtonLink } from "../components/oatmeal/elements/button";
-import { Main } from "../components/oatmeal/elements/main";
-import { Screenshot } from "../components/oatmeal/elements/screenshot";
-import { ArrowNarrowRightIcon } from "../components/oatmeal/icons/arrow-narrow-right-icon";
-import { CallToActionSimple } from "../components/oatmeal/sections/call-to-action-simple";
-import { Faq, FAQsTwoColumnAccordion } from "../components/oatmeal/sections/faqs-two-column-accordion";
-import { FeatureThreeColumnWithDemos, Features } from "../components/oatmeal/sections/features-three-column-with-demos";
-import { FooterLink, FooterSimple, SocialLink } from "../components/oatmeal/sections/footer-simple";
-import { HeroLeftAlignedWithDemo } from "../components/oatmeal/sections/hero-left-aligned-with-demo";
+import {
+  ArrowNarrowRightIcon,
+  ButtonLink,
+  CTASection,
+  Faq,
+  FAQSection,
+  FeatureCard,
+  FeatureScreenshot,
+  FeaturesSection,
+  Footer,
+  FooterLink,
+  HeroSection,
+  Main,
+  PlainButtonLink,
+  Screenshot,
+  SocialLink,
+} from "../components/landing";
 import {
   ClaudeCodeIcon,
   CodexIcon,
@@ -28,12 +36,12 @@ function LandingPage() {
     <div className="min-h-screen bg-background">
       <Header />
       <Main>
-        <HeroSection />
-        <FeatureSection />
-        <FAQSection />
-        <CTASection />
+        <HeroContent />
+        <FeatureContent />
+        <FAQContent />
+        <CTAContent />
       </Main>
-      <Footer />
+      <FooterContent />
     </div>
   );
 }
@@ -59,9 +67,9 @@ function Header() {
   );
 }
 
-function HeroSection() {
+function HeroContent() {
   return (
-    <HeroLeftAlignedWithDemo
+    <HeroSection
       headline={
         <>
           Coding agents, visible to your team.{" "}
@@ -130,7 +138,7 @@ function HeroSection() {
         </div>
       }
       demo={
-        <Screenshot wallpaper="art" placement="bottom" className="aspect-video rounded-2xl">
+        <Screenshot wallpaper="art" className="aspect-video rounded-2xl">
           <img
             src="/features/detail.png"
             alt="AgentLogs session detail"
@@ -142,53 +150,50 @@ function HeroSection() {
   );
 }
 
-function FeatureSection() {
+function FeatureContent() {
   return (
-    <Features
+    <FeaturesSection
       headline="Everything you need to understand what your agents are doing."
       subheadline={
         <p>
           Track every session, share context across your team, and build a knowledge base of prompts that actually work.
         </p>
       }
-      features={
-        <>
-          <FeatureThreeColumnWithDemos
-            demo={
-              <Screenshot wallpaper="green" placement="bottom-right" className="h-56">
-                <img src="/features/dashboard.png" alt="Team dashboard" />
-              </Screenshot>
-            }
-            headline="Team Observability"
-            subheadline="Full visibility into your team's AI coding sessions. Track activity, measure productivity, and understand how your team uses AI tools."
-          />
-          <FeatureThreeColumnWithDemos
-            demo={
-              <Screenshot wallpaper="blue" placement="bottom-right" className="h-56">
-                <img src="/features/git.png" alt="Git integration" />
-              </Screenshot>
-            }
-            headline="Git Integration"
-            subheadline="See which session wrote which code. Works whenever your agent is the one committing."
-          />
-          <FeatureThreeColumnWithDemos
-            demo={
-              <Screenshot wallpaper="purple" placement="bottom-left" className="h-56">
-                <img src="/features/list.png" alt="Session list" />
-              </Screenshot>
-            }
-            headline="Learn From Each Other"
-            subheadline="See what prompts your teammates are using and how they're solving problems. Build shared knowledge from real sessions."
-          />
-        </>
-      }
-    />
+    >
+      <FeatureCard
+        demo={
+          <FeatureScreenshot wallpaper="green" className="h-56">
+            <img src="/features/dashboard.png" alt="Team dashboard" />
+          </FeatureScreenshot>
+        }
+        headline="Team Observability"
+        subheadline="Full visibility into your team's AI coding sessions. Track activity, measure productivity, and understand how your team uses AI tools."
+      />
+      <FeatureCard
+        demo={
+          <FeatureScreenshot wallpaper="blue" className="h-56">
+            <img src="/features/git.png" alt="Git integration" />
+          </FeatureScreenshot>
+        }
+        headline="Git Integration"
+        subheadline="See which session wrote which code. Works whenever your agent is the one committing."
+      />
+      <FeatureCard
+        demo={
+          <FeatureScreenshot wallpaper="purple" className="h-56">
+            <img src="/features/list.png" alt="Session list" />
+          </FeatureScreenshot>
+        }
+        headline="Learn From Each Other"
+        subheadline="See what prompts your teammates are using and how they're solving problems. Build shared knowledge from real sessions."
+      />
+    </FeaturesSection>
   );
 }
 
-function FAQSection() {
+function FAQContent() {
   return (
-    <FAQsTwoColumnAccordion headline="Questions & Answers">
+    <FAQSection headline="Questions & Answers">
       <Faq
         question="How does AgentLogs capture my sessions?"
         answer={
@@ -239,13 +244,13 @@ function FAQSection() {
           </p>
         }
       />
-    </FAQsTwoColumnAccordion>
+    </FAQSection>
   );
 }
 
-function CTASection() {
+function CTAContent() {
   return (
-    <CallToActionSimple
+    <CTASection
       headline="Want to adopt AgentLogs for your team?"
       subheadline={
         <p>
@@ -264,9 +269,9 @@ function CTASection() {
   );
 }
 
-function Footer() {
+function FooterContent() {
   return (
-    <FooterSimple
+    <Footer
       links={
         <>
           <FooterLink href="https://agentlogs.ai/docs">Docs</FooterLink>

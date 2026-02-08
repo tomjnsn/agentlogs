@@ -1,8 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { ButtonLink } from "../components/oatmeal/elements/button";
-import { Container } from "../components/oatmeal/elements/container";
-import { Main } from "../components/oatmeal/elements/main";
-import { FooterLink, FooterSimple, SocialLink } from "../components/oatmeal/sections/footer-simple";
+import { ButtonLink, Container, Footer, FooterLink, Main, SocialLink } from "../components/landing";
 import { DiscordIcon, Logo, XIcon } from "../components/icons/source-icons";
 
 export const Route = createFileRoute("/waitlist")({
@@ -39,7 +36,7 @@ function WaitlistPage() {
             </Container>
           </section>
         </Main>
-        <Footer />
+        <FooterContent />
       </div>
     );
   }
@@ -63,7 +60,7 @@ function WaitlistPage() {
           </Container>
         </section>
       </Main>
-      <Footer />
+      <FooterContent />
     </div>
   );
 }
@@ -84,9 +81,9 @@ function Header({ email }: { email?: string }) {
   );
 }
 
-function Footer() {
+function FooterContent() {
   return (
-    <FooterSimple
+    <Footer
       links={
         <>
           <FooterLink href="https://agentlogs.ai/docs">Docs</FooterLink>
