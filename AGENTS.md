@@ -36,7 +36,7 @@
 
 ## Commits
 
-- Do atomic and small commits
+- Do atomic and small commits for logical changes, only when asked
 - Capitalize the first letter of the commit message
 - Prefix the commit with the package name or area if necessary, e.g. web,plugin,shared,ci
 
