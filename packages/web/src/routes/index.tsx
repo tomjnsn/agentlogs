@@ -90,7 +90,7 @@ function LandingPage() {
 
       <main>
         {/* Hero */}
-        <section className="mx-auto max-w-5xl px-6 pt-24 pb-16 text-center">
+        <section className="mx-auto max-w-5xl px-6 pt-24 pb-24 text-center">
           <div className="flex justify-center gap-1">
             {agents.map((agent) => (
               <Tooltip key={agent.name}>
@@ -129,18 +129,18 @@ function LandingPage() {
 
         {/* Hero image */}
         <section className="mx-auto max-w-5xl px-6 pb-24">
-          <div className="relative overflow-hidden rounded-xl">
+          <div className="relative aspect-video overflow-hidden rounded-xl">
             <img
               src="/The_Fighting_Temeraire.jpg"
               alt=""
               aria-hidden
               className="absolute inset-0 h-full w-full object-cover opacity-60"
             />
-            <div className="relative p-3 pt-3 sm:p-5 sm:pt-5">
+            <div className="relative px-[5%] pt-[5%]">
               <img
                 src="/features/detail.png"
                 alt="AgentLogs session detail view"
-                className="w-full rounded-md shadow-2xl"
+                className="w-full rounded-t-md shadow-2xl"
               />
             </div>
           </div>
