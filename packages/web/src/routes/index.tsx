@@ -197,7 +197,7 @@ function LandingPage() {
                   <img
                     src={f.image}
                     alt={f.title}
-                    className="aspect-video w-full rounded-lg object-cover object-top inset-ring inset-ring-white/5"
+                    className="aspect-video w-full rounded-lg border border-white/10 object-cover object-top"
                   />
                 </div>
               </div>
