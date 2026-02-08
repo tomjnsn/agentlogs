@@ -31,7 +31,7 @@ export async function syncCommand(options: SyncCommandOptions = {}): Promise<voi
   const authenticatedEnvs = await getAuthenticatedEnvironments();
   if (authenticatedEnvs.length === 0) {
     console.error("You must be logged in to sync transcripts.");
-    console.error("Run `agentlogs login` to authenticate");
+    console.error("Run `agentlogs login agentlogs.ai` to authenticate");
     process.exit(1);
   }
 
@@ -73,7 +73,7 @@ async function syncToEnvironment(
   localTranscripts: LocalTranscriptInfo[],
   repoFilter?: string,
 ): Promise<void> {
-  const envLabel = env.name === "dev" ? "Development" : "Production";
+  const envLabel = env.name;
   console.log(`\n--- ${envLabel} (${env.baseURL}) ---`);
 
   try {

@@ -23,7 +23,7 @@ export async function interactiveUploadCommand(directory?: string, options: Uplo
   const authenticatedEnvs = await getAuthenticatedEnvironments();
   if (authenticatedEnvs.length === 0) {
     console.error("You must be logged in to upload transcripts.");
-    console.error("Run `agentlogs login` to authenticate.");
+    console.error("Run `agentlogs login agentlogs.ai` to authenticate.");
     process.exit(1);
   }
 

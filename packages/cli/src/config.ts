@@ -6,7 +6,7 @@ import { getLocalStore } from "./local-store";
 const CONFIG_DIR = join(homedir(), ".config", "agentlogs");
 const CONFIG_FILE = join(CONFIG_DIR, "config.json");
 
-export type EnvName = "dev" | "prod";
+export type EnvName = string;
 
 export interface EnvironmentUser {
   id: string;
@@ -164,6 +164,14 @@ export function removeEnvironment(envName: EnvName): void {
   writeConfig(config);
 }
 
+function getServerNameFromUrl(serverUrl: string): string {
+  try {
+    return new URL(serverUrl).host.toLowerCase();
+  } catch {
+    return "custom";
+  }
+}
+
 /**
  * Get environments with valid auth tokens
  * Returns environments that have both config and a valid local store token
@@ -188,7 +196,7 @@ export async function getAuthenticatedEnvironments(): Promise<Array<Environment 
       const serverUrl =
         process.env.AGENTLOGS_SERVER_URL?.trim() || process.env.SERVER_URL?.trim() || "https://agentlogs.ai";
       result.push({
-        name: "prod",
+        name: getServerNameFromUrl(serverUrl),
         baseURL: serverUrl,
         user: { id: "ci", email: "ci@agentlogs.ai", name: "CI" },
         lastLoginTime: new Date().toISOString(),

@@ -1,35 +1,79 @@
-import { deleteTokenForEnv, getEnvironment, removeEnvironment, type EnvName } from "../config";
+import { resolveServer } from "../auth";
+import {
+  deleteTokenForEnv,
+  getEnvironment,
+  getEnvironments,
+  removeEnvironment,
+  type Environment,
+  type EnvName,
+} from "../config";
 
 export interface LogoutCommandOptions {
-  dev?: boolean;
+  hostname?: string;
 }
 
 export async function logoutCommand(options: LogoutCommandOptions = {}): Promise<void> {
-  const isDev = options.dev ?? false;
-  const envName: EnvName = isDev ? "dev" : "prod";
+  let targetNames: EnvName[];
 
-  const env = getEnvironment(envName);
+  try {
+    targetNames = getTargetEnvironmentNames(options.hostname);
+  } catch (err) {
+    console.error("❌ Error:", err instanceof Error ? err.message : "Invalid hostname");
+    process.exit(1);
+  }
 
-  if (!env) {
-    const envLabel = isDev ? "development" : "production";
-    console.log(`ℹ️  Not currently logged in to ${envLabel}`);
+  if (targetNames.length === 0) {
+    if (options.hostname) {
+      console.log(`ℹ️  Not currently logged in to ${options.hostname}`);
+    } else {
+      console.log("ℹ️  Not currently logged in to any environment");
+    }
     return;
   }
 
-  try {
-    // Delete token from local store
-    await deleteTokenForEnv(envName);
+  const loggedOut: Environment[] = [];
 
-    // Remove environment from config
-    removeEnvironment(envName);
+  for (const envName of targetNames) {
+    const env = getEnvironment(envName);
+    if (!env) {
+      continue;
+    }
 
-    const envLabel = isDev ? "development" : "production";
-    console.log(`✅ Logged out from ${envLabel} successfully`);
-    console.log(`📧 Was logged in as: ${env.user.email}`);
-  } catch (err) {
-    console.error(
-      "⚠️  Warning: Could not completely clear credentials:",
-      err instanceof Error ? err.message : "Unknown error",
-    );
+    try {
+      await deleteTokenForEnv(envName);
+      removeEnvironment(envName);
+      loggedOut.push(env);
+    } catch (err) {
+      console.error(
+        `⚠️  Warning: Could not completely clear credentials for ${envName}:`,
+        err instanceof Error ? err.message : "Unknown error",
+      );
+    }
   }
+
+  if (loggedOut.length === 0) {
+    console.log("ℹ️  No environments were logged out");
+    return;
+  }
+
+  if (loggedOut.length === 1) {
+    console.log(`✅ Logged out from ${loggedOut[0].name} successfully`);
+    console.log(`📧 Was logged in as: ${loggedOut[0].user.email}`);
+    return;
+  }
+
+  console.log(`✅ Logged out from ${loggedOut.length} environments:`);
+  for (const env of loggedOut) {
+    console.log(`- ${env.name} (${env.user.email})`);
+  }
+}
+
+function getTargetEnvironmentNames(hostname?: string): EnvName[] {
+  if (hostname) {
+    const { host } = resolveServer(hostname);
+    const env = getEnvironment(host);
+    return env ? [host] : [];
+  }
+
+  return getEnvironments().map((env) => env.name);
 }

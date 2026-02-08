@@ -33,9 +33,9 @@ program
 program
   .command("login")
   .description("Authenticate with AgentLogs using device authorization")
-  .option("--dev", "Login to development environment (http://localhost:3000)")
-  .action(async (options: { dev?: boolean }) => {
-    await loginCommand({ dev: options.dev });
+  .argument("<hostname>", "AgentLogs server hostname, e.g. agentlogs.ai")
+  .action(async (hostname: string) => {
+    await loginCommand({ hostname });
   });
 
 program
@@ -48,9 +48,9 @@ program
 program
   .command("logout")
   .description("Log out and clear stored credentials")
-  .option("--dev", "Logout from development environment")
-  .action(async (options: { dev?: boolean }) => {
-    await logoutCommand({ dev: options.dev });
+  .argument("[hostname]", "Optional hostname to log out from (logs out all when omitted)")
+  .action(async (hostname?: string) => {
+    await logoutCommand({ hostname });
   });
 
 program

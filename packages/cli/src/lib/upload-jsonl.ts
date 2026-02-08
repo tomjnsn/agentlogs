@@ -18,7 +18,7 @@ export async function uploadCommand(transcriptArg: string, source: TranscriptSou
   const authenticatedEnvs = await getAuthenticatedEnvironments();
   if (authenticatedEnvs.length === 0) {
     console.error("You must be logged in to upload transcripts.");
-    console.error("Run `agentlogs login` to authenticate");
+    console.error("Run `agentlogs login agentlogs.ai` to authenticate");
     process.exit(1);
   }
 
@@ -43,7 +43,7 @@ export async function uploadCommand(transcriptArg: string, source: TranscriptSou
 
     console.log("");
     for (const envResult of result.results) {
-      const envLabel = envResult.envName === "dev" ? "Development" : "Production";
+      const envLabel = envResult.envName;
       if (envResult.success) {
         console.log(`✓ ${envLabel}: uploaded successfully`);
         if (envResult.id) {

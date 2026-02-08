@@ -113,13 +113,13 @@ tail -f logs/dev.log
 bun agentlogs status
 
 # Re-authenticate
-bun agentlogs login
+bun agentlogs login agentlogs.ai
 ```
 
 ## CLI Usage
 
 ```bash
-bun agentlogs login                              # Authenticate
+bun agentlogs login agentlogs.ai                 # Authenticate
 bun agentlogs status                             # Check login status
 bun agentlogs claudecode upload transcript.jsonl # Upload transcript
 bun agentlogs claudecode sync                    # Sync all local transcripts

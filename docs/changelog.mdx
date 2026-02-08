@@ -3,6 +3,20 @@ title: "Changelog"
 description: "Product updates and announcements"
 ---
 
+<Update label="February 8, 2026">
+## CLI Login Hostname Required
+
+`agentlogs login` now requires an explicit hostname:
+
+```bash
+npx agentlogs login agentlogs.ai
+```
+
+- Removed `--dev` special-casing from authentication commands
+- You can now authenticate against any host by passing it directly
+- `logout` accepts an optional hostname and logs out from all hosts when omitted
+</Update>
+
 <Update label="February 4, 2025">
 ## Pi Support
 

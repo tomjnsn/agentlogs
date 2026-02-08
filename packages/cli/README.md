@@ -6,7 +6,7 @@ CLI for uploading and syncing AI coding agent transcripts to [AgentLogs](https:/
 
 ```bash
 # Authenticate
-npx agentlogs login
+npx agentlogs login agentlogs.ai
 npx agentlogs status
 npx agentlogs logout
 

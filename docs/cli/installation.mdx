@@ -17,7 +17,13 @@ The AgentLogs CLI is the primary way to sync transcripts from AI coding assistan
 Before syncing, you need to log in to your AgentLogs account:
 
 ```bash
-npx agentlogs login
+npx agentlogs login <hostname>
+```
+
+For production:
+
+```bash
+npx agentlogs login agentlogs.ai
 ```
 
 This initiates a device authorization flow:
@@ -35,16 +41,19 @@ Verify you're logged in:
 npx agentlogs status
 ```
 
-This shows:
+This shows, per configured host:
 
-- Your logged-in email
-- Current environment (production/development)
-- Number of synced transcripts
+- Authentication status
+- Logged-in user details
+- Last login time
 
 ## Logout
 
 To log out and remove stored credentials:
 
 ```bash
-npx agentlogs logout
+npx agentlogs logout [hostname]
 ```
+
+- With hostname: logs out from that host only
+- Without hostname: logs out from all hosts

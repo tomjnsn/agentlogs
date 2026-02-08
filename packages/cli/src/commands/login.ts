@@ -1,24 +1,21 @@
 import open from "open";
-import { createAuthClientForEnv, DEV_URL, PROD_URL } from "../auth";
+import { createAuthClientForEnv, resolveServer } from "../auth";
 import { setTokenForEnv, upsertEnvironment, type EnvName } from "../config";
 
 export interface LoginCommandOptions {
-  dev?: boolean;
+  hostname: string;
 }
 
-export async function loginCommand(options: LoginCommandOptions = {}): Promise<void> {
-  const isDev = options.dev ?? false;
-  const envName: EnvName = isDev ? "dev" : "prod";
-  const baseURL = isDev ? DEV_URL : PROD_URL;
-
-  const envLabel = isDev ? "development" : "production";
-  console.log(`🔐 AgentLogs Device Authorization (${envLabel})`);
-  console.log(`🌐 Server: ${baseURL}`);
-  console.log("⏳ Requesting device authorization...");
-
-  const authClient = createAuthClientForEnv(baseURL);
-
+export async function loginCommand(options: LoginCommandOptions): Promise<void> {
   try {
+    const { host: envName, baseURL } = resolveServer(options.hostname);
+
+    console.log("🔐 AgentLogs Device Authorization");
+    console.log(`🌐 Server: ${baseURL}`);
+    console.log("⏳ Requesting device authorization...");
+
+    const authClient = createAuthClientForEnv(baseURL);
+
     // Request device code
     const { data, error } = await authClient.device.code({
       client_id: "agentlogs-cli",

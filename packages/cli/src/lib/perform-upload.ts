@@ -453,7 +453,7 @@ export async function uploadUnifiedToAllEnvs(params: UploadUnifiedParams): Promi
 
   const authenticatedEnvs = await getAuthenticatedEnvironments();
   if (authenticatedEnvs.length === 0) {
-    throw new Error("No authenticated environments found. Run `agentlogs login` first.");
+    throw new Error("No authenticated environments found. Run `agentlogs login agentlogs.ai` first.");
   }
 
   // Redact sensitive file contents (e.g., .env, .zshrc) before pattern-based secret redaction

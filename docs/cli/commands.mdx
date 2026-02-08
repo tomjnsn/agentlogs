@@ -12,18 +12,28 @@ description: Complete CLI command reference
 Authenticate with AgentLogs using device authorization.
 
 ```bash
-npx agentlogs login
+npx agentlogs login <hostname>
 ```
 
-Opens a browser for authentication. After authorizing, your token is stored locally.
+Examples:
+
+```bash
+npx agentlogs login agentlogs.ai
+npx agentlogs login localhost:3000
+```
+
+The hostname is required. The CLI opens a browser for authentication and stores your token locally for that host.
 
 ### logout
 
 Remove stored authentication credentials.
 
 ```bash
-npx agentlogs logout
+npx agentlogs logout [hostname]
 ```
+
+- With a hostname, logs out only from that host.
+- Without a hostname, logs out from all configured hosts.
 
 ### status
 
@@ -33,12 +43,15 @@ Show current authentication status and account info.
 npx agentlogs status
 ```
 
-**Output:**
+**Output (example):**
 
 ```
-Logged in as: user@example.com
-Environment: production
-Synced transcripts: 42
+🔐 AgentLogs Authentication Status
+
+agentlogs.ai (https://agentlogs.ai)
+  ✅ Logged in
+  👤 Example User
+  📧 user@example.com
 ```
 
 ---
@@ -399,18 +412,14 @@ npx agentlogs deny /path/to/secret-repo
 
 These options work with any command:
 
-| Option        | Description                                    |
-| ------------- | ---------------------------------------------- |
-| `--help`      | Show help for a command                        |
-| `--version`   | Show CLI version                               |
-| `--env <env>` | Use environment: `production` or `development` |
+| Option      | Description             |
+| ----------- | ----------------------- |
+| `--help`    | Show help for a command |
+| `--version` | Show CLI version        |
 
 **Example:**
 
 ```bash
 # Get help for a specific command
 npx agentlogs claudecode sync --help
-
-# Use development environment
-npx agentlogs --env development claudecode sync
 ```

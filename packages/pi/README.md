@@ -132,7 +132,7 @@ agentlogs pi upload /path/to/session.jsonl
 agentlogs status
 
 # Login to AgentLogs
-agentlogs login
+agentlogs login agentlogs.ai
 ```
 
 ## How It Works
