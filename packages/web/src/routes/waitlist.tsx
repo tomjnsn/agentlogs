@@ -1,17 +1,12 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { ButtonLink, Container, Footer, FooterLink, Main, SocialLink } from "../components/landing";
-import { DiscordIcon, Logo, XIcon } from "../components/icons/source-icons";
+import { Logo } from "../components/icons/source-icons";
 
 export const Route = createFileRoute("/waitlist")({
   beforeLoad: ({ context }) => {
-    // Use session from parent __root layout (already fetched)
     const session = context.session;
-    // If user is already approved, redirect to app
     if (session?.user.role === "user" || session?.user.role === "admin") {
       throw redirect({ to: "/app" });
     }
-    // Don't redirect to "/" if no session - this prevents redirect loops
-    // Instead, we'll show a sign-in prompt in the component
     return { session };
   },
   component: WaitlistPage,
@@ -20,87 +15,45 @@ export const Route = createFileRoute("/waitlist")({
 function WaitlistPage() {
   const { session } = Route.useRouteContext();
 
-  // If no session, show sign-in prompt instead of redirecting
-  if (!session) {
-    return (
-      <div className="min-h-screen bg-neutral-950">
-        <Header />
-        <Main>
-          <section className="flex min-h-[calc(100vh-200px)] flex-col items-center justify-center py-16">
-            <Container className="flex flex-col items-center gap-6 text-center">
-              <h1 className="font-serif text-4xl tracking-tight text-white sm:text-5xl">Join the Waitlist</h1>
-              <p className="max-w-md text-lg text-neutral-400">Sign in with GitHub to join the waitlist.</p>
-              <ButtonLink href="/auth/github" size="lg">
-                Sign in with GitHub
-              </ButtonLink>
-            </Container>
-          </section>
-        </Main>
-        <FooterContent />
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-neutral-950">
-      <Header email={session.user.email} />
-      <Main>
-        <section className="flex min-h-[calc(100vh-200px)] flex-col items-center justify-center py-16">
-          <Container className="flex flex-col items-center gap-6 text-center">
-            <div className="flex size-16 items-center justify-center rounded-full bg-green-500/10">
-              <svg className="size-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div className="flex min-h-screen flex-col bg-background text-foreground">
+      <nav className="border-b border-border">
+        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-6">
+          <a href="/" className="flex items-center gap-2 font-medium">
+            <Logo className="size-5" />
+            AgentLogs
+          </a>
+          {session && <span className="text-sm text-muted-foreground">{session.user.email}</span>}
+        </div>
+      </nav>
+
+      <main className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
+        {session ? (
+          <>
+            <div className="flex size-14 items-center justify-center rounded-full bg-green-500/10">
+              <svg className="size-7 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h1 className="font-serif text-4xl tracking-tight text-white sm:text-5xl">You're on the waitlist</h1>
-            <p className="max-w-md text-lg text-neutral-400">
+            <h1 className="mt-5 font-display text-3xl tracking-tight sm:text-4xl">You're on the waitlist</h1>
+            <p className="mt-3 max-w-md text-muted-foreground">
               Thanks for signing up, {session.user.name || "there"}! We'll notify you at{" "}
-              <span className="text-white">{session.user.email}</span> when your account is ready.
+              <span className="text-foreground">{session.user.email}</span> when your account is ready.
             </p>
-          </Container>
-        </section>
-      </Main>
-      <FooterContent />
+          </>
+        ) : (
+          <>
+            <h1 className="font-display text-3xl tracking-tight sm:text-4xl">Join the Waitlist</h1>
+            <p className="mt-3 max-w-md text-muted-foreground">Sign in with GitHub to join the waitlist.</p>
+            <a
+              href="/auth/github"
+              className="mt-6 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              Sign in with GitHub
+            </a>
+          </>
+        )}
+      </main>
     </div>
-  );
-}
-
-function Header({ email }: { email?: string }) {
-  return (
-    <header className="sticky top-0 z-10 bg-neutral-950">
-      <nav className="mx-auto flex h-20 max-w-7xl items-center gap-4 px-6 lg:px-10">
-        <div className="flex flex-1 items-center gap-6">
-          <a href="/" className="flex items-center gap-2">
-            <Logo className="size-6 text-white" />
-            <span className="font-medium text-white">AgentLogs</span>
-          </a>
-        </div>
-        {email && <span className="text-sm text-neutral-400">{email}</span>}
-      </nav>
-    </header>
-  );
-}
-
-function FooterContent() {
-  return (
-    <Footer
-      links={
-        <>
-          <FooterLink href="https://agentlogs.ai/docs">Docs</FooterLink>
-          <FooterLink href="https://agentlogs.ai/docs/changelog">Changelog</FooterLink>
-        </>
-      }
-      socialLinks={
-        <>
-          <SocialLink href="https://x.com/agentlogs" name="X">
-            <XIcon />
-          </SocialLink>
-          <SocialLink href="https://discord.gg/yG4TNv3mjG" name="Discord">
-            <DiscordIcon />
-          </SocialLink>
-        </>
-      }
-      fineprint={<p>&copy; {new Date().getFullYear()} AgentLogs</p>}
-    />
   );
 }

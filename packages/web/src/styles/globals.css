@@ -17,19 +17,6 @@
   --font-serif: "Instrument Serif", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
   --font-display: "Instrument Serif", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
   --default-font-feature-settings: "ss19", "cv02", "cv04", "cv07", "cv11", "cv16", "cv17", "zero";
-
-  /* Olive color palette for oatmeal components */
-  --color-olive-50: #f6f7f4;
-  --color-olive-100: #e9ebe4;
-  --color-olive-200: #d4d8ca;
-  --color-olive-300: #b8bfa8;
-  --color-olive-400: #9aa389;
-  --color-olive-500: #7d876b;
-  --color-olive-600: #636b54;
-  --color-olive-700: #4f5544;
-  --color-olive-800: #424638;
-  --color-olive-900: #393c32;
-  --color-olive-950: #1e1f1a;
 }
 
 :root {

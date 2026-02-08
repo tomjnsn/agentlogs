@@ -1,22 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
-  ArrowNarrowRightIcon,
-  ButtonLink,
-  CTASection,
-  Faq,
-  FAQSection,
-  FeatureCard,
-  FeatureScreenshot,
-  FeaturesSection,
-  Footer,
-  FooterLink,
-  HeroSection,
-  Main,
-  PlainButtonLink,
-  Screenshot,
-  SocialLink,
-} from "../components/landing";
-import {
   ClaudeCodeIcon,
   CodexIcon,
   DiscordIcon,
@@ -31,264 +14,218 @@ export const Route = createFileRoute("/")({
   component: LandingPage,
 });
 
+const agents = [
+  { icon: ClaudeCodeIcon, name: "Claude Code", bg: "bg-[#e87b35]", fg: "text-white" },
+  { icon: CodexIcon, name: "Codex CLI (experimental)", bg: "bg-black", fg: "text-white" },
+  { icon: OpenCodeIcon, name: "OpenCode", bg: "bg-white", fg: "text-black" },
+  { icon: PiIcon, name: "Pi", bg: "bg-black", fg: "text-white" },
+];
+
+const features = [
+  {
+    title: "Team Observability",
+    description:
+      "Full visibility into your team's AI coding sessions. Track activity, measure productivity, and understand how your team uses AI tools.",
+    image: "/features/dashboard.png",
+  },
+  {
+    title: "Git Integration",
+    description: "See which session wrote which code. Works whenever your agent is the one committing.",
+    image: "/features/git.png",
+  },
+  {
+    title: "Learn From Each Other",
+    description:
+      "See what prompts your teammates are using and how they're solving problems. Build shared knowledge from real sessions.",
+    image: "/features/list.png",
+  },
+];
+
+const faqs = [
+  {
+    q: "How does AgentLogs capture my sessions?",
+    a: "AgentLogs uses lightweight plugins for your coding agents. Install a plugin with a single command and it captures transcripts at the end of each session, automatically linking them to your git commits. No additional configuration needed.",
+  },
+  {
+    q: "How does AgentLogs protect my secrets and sensitive data?",
+    a: "AgentLogs automatically scans all transcripts for secrets before uploading, using 1,600+ detection patterns covering API keys, tokens, passwords, and database credentials. Detected secrets are redacted entirely on your machine. They never leave your computer in plain text.",
+  },
+  {
+    q: "Who can see my transcripts?",
+    a: "You control visibility for each transcript: Private (only you), Team (you and team members), or Public (anyone with the link). By default, transcripts from public repos are public, private repos are team-visible, and sessions without a detected repo are private. You can override this per repository.",
+  },
+  {
+    q: "Which coding agents are supported?",
+    a: "AgentLogs currently supports Claude Code, Codex CLI, and OpenCode. Each has its own integration method, and we're actively adding support for more agents. Check our docs for the latest compatibility info.",
+  },
+  {
+    q: "How does AgentLogs compare to git-ai or agent-trace?",
+    a: "Tools like git-ai and agent-trace focus on tracking AI attribution at the code level, recording which lines were AI-generated. AgentLogs focuses on the session and prompt level, capturing the full context of how code was created. We see these as complementary and plan to integrate them in the future. AgentLogs is the ideal platform for surfacing this kind of attribution data.",
+  },
+];
+
 function LandingPage() {
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <Main>
-        <HeroContent />
-        <FeatureContent />
-        <FAQContent />
-        <CTAContent />
-      </Main>
-      <FooterContent />
-    </div>
-  );
-}
-
-function Header() {
-  return (
-    <header className="sticky top-0 z-10 bg-background">
-      <nav className="mx-auto flex h-20 max-w-7xl items-center gap-4 px-6 lg:px-10">
-        <div className="flex flex-1 items-center gap-6">
-          <a href="/" className="flex items-center gap-2">
-            <Logo className="size-6 text-white" />
-            <span className="font-medium text-white">AgentLogs</span>
+    <div className="bg-background text-foreground">
+      {/* Nav */}
+      <nav className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur-sm">
+        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-6">
+          <a href="/" className="flex items-center gap-2 font-medium">
+            <Logo className="size-5" />
+            AgentLogs
           </a>
-        </div>
-        <div className="flex items-center gap-6">
-          <a href="https://agentlogs.ai/docs" className="text-sm text-neutral-400 hover:text-white">
-            Docs
-          </a>
-          <ButtonLink href="/auth/github">Join the waitlist</ButtonLink>
+          <div className="flex items-center gap-5 text-sm">
+            <a href="https://agentlogs.ai/docs" className="text-muted-foreground hover:text-foreground">
+              Docs
+            </a>
+            <a
+              href="/auth/github"
+              className="rounded-md bg-primary px-3 py-1.5 text-primary-foreground hover:bg-primary/90"
+            >
+              Join the waitlist
+            </a>
+          </div>
         </div>
       </nav>
-    </header>
-  );
-}
 
-function HeroContent() {
-  return (
-    <HeroSection
-      headline={
-        <>
-          Coding agents, visible to your team.{" "}
-          <span className="group/icons inline-flex items-center align-middle">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span
-                  data-icon="claude"
-                  className="isolate inline-flex size-14 cursor-pointer items-center justify-center rounded-full border-4 border-neutral-950 bg-[#e87b35] transition-transform duration-200 group-has-[[data-icon=codex]:hover]/icons:-translate-x-1.5 group-has-[[data-icon=opencode]:hover]/icons:-translate-x-1.5 group-has-[[data-icon=pi]:hover]/icons:-translate-x-1.5"
-                >
-                  <ClaudeCodeIcon className="size-7 text-white" />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Claude Code</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span
-                  data-icon="codex"
-                  className="isolate -ml-2 inline-flex size-14 cursor-pointer items-center justify-center rounded-full border-4 border-neutral-950 bg-black transition-transform duration-200 group-has-[[data-icon=claude]:hover]/icons:translate-x-1.5 group-has-[[data-icon=opencode]:hover]/icons:-translate-x-1.5 group-has-[[data-icon=pi]:hover]/icons:-translate-x-1.5"
-                >
-                  <CodexIcon className="size-7 text-white" />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Codex CLI (experimental)</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span
-                  data-icon="opencode"
-                  className="isolate -ml-2 inline-flex size-14 cursor-pointer items-center justify-center rounded-full border-4 border-neutral-950 bg-white transition-transform duration-200 group-has-[[data-icon=claude]:hover]/icons:translate-x-1.5 group-has-[[data-icon=codex]:hover]/icons:translate-x-1.5 group-has-[[data-icon=pi]:hover]/icons:-translate-x-1.5"
-                >
-                  <OpenCodeIcon className="size-7 text-black" />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">OpenCode</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span
-                  data-icon="pi"
-                  className="isolate -ml-2 inline-flex size-14 cursor-pointer items-center justify-center rounded-full border-4 border-neutral-950 bg-black transition-transform duration-200 group-has-[[data-icon=claude]:hover]/icons:translate-x-1.5 group-has-[[data-icon=codex]:hover]/icons:translate-x-1.5 group-has-[[data-icon=opencode]:hover]/icons:translate-x-1.5"
-                >
-                  <PiIcon className="size-7 text-white" />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Pi</TooltipContent>
-            </Tooltip>
-          </span>
-        </>
-      }
-      subheadline={
-        <p>
-          See what prompts work, learn from each other's workflows, and build institutional knowledge that compounds.
-        </p>
-      }
-      cta={
-        <div className="flex flex-wrap items-center gap-4">
-          <ButtonLink href="/waitlist" size="lg">
-            Join the waitlist
-          </ButtonLink>
-          <PlainButtonLink href="https://agentlogs.ai/s/ijz0z090jxrmmfjsz9lkcq7j" size="lg">
-            See it in action
-            <ArrowNarrowRightIcon />
-          </PlainButtonLink>
-        </div>
-      }
-      demo={
-        <Screenshot wallpaper="art" className="aspect-video rounded-2xl">
+      <main>
+        {/* Hero */}
+        <section className="mx-auto max-w-5xl px-6 pt-24 pb-16 text-center">
+          <div className="flex justify-center gap-1">
+            {agents.map((agent) => (
+              <Tooltip key={agent.name}>
+                <TooltipTrigger asChild>
+                  <span
+                    className={`inline-flex size-10 items-center justify-center rounded-full ${agent.bg} ring-2 ring-background`}
+                  >
+                    <agent.icon className={`size-5 ${agent.fg}`} />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>{agent.name}</TooltipContent>
+              </Tooltip>
+            ))}
+          </div>
+          <h1 className="mx-auto mt-8 max-w-3xl font-display text-4xl tracking-tight text-balance sm:text-6xl">
+            Coding agents, visible to your team.
+          </h1>
+          <p className="mx-auto mt-5 max-w-xl text-lg text-muted-foreground">
+            See what prompts work, learn from each other's workflows, and build institutional knowledge that compounds.
+          </p>
+          <div className="mt-8 flex justify-center gap-3">
+            <a
+              href="/waitlist"
+              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              Join the waitlist
+            </a>
+            <a
+              href="https://agentlogs.ai/s/ijz0z090jxrmmfjsz9lkcq7j"
+              className="rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent"
+            >
+              See it in action →
+            </a>
+          </div>
+        </section>
+
+        {/* Hero image */}
+        <section className="mx-auto max-w-5xl px-6 pb-24">
           <img
             src="/features/detail.png"
-            alt="AgentLogs session detail"
-            className="w-full shadow-2xl ring-1 ring-white/10 ring-inset"
+            alt="AgentLogs session detail view"
+            className="w-full rounded-lg border border-border shadow-2xl"
           />
-        </Screenshot>
-      }
-    />
-  );
-}
+        </section>
 
-function FeatureContent() {
-  return (
-    <FeaturesSection
-      headline="Everything you need to understand what your agents are doing."
-      subheadline={
-        <p>
-          Track every session, share context across your team, and build a knowledge base of prompts that actually work.
-        </p>
-      }
-    >
-      <FeatureCard
-        demo={
-          <FeatureScreenshot wallpaper="green" className="h-56">
-            <img src="/features/dashboard.png" alt="Team dashboard" />
-          </FeatureScreenshot>
-        }
-        headline="Team Observability"
-        subheadline="Full visibility into your team's AI coding sessions. Track activity, measure productivity, and understand how your team uses AI tools."
-      />
-      <FeatureCard
-        demo={
-          <FeatureScreenshot wallpaper="blue" className="h-56">
-            <img src="/features/git.png" alt="Git integration" />
-          </FeatureScreenshot>
-        }
-        headline="Git Integration"
-        subheadline="See which session wrote which code. Works whenever your agent is the one committing."
-      />
-      <FeatureCard
-        demo={
-          <FeatureScreenshot wallpaper="purple" className="h-56">
-            <img src="/features/list.png" alt="Session list" />
-          </FeatureScreenshot>
-        }
-        headline="Learn From Each Other"
-        subheadline="See what prompts your teammates are using and how they're solving problems. Build shared knowledge from real sessions."
-      />
-    </FeaturesSection>
-  );
-}
+        {/* Features */}
+        <section className="border-t border-border py-24">
+          <div className="mx-auto max-w-5xl px-6">
+            <p className="text-sm font-medium text-muted-foreground">Features</p>
+            <h2 className="mt-2 font-display text-3xl tracking-tight sm:text-4xl">
+              Everything you need to understand what your agents are doing.
+            </h2>
+            <p className="mt-3 max-w-xl text-muted-foreground">
+              Track every session, share context across your team, and build a knowledge base of prompts that actually
+              work.
+            </p>
+          </div>
+          <div className="mx-auto mt-16 max-w-5xl space-y-20 px-6">
+            {features.map((f, i) => (
+              <div
+                key={f.title}
+                className={`flex flex-col gap-8 lg:flex-row lg:items-center lg:gap-12 ${i % 2 === 1 ? "lg:flex-row-reverse" : ""}`}
+              >
+                <div className="lg:w-1/2">
+                  <h3 className="text-xl font-semibold">{f.title}</h3>
+                  <p className="mt-2 text-muted-foreground">{f.description}</p>
+                </div>
+                <div className="lg:w-1/2">
+                  <img src={f.image} alt={f.title} className="w-full rounded-lg border border-border" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
 
-function FAQContent() {
-  return (
-    <FAQSection headline="Questions & Answers">
-      <Faq
-        question="How does AgentLogs capture my sessions?"
-        answer={
-          <p>
-            AgentLogs uses lightweight plugins for your coding agents. Install a plugin with a single command and it
-            captures transcripts at the end of each session, automatically linking them to your git commits. No
-            additional configuration needed.
-          </p>
-        }
-      />
-      <Faq
-        question="How does AgentLogs protect my secrets and sensitive data?"
-        answer={
-          <p>
-            AgentLogs automatically scans all transcripts for secrets before uploading, using 1,600+ detection patterns
-            covering API keys, tokens, passwords, and database credentials. Detected secrets are redacted entirely on
-            your machine. They never leave your computer in plain text.
-          </p>
-        }
-      />
-      <Faq
-        question="Who can see my transcripts?"
-        answer={
-          <p>
-            You control visibility for each transcript: Private (only you), Team (you and team members), or Public
-            (anyone with the link). By default, transcripts from public repos are public, private repos are
-            team-visible, and sessions without a detected repo are private. You can override this per repository.
-          </p>
-        }
-      />
-      <Faq
-        question="Which coding agents are supported?"
-        answer={
-          <p>
-            AgentLogs currently supports Claude Code, Codex CLI, and OpenCode. Each has its own integration method, and
-            we're actively adding support for more agents. Check our docs for the latest compatibility info.
-          </p>
-        }
-      />
-      <Faq
-        question="How does AgentLogs compare to git-ai or agent-trace?"
-        answer={
-          <p>
-            Tools like git-ai and agent-trace focus on tracking AI attribution at the code level, recording which lines
-            were AI-generated. AgentLogs focuses on the session and prompt level, capturing the full context of how code
-            was created. We see these as complementary and plan to integrate them in the future. AgentLogs is the ideal
-            platform for surfacing this kind of attribution data.
-          </p>
-        }
-      />
-    </FAQSection>
-  );
-}
+        {/* FAQ */}
+        <section className="border-t border-border py-24">
+          <div className="mx-auto max-w-2xl px-6">
+            <h2 className="font-display text-3xl tracking-tight sm:text-4xl">Questions & Answers</h2>
+            <div className="mt-10 space-y-0 divide-y divide-border">
+              {faqs.map((faq) => (
+                <details key={faq.q} className="group py-5">
+                  <summary className="flex cursor-pointer list-none items-center justify-between text-base font-medium [&::-webkit-details-marker]:hidden">
+                    {faq.q}
+                    <span className="ml-4 text-muted-foreground transition-transform group-open:rotate-45">+</span>
+                  </summary>
+                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{faq.a}</p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
 
-function CTAContent() {
-  return (
-    <CTASection
-      headline="Want to adopt AgentLogs for your team?"
-      subheadline={
-        <p>
-          If you're working in a team that wants to adopt AgentLogs, reach out to fast-track your waitlist access and
-          get dedicated onboarding support.
-        </p>
-      }
-      cta={
-        <div className="flex">
-          <ButtonLink href="mailto:hi@agentlogs.ai" size="lg">
-            Contact us
-          </ButtonLink>
+        {/* CTA */}
+        <section className="border-t border-border py-24">
+          <div className="mx-auto max-w-2xl px-6 text-center">
+            <h2 className="font-display text-3xl tracking-tight sm:text-4xl">Want to adopt AgentLogs for your team?</h2>
+            <p className="mt-3 text-muted-foreground">
+              Reach out to fast-track your waitlist access and get dedicated onboarding support.
+            </p>
+            <a
+              href="mailto:hi@agentlogs.ai"
+              className="mt-6 inline-block rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              Contact us
+            </a>
+          </div>
+        </section>
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t border-border py-10">
+        <div className="mx-auto flex max-w-5xl flex-col items-center gap-5 px-6 text-sm text-muted-foreground">
+          <div className="flex gap-6">
+            <a href="https://agentlogs.ai/docs" className="hover:text-foreground">
+              Docs
+            </a>
+            <a href="https://agentlogs.ai/docs/changelog" className="hover:text-foreground">
+              Changelog
+            </a>
+            <a href="https://x.com/agentlogs" target="_blank" aria-label="X" className="hover:text-foreground">
+              <XIcon className="size-4" />
+            </a>
+            <a
+              href="https://discord.gg/yG4TNv3mjG"
+              target="_blank"
+              aria-label="Discord"
+              className="hover:text-foreground"
+            >
+              <DiscordIcon className="size-4" />
+            </a>
+          </div>
+          <p className="text-muted-foreground/60">&copy; {new Date().getFullYear()} AgentLogs</p>
         </div>
-      }
-    />
-  );
-}
-
-function FooterContent() {
-  return (
-    <Footer
-      links={
-        <>
-          <FooterLink href="https://agentlogs.ai/docs">Docs</FooterLink>
-          <FooterLink href="https://agentlogs.ai/docs/changelog">Changelog</FooterLink>
-        </>
-      }
-      socialLinks={
-        <>
-          <SocialLink href="https://x.com/agentlogs" name="X">
-            <XIcon />
-          </SocialLink>
-          <SocialLink href="https://discord.gg/yG4TNv3mjG" name="Discord">
-            <DiscordIcon />
-          </SocialLink>
-        </>
-      }
-      fineprint={<p>&copy; {new Date().getFullYear()} AgentLogs</p>}
-    />
+      </footer>
+    </div>
   );
 }
