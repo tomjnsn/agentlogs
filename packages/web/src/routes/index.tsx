@@ -14,13 +14,6 @@ export const Route = createFileRoute("/")({
   component: LandingPage,
 });
 
-const agents = [
-  { icon: ClaudeCodeIcon, name: "Claude Code", bg: "bg-[#e87b35]", fg: "text-white" },
-  { icon: CodexIcon, name: "Codex CLI (experimental)", bg: "bg-black", fg: "text-white" },
-  { icon: OpenCodeIcon, name: "OpenCode", bg: "bg-white", fg: "text-black" },
-  { icon: PiIcon, name: "Pi", bg: "bg-black", fg: "text-white" },
-];
-
 const features = [
   {
     title: "Team Observability",
@@ -90,28 +83,60 @@ function LandingPage() {
 
       <main>
         {/* Hero */}
-        <section className="mx-auto max-w-5xl px-6 pt-24 pb-24 text-center">
-          <div className="flex justify-center gap-1">
-            {agents.map((agent) => (
-              <Tooltip key={agent.name}>
+        <section className="mx-auto max-w-5xl px-6 pt-24 pb-24">
+          <h1 className="max-w-5xl font-display text-4xl tracking-tight text-balance sm:text-6xl lg:text-7xl">
+            Coding agents, visible to your team.{" "}
+            <span className="group/icons inline-flex items-center align-middle">
+              <Tooltip>
                 <TooltipTrigger asChild>
                   <span
-                    className={`inline-flex size-10 items-center justify-center rounded-full ${agent.bg} ring-2 ring-background`}
+                    data-icon="claude"
+                    className="isolate inline-flex size-11 cursor-pointer items-center justify-center rounded-full bg-[#e87b35] ring-3 ring-background transition-transform duration-200 group-has-[[data-icon=codex]:hover]/icons:-translate-x-1.5 group-has-[[data-icon=opencode]:hover]/icons:-translate-x-1.5 group-has-[[data-icon=pi]:hover]/icons:-translate-x-1.5 sm:size-14"
                   >
-                    <agent.icon className={`size-5 ${agent.fg}`} />
+                    <ClaudeCodeIcon className="size-5 text-white sm:size-7" />
                   </span>
                 </TooltipTrigger>
-                <TooltipContent>{agent.name}</TooltipContent>
+                <TooltipContent>Claude Code</TooltipContent>
               </Tooltip>
-            ))}
-          </div>
-          <h1 className="mx-auto mt-8 max-w-3xl font-display text-4xl tracking-tight text-balance sm:text-6xl">
-            Coding agents, visible to your team.
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    data-icon="codex"
+                    className="isolate -ml-1.5 inline-flex size-11 cursor-pointer items-center justify-center rounded-full bg-black ring-3 ring-background transition-transform duration-200 group-has-[[data-icon=claude]:hover]/icons:translate-x-1.5 group-has-[[data-icon=opencode]:hover]/icons:-translate-x-1.5 group-has-[[data-icon=pi]:hover]/icons:-translate-x-1.5 sm:size-14"
+                  >
+                    <CodexIcon className="size-5 text-white sm:size-7" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>Codex CLI (experimental)</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    data-icon="opencode"
+                    className="isolate -ml-1.5 inline-flex size-11 cursor-pointer items-center justify-center rounded-full bg-white ring-3 ring-background transition-transform duration-200 group-has-[[data-icon=claude]:hover]/icons:translate-x-1.5 group-has-[[data-icon=codex]:hover]/icons:translate-x-1.5 group-has-[[data-icon=pi]:hover]/icons:-translate-x-1.5 sm:size-14"
+                  >
+                    <OpenCodeIcon className="size-5 text-black sm:size-7" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>OpenCode</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    data-icon="pi"
+                    className="isolate -ml-1.5 inline-flex size-11 cursor-pointer items-center justify-center rounded-full bg-black ring-3 ring-background transition-transform duration-200 group-has-[[data-icon=claude]:hover]/icons:translate-x-1.5 group-has-[[data-icon=codex]:hover]/icons:translate-x-1.5 group-has-[[data-icon=opencode]:hover]/icons:translate-x-1.5 sm:size-14"
+                  >
+                    <PiIcon className="size-5 text-white sm:size-7" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>Pi</TooltipContent>
+              </Tooltip>
+            </span>
           </h1>
-          <p className="mx-auto mt-5 max-w-xl text-lg text-muted-foreground">
+          <p className="mt-6 max-w-2xl text-lg text-muted-foreground">
             See what prompts work, learn from each other's workflows, and build institutional knowledge that compounds.
           </p>
-          <div className="mt-8 flex justify-center gap-3">
+          <div className="mt-8 flex gap-3">
             <a
               href="/waitlist"
               className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
