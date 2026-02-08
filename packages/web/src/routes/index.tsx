@@ -194,7 +194,11 @@ function LandingPage() {
                   <p className="mt-2 text-muted-foreground">{f.description}</p>
                 </div>
                 <div className="lg:w-1/2">
-                  <img src={f.image} alt={f.title} className="w-full rounded-lg border border-border" />
+                  <img
+                    src={f.image}
+                    alt={f.title}
+                    className="aspect-video w-full rounded-lg border border-border object-cover object-top"
+                  />
                 </div>
               </div>
             ))}
