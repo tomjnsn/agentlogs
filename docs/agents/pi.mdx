@@ -27,31 +27,13 @@ npx agentlogs login agentlogs.ai
 
 ### 2. Install the Extension
 
+Run inside Pi or from the terminal:
+
 ```bash
-npm install -g @agentlogs/pi
+pi install npm:@agentlogs/pi
 ```
 
-### 3. Configure Pi
-
-Add the extension to your Pi settings. You can do this globally or per-project:
-
-**Global** (`~/.pi/agent/settings.json`):
-
-```json
-{
-  "extensions": ["@agentlogs/pi"]
-}
-```
-
-**Project-local** (`.pi/settings.json`):
-
-```json
-{
-  "extensions": ["@agentlogs/pi"]
-}
-```
-
-The extension will be loaded automatically when you start Pi.
+This installs the package and registers the extension automatically. It will be loaded on next Pi startup.
 
 ## How It Works
 

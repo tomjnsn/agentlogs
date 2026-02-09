@@ -3,6 +3,7 @@ import {
   ClaudeCodeIcon,
   CodexIcon,
   DiscordIcon,
+  GitHubIcon,
   Logo,
   OpenCodeIcon,
   PiIcon,
@@ -18,23 +19,28 @@ const features = [
   {
     title: "Team Observability",
     description:
-      "Full visibility into your team's AI coding sessions. Track activity, measure productivity, and understand how your team uses AI tools.",
+      "Full visibility into your team's AI coding sessions. Track activity, costs, agent & model usage, and per-member breakdowns — all in one dashboard.",
     image: "/features/dashboard.png",
   },
   {
     title: "Git Integration",
-    description: "See which session wrote which code. Works whenever your agent is the one committing.",
+    description:
+      "See which session wrote which code. Commits are automatically linked to the transcript that produced them.",
     image: "/features/git.png",
   },
   {
     title: "Learn From Each Other",
     description:
-      "See what prompts your teammates are using and how they're solving problems. Build shared knowledge from real sessions.",
+      "Browse your team's sessions to discover effective prompts and workflows. Build shared knowledge from real sessions.",
     image: "/features/list.png",
   },
 ];
 
 const faqs = [
+  {
+    q: "Is AgentLogs really open-source?",
+    a: "Yes. The entire codebase — CLI, web app, plugins — is MIT-licensed and on GitHub. You can self-host it on Cloudflare Workers with a single deploy command, or use our hosted version at agentlogs.ai.",
+  },
   {
     q: "How does AgentLogs capture my sessions?",
     a: "AgentLogs uses lightweight plugins for your coding agents. Install a plugin with a single command and it captures transcripts at the end of each session, automatically linking them to your git commits. No additional configuration needed.",
@@ -49,7 +55,7 @@ const faqs = [
   },
   {
     q: "Which coding agents are supported?",
-    a: "AgentLogs currently supports Claude Code, Codex CLI, and OpenCode. Each has its own integration method, and we're actively adding support for more agents. Check our docs for the latest compatibility info.",
+    a: "AgentLogs supports Claude Code, Codex CLI, OpenCode, and Pi. Each has its own lightweight plugin, and we're actively adding support for more agents. Check our docs for the latest compatibility info.",
   },
   {
     q: "How does AgentLogs compare to git-ai or agent-trace?",
@@ -72,10 +78,18 @@ function LandingPage() {
               Docs
             </a>
             <a
+              href="https://github.com/agentlogs/agentlogs"
+              target="_blank"
+              className="text-muted-foreground hover:text-foreground"
+              aria-label="GitHub"
+            >
+              <GitHubIcon className="size-5" />
+            </a>
+            <a
               href="/auth/github"
               className="rounded-md bg-primary px-3 py-1.5 text-primary-foreground hover:bg-primary/90"
             >
-              Join the waitlist
+              Get started
             </a>
           </div>
         </div>
@@ -85,7 +99,7 @@ function LandingPage() {
         {/* Hero */}
         <section className="mx-auto max-w-5xl px-6 pt-24 pb-24">
           <h1 className="max-w-5xl font-display text-4xl tracking-tight text-balance sm:text-6xl lg:text-7xl">
-            Coding agents, visible to your team.{" "}
+            Open-source observability for coding agents.{" "}
             <span className="group/icons inline-flex items-center align-middle">
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -134,20 +148,22 @@ function LandingPage() {
             </span>
           </h1>
           <p className="mt-6 max-w-2xl text-lg text-muted-foreground">
-            See what prompts work, learn from each other's workflows, and build institutional knowledge that compounds.
+            Capture transcripts, track costs, link sessions to commits, and build shared knowledge across your team.
+            Self-host or use our cloud.
           </p>
           <div className="mt-8 flex gap-3">
             <a
-              href="/waitlist"
+              href="https://agentlogs.ai/docs/introduction/getting-started"
               className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
-              Join the waitlist
+              Get started
             </a>
             <a
-              href="https://agentlogs.ai/s/ijz0z090jxrmmfjsz9lkcq7j"
+              href="https://github.com/agentlogs/agentlogs"
+              target="_blank"
               className="rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent"
             >
-              See it in action →
+              Star on GitHub →
             </a>
           </div>
         </section>
@@ -205,6 +221,25 @@ function LandingPage() {
           </div>
         </section>
 
+        {/* Open Source */}
+        <section className="border-t border-border py-24">
+          <div className="mx-auto max-w-2xl px-6 text-center">
+            <p className="text-sm font-medium text-muted-foreground">Open Source</p>
+            <h2 className="mt-2 font-display text-3xl tracking-tight sm:text-4xl">
+              Own your data. Self-host in minutes.
+            </h2>
+            <p className="mt-3 text-muted-foreground">
+              AgentLogs is MIT-licensed and deploys to Cloudflare Workers with a single command. Use our cloud or run it
+              yourself — your transcripts, your infrastructure.
+            </p>
+            <pre className="mx-auto mt-8 max-w-md overflow-x-auto rounded-lg border border-border bg-zinc-950 px-6 py-4 text-left text-sm text-zinc-300">
+              <code>{`git clone https://github.com/agentlogs/agentlogs
+cd agentlogs && bun install
+bun db:migrate && bun dev`}</code>
+            </pre>
+          </div>
+        </section>
+
         {/* FAQ */}
         <section className="border-t border-border py-24">
           <div className="mx-auto max-w-2xl px-6">
@@ -226,16 +261,27 @@ function LandingPage() {
         {/* CTA */}
         <section className="border-t border-border py-24">
           <div className="mx-auto max-w-2xl px-6 text-center">
-            <h2 className="font-display text-3xl tracking-tight sm:text-4xl">Want to adopt AgentLogs for your team?</h2>
+            <h2 className="font-display text-3xl tracking-tight sm:text-4xl">
+              Start capturing your team's AI sessions
+            </h2>
             <p className="mt-3 text-muted-foreground">
-              Reach out to fast-track your waitlist access and get dedicated onboarding support.
+              Set up in under a minute. Self-host or use our cloud — it's free to get started.
             </p>
-            <a
-              href="mailto:hi@agentlogs.ai"
-              className="mt-6 inline-block rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              Contact us
-            </a>
+            <div className="mt-6 flex justify-center gap-3">
+              <a
+                href="https://agentlogs.ai/docs/introduction/getting-started"
+                className="inline-block rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                Get started
+              </a>
+              <a
+                href="https://github.com/agentlogs/agentlogs"
+                target="_blank"
+                className="inline-block rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent"
+              >
+                View on GitHub
+              </a>
+            </div>
           </div>
         </section>
       </main>
@@ -249,6 +295,14 @@ function LandingPage() {
             </a>
             <a href="https://agentlogs.ai/docs/changelog" className="hover:text-foreground">
               Changelog
+            </a>
+            <a
+              href="https://github.com/agentlogs/agentlogs"
+              target="_blank"
+              aria-label="GitHub"
+              className="hover:text-foreground"
+            >
+              <GitHubIcon className="size-4" />
             </a>
             <a href="https://x.com/agentlogs" target="_blank" aria-label="X" className="hover:text-foreground">
               <XIcon className="size-4" />

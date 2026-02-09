@@ -1,17 +1,116 @@
-# 🔮 AgentLogs
+<p align="center">
+  <img src="docs/favicon.svg" width="48" height="48" alt="AgentLogs" />
+</p>
 
-Capture and analyze coding agent session transcripts to understand AI assistant usage patterns.
+<h1 align="center">AgentLogs</h1>
 
-## What It Does
+<p align="center">
+  Open-source observability for AI coding agents.<br />
+  See what prompts work, learn from each other's workflows, and build institutional knowledge that compounds.
+</p>
 
-- **CLI**: Captures agent transcripts (Claude Code, Codex, OpenCode) via hooks and uploads them
-- **Web App**: Stores transcripts, analyzes patterns, displays insights
+<p align="center">
+  <a href="https://agentlogs.ai">Website</a> ·
+  <a href="https://agentlogs.ai/docs">Docs</a> ·
+  <a href="https://discord.gg/yG4TNv3mjG">Discord</a> ·
+  <a href="https://agentlogs.ai/docs/changelog">Changelog</a>
+</p>
 
-## Tech Stack
+---
 
-TanStack Start + Cloudflare Workers + D1 (SQLite) + Drizzle ORM + BetterAuth (GitHub OAuth) + Tailwind CSS v4
+<p align="center">
+  <img src="https://agentlogs.ai/features/detail.png" alt="AgentLogs session detail view" width="720" />
+</p>
 
-## Quick Start
+AgentLogs captures and analyzes transcripts from AI coding agents (like Claude Code, Codex, OpenCode, and Pi) to give your team visibility into how AI tools are used in their codebases.
+
+**See it in action →** [Example transcript](https://agentlogs.ai/s/ijz0z090jxrmmfjsz9lkcq7j)
+
+## Why AgentLogs?
+
+AI coding agents are becoming core to how teams write software. But right now, every session is a black box stored on the machine of the user. You can't see the context put into each session and there is no knowledge sharing between teammates.
+
+AgentLogs fixes that:
+
+- **Team observability** — Dashboard with activity metrics, agent & model usage, and per-member breakdowns
+- **Git integration** — Links sessions to the commits they produced. See which transcript wrote which code
+- **Shared learning** — Browse and share your team's sessions to discover effective prompts and workflows
+
+| Team Dashboard                                            | Git Integration                               | Session Browser                                 |
+| --------------------------------------------------------- | --------------------------------------------- | ----------------------------------------------- |
+| ![Dashboard](https://agentlogs.ai/features/dashboard.png) | ![Git](https://agentlogs.ai/features/git.png) | ![List](https://agentlogs.ai/features/list.png) |
+
+## Supported Agents
+
+| Agent                                                          | Transcripts | Auto-sync | Commit Tracking |
+| -------------------------------------------------------------- | ----------- | --------- | --------------- |
+| [Claude Code](https://agentlogs.ai/docs/agents/claude-code)    | ✓           | ✓         | ✓               |
+| [Codex](https://agentlogs.ai/docs/agents/codex) (experimental) | ✓           | ✓         | —               |
+| [OpenCode](https://agentlogs.ai/docs/agents/opencode)          | ✓           | ✓         | ✓               |
+| [Pi](https://agentlogs.ai/docs/agents/pi)                      | ✓           | ✓         | ✓               |
+
+## Quick Start (using AgentLogs Cloud)
+
+### 1. Log in
+
+```bash
+npx agentlogs login agentlogs.ai
+```
+
+### 2. Install the plugin for your agent
+
+**Claude Code** — inside Claude Code:
+
+```
+/plugin marketplace add agentlogs/claude-code
+/plugin install agentlogs
+```
+
+**Codex:**
+
+```bash
+codex mcp add agentlogs -- npx -y agentlogs mcp
+```
+
+**OpenCode** — add to `opencode.json`:
+
+```json
+{ "plugin": ["@agentlogs/opencode"] }
+```
+
+**Pi** — run inside Pi or from the terminal:
+
+```bash
+pi install npm:@agentlogs/pi
+```
+
+### 3. Use your agent as usual
+
+Transcripts are captured and uploaded automatically. View them at [agentlogs.ai](https://agentlogs.ai).
+
+## CLI
+
+The CLI can also be used standalone for manual uploads:
+
+```bash
+# Interactive picker — browse transcripts from all agents
+npx agentlogs upload
+
+# Upload most recent transcript
+npx agentlogs upload --latest
+
+# Sync all Claude Code transcripts
+npx agentlogs claudecode sync
+
+# Check auth status
+npx agentlogs status
+```
+
+See the full [CLI reference](https://agentlogs.ai/docs/cli/commands).
+
+## Self-Hosting
+
+AgentLogs is fully open-source and can be self-hosted.
 
 ### Prerequisites
 
@@ -23,12 +122,18 @@ TanStack Start + Cloudflare Workers + D1 (SQLite) + Drizzle ORM + BetterAuth (Gi
 ### Setup
 
 ```bash
-# Install
+git clone https://github.com/agentlogs/agentlogs.git
+cd agentlogs
 bun install
 
-# Configure
+# Configure environment
 cp packages/web/.dev.vars.example packages/web/.dev.vars
-# Edit .dev.vars with GitHub OAuth credentials
+# Edit .dev.vars with your GitHub OAuth credentials and a secret:
+#   GITHUB_CLIENT_ID=...
+#   GITHUB_CLIENT_SECRET=...
+#   BETTER_AUTH_SECRET=...  (openssl rand -base64 32)
+#   BETTER_AUTH_URL=http://localhost:8787
+#   WEB_URL=http://localhost:8787
 
 # Initialize database
 bun db:migrate
@@ -39,107 +144,13 @@ bun dev
 
 Open http://localhost:8787
 
-## Project Structure
-
-```
-packages/
-├── cli/       # Agent transcript capture tool
-├── web/       # TanStack Start app on Cloudflare Workers
-├── shared/    # TypeScript types and Zod schemas
-├── opencode/  # OpenCode integration
-└── e2e/       # End-to-end tests
-```
-
-## Commands
+Point the CLI at your instance:
 
 ```bash
-# Development
-bun dev              # Start web app
-bun agentlogs        # Run CLI tool
-
-# Database
-bun db:migrate       # Run migrations
-bun db:generate      # Generate migrations
-bun db:studio        # Open Drizzle Studio
-bun db:reset         # Reset database
-
-# Quality
-bun run check        # Format check, lint, and type check
-bun run lint         # Lint code
-bun run format       # Format code
-
-# Testing
-bun run test:e2e     # Run end-to-end tests
+npx agentlogs login localhost:8787
 ```
 
-## Local Plugin Development
-
-### Prerequisites
-
-- Clone plugin repo: `git clone https://github.com/agentlogs/claude-code ../agentlogs-claude-code-plugin`
-- Install plugin locally: `claude plugins install ../agentlogs-claude-code-plugin`
-
-### Setup
-
-```bash
-# Switch to local development mode
-bun run plugin:switch-dev
-# Opens browser for authentication once
-# Sets VI_CLI_PATH and VI_SERVER_URL in shell RC
-
-# Start local server
-bun run dev
-
-# Test with Claude
-claude -p "test"
-# Transcripts auto-upload to http://localhost:8787
-```
-
-### Switch Modes
-
-```bash
-bun run plugin:switch-prod  # Use published npm package
-bun run plugin:switch-dev   # Use local CLI
-bun run plugin:status       # Check current mode
-```
-
-### Debugging
-
-```bash
-# View hook execution logs
-tail -f logs/dev.log
-
-# Check authentication
-bun agentlogs status
-
-# Re-authenticate
-bun agentlogs login agentlogs.ai
-```
-
-## CLI Usage
-
-```bash
-bun agentlogs login agentlogs.ai                 # Authenticate
-bun agentlogs status                             # Check login status
-bun agentlogs claudecode upload transcript.jsonl # Upload transcript
-bun agentlogs claudecode sync                    # Sync all local transcripts
-bun agentlogs claudecode hook                    # Hook (receives via stdin)
-bun agentlogs codex upload transcript.jsonl      # Upload Codex transcript
-```
-
-## Environment Variables
-
-Create `packages/web/.dev.vars`:
-
-```bash
-GITHUB_CLIENT_ID=your_client_id
-GITHUB_CLIENT_SECRET=your_client_secret
-BETTER_AUTH_SECRET=your_secret  # openssl rand -base64 32
-BETTER_AUTH_URL=http://localhost:8787
-WEB_URL=http://localhost:8787
-```
-
-## Deployment
+### Deploy to Cloudflare
 
 ```bash
 cd packages/web
@@ -147,7 +158,7 @@ cd packages/web
 # Create D1 database
 wrangler d1 create agentlogs
 
-# Run migrations
+# Run remote migrations
 bun db:migrate:remote
 
 # Set secrets
@@ -159,15 +170,62 @@ wrangler secret put BETTER_AUTH_SECRET
 bun run deploy
 ```
 
-## Database Schema
+## Project Structure
 
-**Core Tables**: `repos`, `transcripts`, `analysis`
-**Auth Tables**: `user`, `session`, `account`, `verification`, `device_code`
+```
+packages/
+├── cli/       — CLI tool (npx agentlogs)
+├── web/       — Web app (TanStack Start + Cloudflare Workers + D1)
+├── shared/    — Shared types, schemas, transcript parsing, secret redaction
+├── pi/        — Pi extension (@agentlogs/pi)
+├── opencode/  — OpenCode plugin (@agentlogs/opencode)
+└── e2e/       — End-to-end tests
+docs/          — Documentation (Mintlify)
+```
 
-All data scoped by `userId` for multi-tenant isolation.
+## Development
 
-## Troubleshooting
+```bash
+# Start the web app
+bun dev
 
-**Database issues**: `bun db:reset`
-**Auth issues**: Verify callback URL and clear cookies
-**Build errors**: `bun install && bun run check`
+# Run CLI
+bun agentlogs
+
+# Type check, lint, format
+bun run check
+
+# Format code
+bun run format
+
+# Run e2e tests
+bun run test:e2e
+
+# Database commands
+bun db:migrate       # Run migrations
+bun db:generate      # Generate migrations from schema changes
+bun db:studio        # Open Drizzle Studio
+bun db:reset         # Reset local database
+```
+
+## Tech Stack
+
+- **Web**: [TanStack Start](https://tanstack.com/start) + [Cloudflare Workers](https://workers.cloudflare.com/) + [D1](https://developers.cloudflare.com/d1/) (SQLite)
+- **ORM**: [Drizzle](https://orm.drizzle.team/)
+- **Auth**: [BetterAuth](https://better-auth.com/) (GitHub OAuth + device flow)
+- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) + [shadcn/ui](https://ui.shadcn.com/)
+- **CLI**: [Commander](https://github.com/tj/commander.js)
+- **Quality**: [oxlint](https://oxc.rs/) + [oxfmt](https://oxc.rs/) + [tsgo](https://github.com/nicolo-ribaudo/tsgo)
+
+## Contributing
+
+We welcome contributions! Please:
+
+1. Fork the repo and create a branch
+2. Make your changes
+3. Run `bun run format` and `bun run check`
+4. Open a PR
+
+## License
+
+[MIT](LICENSE)
