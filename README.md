@@ -6,7 +6,7 @@
 
 <p align="center">
   Open-source observability for AI coding agents.<br />
-  See what prompts work, learn from each other's workflows, and build institutional knowledge that compounds.
+  See what prompts work, learn from each other's workflows, and link sessions to commits.
 </p>
 
 <p align="center">
@@ -93,7 +93,7 @@ Transcripts are captured and uploaded automatically. View them at [agentlogs.ai]
 The CLI can also be used standalone for manual uploads:
 
 ```bash
-# Interactive picker — browse transcripts from all agents
+# Interactive picker, browse transcripts from all agents
 npx agentlogs upload
 
 # Upload most recent transcript

@@ -19,19 +19,18 @@ const features = [
   {
     title: "Team Observability",
     description:
-      "Full visibility into your team's AI coding sessions. Track activity, costs, agent & model usage, and per-member breakdowns — all in one dashboard.",
+      "Full visibility into your team's AI coding sessions. Track activity, measure productivity, and understand how your team uses AI tools.",
     image: "/features/dashboard.png",
   },
   {
     title: "Git Integration",
-    description:
-      "See which session wrote which code. Commits are automatically linked to the transcript that produced them.",
+    description: "See which session wrote which code. Works whenever your agent is the one committing.",
     image: "/features/git.png",
   },
   {
     title: "Learn From Each Other",
     description:
-      "Browse your team's sessions to discover effective prompts and workflows. Build shared knowledge from real sessions.",
+      "See what prompts your teammates are using and how they're solving problems. Build shared knowledge from real sessions.",
     image: "/features/list.png",
   },
 ];
@@ -39,7 +38,7 @@ const features = [
 const faqs = [
   {
     q: "Is AgentLogs really open-source?",
-    a: "Yes. The entire codebase — CLI, web app, plugins — is MIT-licensed and on GitHub. You can self-host it on Cloudflare Workers with a single deploy command, or use our hosted version at agentlogs.ai.",
+    a: "Yes. The entire codebase (CLI, web app, plugins) is MIT-licensed and on GitHub. You can self-host it on Cloudflare Workers with a single deploy command, or use our hosted version at agentlogs.ai.",
   },
   {
     q: "How does AgentLogs capture my sessions?",
@@ -81,15 +80,14 @@ function LandingPage() {
               href="https://github.com/agentlogs/agentlogs"
               target="_blank"
               className="text-muted-foreground hover:text-foreground"
-              aria-label="GitHub"
             >
-              <GitHubIcon className="size-5" />
+              GitHub
             </a>
             <a
               href="/auth/github"
               className="rounded-md bg-primary px-3 py-1.5 text-primary-foreground hover:bg-primary/90"
             >
-              Get started
+              Log in
             </a>
           </div>
         </div>
@@ -148,15 +146,15 @@ function LandingPage() {
             </span>
           </h1>
           <p className="mt-6 max-w-2xl text-lg text-muted-foreground">
-            Capture transcripts, track costs, link sessions to commits, and build shared knowledge across your team.
-            Self-host or use our cloud.
+            See what prompts work, learn from each other's workflows, and link sessions to commits. Self-host or use our
+            cloud.
           </p>
           <div className="mt-8 flex gap-3">
             <a
-              href="https://agentlogs.ai/docs/introduction/getting-started"
+              href="/auth/github"
               className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
-              Get started
+              Join the cloud waitlist
             </a>
             <a
               href="https://github.com/agentlogs/agentlogs"
@@ -230,13 +228,17 @@ function LandingPage() {
             </h2>
             <p className="mt-3 text-muted-foreground">
               AgentLogs is MIT-licensed and deploys to Cloudflare Workers with a single command. Use our cloud or run it
-              yourself — your transcripts, your infrastructure.
+              yourself. Your transcripts, your infrastructure.
             </p>
-            <pre className="mx-auto mt-8 max-w-md overflow-x-auto rounded-lg border border-border bg-zinc-950 px-6 py-4 text-left text-sm text-zinc-300">
-              <code>{`git clone https://github.com/agentlogs/agentlogs
-cd agentlogs && bun install
-bun db:migrate && bun dev`}</code>
-            </pre>
+            <div className="mt-8">
+              <a
+                href="https://github.com/agentlogs/agentlogs"
+                target="_blank"
+                className="inline-block rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                View on GitHub →
+              </a>
+            </div>
           </div>
         </section>
 
@@ -254,33 +256,6 @@ bun db:migrate && bun dev`}</code>
                   <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{faq.a}</p>
                 </details>
               ))}
-            </div>
-          </div>
-        </section>
-
-        {/* CTA */}
-        <section className="border-t border-border py-24">
-          <div className="mx-auto max-w-2xl px-6 text-center">
-            <h2 className="font-display text-3xl tracking-tight sm:text-4xl">
-              Start capturing your team's AI sessions
-            </h2>
-            <p className="mt-3 text-muted-foreground">
-              Set up in under a minute. Self-host or use our cloud — it's free to get started.
-            </p>
-            <div className="mt-6 flex justify-center gap-3">
-              <a
-                href="https://agentlogs.ai/docs/introduction/getting-started"
-                className="inline-block rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-              >
-                Get started
-              </a>
-              <a
-                href="https://github.com/agentlogs/agentlogs"
-                target="_blank"
-                className="inline-block rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent"
-              >
-                View on GitHub
-              </a>
             </div>
           </div>
         </section>
