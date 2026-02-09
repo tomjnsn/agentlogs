@@ -17,6 +17,7 @@ import { spawn } from "node:child_process";
 // ============================================================================
 
 const LOG_FILE = "/tmp/agentlogs-opencode.log";
+const TRANSCRIPT_LINK_REGEX = /https?:\/\/[^\s"'`]+\/s\/[a-zA-Z0-9_-]+/;
 
 function log(message: string, data?: unknown): void {
   if (process.env.NODE_ENV === "production") return;
@@ -221,7 +222,7 @@ export const agentLogsPlugin = async (ctx: PluginContext) => {
       // 2. Output contains our transcript link (fallback check)
       const wasIntercepted = interceptedCallIds.has(input.callID);
       const cmdOutput = output.output || "";
-      const hasLink = cmdOutput.includes("agentlogs.ai/s/");
+      const hasLink = TRANSCRIPT_LINK_REGEX.test(cmdOutput);
 
       if (!wasIntercepted && !hasLink) {
         return;

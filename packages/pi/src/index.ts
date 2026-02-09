@@ -55,6 +55,7 @@ interface ExtensionAPI {
 // ============================================================================
 
 const LOG_FILE = "/tmp/agentlogs-pi.log";
+const TRANSCRIPT_LINK_REGEX = /https?:\/\/[^\s"'`]+\/s\/[a-zA-Z0-9_-]+/;
 
 function log(message: string, data?: unknown): void {
   if (process.env.NODE_ENV === "production") return;
@@ -181,7 +182,7 @@ export default function agentLogsExtension(pi: ExtensionAPI) {
     }
 
     // Skip if already has a transcript link
-    if (command.includes("agentlogs.ai/s/")) {
+    if (TRANSCRIPT_LINK_REGEX.test(command)) {
       return;
     }
 
@@ -235,7 +236,7 @@ export default function agentLogsExtension(pi: ExtensionAPI) {
         ?.map((c) => (c.type === "text" ? c.text : ""))
         .join("")
         .trim() ?? "";
-    const hasLink = outputText.includes("agentlogs.ai/s/");
+    const hasLink = TRANSCRIPT_LINK_REGEX.test(outputText);
 
     if (!wasIntercepted && !hasLink) {
       return;

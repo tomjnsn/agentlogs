@@ -23,6 +23,7 @@ import {
   trackCommit,
   readStdinWithPreview,
   getOrCreateTranscriptId,
+  getPreferredTranscriptBaseUrl,
   cacheCallTranscriptId,
   getCallTranscriptId,
   deleteCallTranscriptId,
@@ -168,7 +169,8 @@ async function handleToolExecuteBefore(hookInput: OpenCodeHookInput): Promise<vo
     const transcriptId = await getOrCreateTranscriptId(sessionId);
 
     // Append transcript link to commit message
-    const updatedCommand = appendTranscriptLink(command, transcriptId);
+    const transcriptBaseUrl = await getPreferredTranscriptBaseUrl();
+    const updatedCommand = appendTranscriptLink(command, transcriptId, transcriptBaseUrl);
 
     if (updatedCommand !== command) {
       logger.info("OpenCode hook: intercepting git commit", {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { appendTranscriptLink, containsGitCommit } from "../lib/hooks-shared";
+import { appendTranscriptLink, containsGitCommit, selectPreferredTranscriptBaseUrl } from "../lib/hooks-shared";
 
 describe("containsGitCommit", () => {
   it("detects git commit command", () => {
@@ -67,6 +67,24 @@ describe("appendTranscriptLink", () => {
     });
   });
 
+  describe("custom transcript host", () => {
+    it("uses the provided hostname", () => {
+      const command = 'git commit -m "initial commit"';
+      const result = appendTranscriptLink(command, sessionId, "https://onprem.example.com");
+
+      expect(result).toContain(`https://onprem.example.com/s/${sessionId}`);
+      expect(result).not.toContain(expectedLink);
+    });
+
+    it("does not append again when same transcript id already exists with a different host", () => {
+      const command = `git commit -m "initial commit\n\n🔮 View transcript: https://onprem.example.com/s/${sessionId}"`;
+      const result = appendTranscriptLink(command, sessionId, "https://agentlogs.ai");
+
+      const linkOccurrences = (result.match(/🔮 View transcript/g) ?? []).length;
+      expect(linkOccurrences).toBe(1);
+    });
+  });
+
   describe("command without git commit", () => {
     it("returns command unchanged", () => {
       const command = "git push origin main";
@@ -107,5 +125,25 @@ describe("appendTranscriptLink", () => {
       // The link should be inside the first message, leaving second -m intact
       expect(result).toMatch(/-m "title\n\n.*🔮 View transcript.*" -m "body paragraph"/s);
     });
+  });
+});
+
+describe("selectPreferredTranscriptBaseUrl", () => {
+  it("prefers non-localhost environments", () => {
+    const selected = selectPreferredTranscriptBaseUrl([
+      { baseURL: "http://localhost:3000" },
+      { baseURL: "https://agentlogs.ai" },
+    ]);
+
+    expect(selected).toBe("https://agentlogs.ai");
+  });
+
+  it("falls back to localhost when no remote environment exists", () => {
+    const selected = selectPreferredTranscriptBaseUrl([
+      { baseURL: "http://127.0.0.1:3000" },
+      { baseURL: "http://localhost:8787" },
+    ]);
+
+    expect(selected).toBe("http://127.0.0.1:3000");
   });
 });

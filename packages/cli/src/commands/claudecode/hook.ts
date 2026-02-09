@@ -18,6 +18,7 @@ import {
   trackCommit,
   readStdinWithPreview,
   getOrCreateTranscriptId,
+  getPreferredTranscriptBaseUrl,
 } from "../../lib/hooks-shared";
 
 interface ClaudeHookInput {
@@ -187,7 +188,8 @@ async function handlePreToolUse(hookInput: ClaudeHookInput): Promise<void> {
   if (isBashTool && command && containsGitCommit(command) && repoAllowed) {
     shouldTrack = true;
     const clientId = await getOrCreateTranscriptId(sessionId);
-    const updatedCommand = appendTranscriptLink(command, clientId);
+    const transcriptBaseUrl = await getPreferredTranscriptBaseUrl();
+    const updatedCommand = appendTranscriptLink(command, clientId, transcriptBaseUrl);
     if (updatedCommand !== command) {
       updateCommand(updatedCommand);
       modified = true;

@@ -19,6 +19,49 @@ export const hookLogger = createLogger("cli", {
 // Git Commit Detection & Modification
 // ============================================================================
 
+const DEFAULT_TRANSCRIPT_BASE_URL = "https://agentlogs.ai";
+const TRANSCRIPT_URL_REGEX = /https?:\/\/[^\s"'`]+\/s\/([a-zA-Z0-9_-]+)/;
+
+function isLocalHostname(hostname: string): boolean {
+  const normalized = hostname.toLowerCase();
+  return normalized === "localhost" || normalized === "127.0.0.1" || normalized === "::1";
+}
+
+function isLocalBaseUrl(baseURL: string): boolean {
+  try {
+    const url = new URL(baseURL);
+    return isLocalHostname(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
+function normalizeTranscriptBaseUrl(baseURL: string): string {
+  try {
+    const url = new URL(baseURL);
+    return `${url.protocol}//${url.host.toLowerCase()}`;
+  } catch {
+    return baseURL.replace(/\/+$/, "");
+  }
+}
+
+/**
+ * Pick the preferred transcript host from authenticated environments.
+ *
+ * Selection rule:
+ * - choose the first non-localhost environment
+ * - if all are localhost, choose the first localhost one
+ */
+export function selectPreferredTranscriptBaseUrl(environments: Array<{ baseURL: string }>): string {
+  const preferred = environments.find((env) => !isLocalBaseUrl(env.baseURL)) ?? environments[0];
+  return normalizeTranscriptBaseUrl(preferred?.baseURL ?? DEFAULT_TRANSCRIPT_BASE_URL);
+}
+
+export async function getPreferredTranscriptBaseUrl(): Promise<string> {
+  const authenticatedEnvironments = await getAuthenticatedEnvironments();
+  return selectPreferredTranscriptBaseUrl(authenticatedEnvironments);
+}
+
 /**
  * Check if a command contains a git commit
  */
@@ -29,10 +72,11 @@ export function containsGitCommit(command: string): boolean {
 /**
  * Append a transcript link to a git commit message
  */
-export function appendTranscriptLink(command: string, id: string): string {
-  const linkText = `🔮 View transcript: https://agentlogs.ai/s/${id}`;
+export function appendTranscriptLink(command: string, id: string, transcriptBaseURL?: string): string {
+  const baseURL = normalizeTranscriptBaseUrl(transcriptBaseURL ?? DEFAULT_TRANSCRIPT_BASE_URL);
+  const linkText = `🔮 View transcript: ${baseURL}/s/${id}`;
 
-  if (command.includes(linkText)) {
+  if (command.includes(linkText) || extractTranscriptIdFromOutput(command) === id) {
     return command;
   }
 
@@ -88,14 +132,13 @@ export function appendTranscriptLink(command: string, id: string): string {
  * Extract transcript ID from command output (for tracking commits)
  */
 export function extractTranscriptIdFromOutput(output: string): string | undefined {
-  // Find all agentlogs.ai/s/ links and return the last one
-  const matches = output.match(/agentlogs\.ai\/s\/([a-zA-Z0-9_-]+)/g);
-  if (!matches || matches.length === 0) {
+  // Find all transcript links and return the last one
+  const regex = new RegExp(TRANSCRIPT_URL_REGEX.source, "g");
+  const matches = [...output.matchAll(regex)];
+  if (matches.length === 0) {
     return undefined;
   }
-  const lastMatch = matches[matches.length - 1];
-  const idMatch = lastMatch.match(/agentlogs\.ai\/s\/([a-zA-Z0-9_-]+)/);
-  return idMatch ? idMatch[1] : undefined;
+  return matches[matches.length - 1][1];
 }
 
 /**

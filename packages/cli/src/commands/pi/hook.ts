@@ -22,6 +22,7 @@ import {
   trackCommit,
   readStdinWithPreview,
   getOrCreateTranscriptId,
+  getPreferredTranscriptBaseUrl,
   cacheCallTranscriptId,
   getCallTranscriptId,
   deleteCallTranscriptId,
@@ -174,7 +175,8 @@ async function handleToolCall(hookInput: PiHookInput): Promise<void> {
     const transcriptId = await getOrCreateTranscriptId(sessionId);
 
     // Append transcript link to commit message
-    const updatedCommand = appendTranscriptLink(command, transcriptId);
+    const transcriptBaseUrl = await getPreferredTranscriptBaseUrl();
+    const updatedCommand = appendTranscriptLink(command, transcriptId, transcriptBaseUrl);
 
     if (updatedCommand !== command) {
       logger.info("Pi hook: intercepting git commit", {
