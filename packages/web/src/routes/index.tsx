@@ -97,7 +97,7 @@ function LandingPage() {
         {/* Hero */}
         <section className="mx-auto max-w-5xl px-6 pt-24 pb-24">
           <h1 className="max-w-5xl font-display text-4xl tracking-tight text-balance sm:text-6xl lg:text-7xl">
-            Open-source observability for coding agents.{" "}
+            Coding agents, visible to your team.{" "}
             <span className="group/icons inline-flex items-center align-middle">
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -146,8 +146,8 @@ function LandingPage() {
             </span>
           </h1>
           <p className="mt-6 max-w-2xl text-lg text-muted-foreground">
-            See what prompts work, learn from each other's workflows, and link sessions to commits. Self-host or use our
-            cloud.
+            Open-source and self-hostable. Track sessions, share prompts, and link every conversation to the commit it
+            produced.
           </p>
           <div className="mt-8 flex gap-3">
             <a
