@@ -226,6 +226,13 @@ We welcome contributions! Please:
 3. Run `bun run format` and `bun run check`
 4. Open a PR
 
+## Acknowledgments
+
+AgentLogs was inspired by and builds on ideas from:
+
+- [Amp Threads](https://ampcode.com/) — team observability for AI coding agents
+- [Yaplog](https://yaplog.dev/), [Pi session sharing](https://pi.dev), [OpenCode session sharing](https://opencode.ai) — public sharing of AI coding sessions
+
 ## License
 
 [MIT](LICENSE)
