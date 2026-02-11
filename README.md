@@ -5,8 +5,8 @@
 <h1 align="center">AgentLogs</h1>
 
 <p align="center">
-  Open-source observability for AI coding agents.<br />
-  See what prompts work, learn from each other's workflows, and link sessions to commits.
+  Coding agents, visible to your team.<br />
+  Open-source and self-hostable. Track sessions, share prompts, and link every conversation to the commit it produced.
 </p>
 
 <p align="center">
