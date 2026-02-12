@@ -549,7 +549,9 @@ async function parseClaudeCodeTranscript(filePath: string): Promise<ClaudeCodeTr
 
         // Stop early if we have what we need from head
         if (cwd && preview) break;
-      } catch {}
+      } catch {
+        continue;
+      }
     }
 
     // Read tail of file for latest timestamp
@@ -579,7 +581,9 @@ async function parseClaudeCodeTranscript(filePath: string): Promise<ClaudeCodeTr
               }
             }
           }
-        } catch {}
+        } catch {
+          continue;
+        }
       }
     }
 
@@ -761,7 +765,9 @@ async function parseCodexTranscript(filePath: string): Promise<CodexTranscriptIn
 
         // Stop early if we have what we need
         if (sessionId && cwd && preview) break;
-      } catch {}
+      } catch {
+        continue;
+      }
     }
 
     // Read tail for latest timestamp
@@ -791,7 +797,9 @@ async function parseCodexTranscript(filePath: string): Promise<CodexTranscriptIn
               }
             }
           }
-        } catch {}
+        } catch {
+          continue;
+        }
       }
     }
 
