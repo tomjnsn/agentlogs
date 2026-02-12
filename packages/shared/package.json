@@ -13,6 +13,7 @@
     "./paths": "./src/paths.ts",
     "./git": "./src/git.ts",
     "./claudecode": "./src/claudecode.ts",
+    "./cline": "./src/cline.ts",
     "./codex": "./src/codex.ts",
     "./opencode": "./src/opencode.ts",
     "./pricing": "./src/pricing.ts",

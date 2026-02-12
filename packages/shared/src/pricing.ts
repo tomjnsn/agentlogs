@@ -38,6 +38,7 @@ export type LiteLLMPricingFetcherOptions = {
   offlineLoader?: () => Promise<Record<string, LiteLLMModelPricing>>;
   url?: string;
   providerPrefixes?: string[];
+  timeoutMs?: number;
 };
 
 const DEFAULT_PROVIDER_PREFIXES = [
@@ -49,6 +50,7 @@ const DEFAULT_PROVIDER_PREFIXES = [
   "azure/",
   "openrouter/openai/",
 ];
+const DEFAULT_FETCH_TIMEOUT_MS = 10_000;
 
 function createLogger(logger?: PricingLogger): PricingLogger {
   if (logger != null) {
@@ -76,12 +78,15 @@ export class LiteLLMPricingFetcher {
 
   private readonly providerPrefixes: string[];
 
+  private readonly timeoutMs: number;
+
   constructor(options: LiteLLMPricingFetcherOptions = {}) {
     this.logger = createLogger(options.logger);
     this.offline = Boolean(options.offline);
     this.offlineLoader = options.offlineLoader;
     this.url = options.url ?? LITELLM_PRICING_URL;
     this.providerPrefixes = options.providerPrefixes ?? DEFAULT_PROVIDER_PREFIXES;
+    this.timeoutMs = options.timeoutMs ?? DEFAULT_FETCH_TIMEOUT_MS;
   }
 
   [Symbol.dispose]() {
@@ -104,7 +109,7 @@ export class LiteLLMPricingFetcher {
 
   private async fetchRemotePricing(): Promise<Map<string, LiteLLMModelPricing>> {
     this.logger.warn("Fetching latest model pricing from LiteLLM...");
-    const response = await fetch(this.url);
+    const response = await fetch(this.url, { signal: AbortSignal.timeout(this.timeoutMs) });
     if (!response.ok) {
       throw new Error(`Failed to fetch pricing data: ${response.statusText}`);
     }
@@ -142,7 +147,11 @@ export class LiteLLMPricingFetcher {
       if (this.offlineLoader != null) {
         return this.loadOfflinePricing();
       }
-      throw error;
+      this.logger.warn("No offline pricing loader configured; continuing without model pricing data.");
+      this.logger.debug(error);
+      const emptyPricing = new Map<string, LiteLLMModelPricing>();
+      this.cachedPricing = emptyPricing;
+      return emptyPricing;
     }
   }
 

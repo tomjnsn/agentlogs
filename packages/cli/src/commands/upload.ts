@@ -3,6 +3,7 @@ import { spawnSync } from "child_process";
 import { existsSync, readFileSync } from "fs";
 import { discoverAllTranscripts, type DiscoveredTranscript, type TranscriptSource } from "@agentlogs/shared";
 import { convertOpenCodeTranscript, type OpenCodeExport } from "@agentlogs/shared/opencode";
+import { convertClineTranscript, type ClineMessage, type ClineTaskMetadata } from "@agentlogs/shared";
 import { convertPiTranscript, type PiSessionEntry, type PiSessionHeader } from "@agentlogs/shared";
 import { LiteLLMPricingFetcher } from "@agentlogs/shared/pricing";
 import { resolveGitContext } from "@agentlogs/shared/claudecode";
@@ -89,6 +90,8 @@ async function uploadTranscript(transcript: DiscoveredTranscript): Promise<boole
         return await uploadCodexTranscript(transcript);
       case "opencode":
         return await uploadOpenCodeTranscript(transcript);
+      case "cline":
+        return await uploadClineTranscript(transcript);
       case "pi":
         return await uploadPiTranscript(transcript);
     }
@@ -185,6 +188,98 @@ async function uploadOpenCodeTranscript(transcript: DiscoveredTranscript): Promi
     console.error("");
     console.error("Upload failed:");
     for (const envResult of result.results) {
+      if (!envResult.success && envResult.error) {
+        console.error(`  ${envResult.envName}: ${envResult.error}`);
+      }
+    }
+    return false;
+  }
+}
+
+async function uploadClineTranscript(transcript: DiscoveredTranscript): Promise<boolean> {
+  // Read the conversation history
+  if (!existsSync(transcript.path)) {
+    throw new Error(`Failed to read Cline task: ${transcript.path}`);
+  }
+
+  const content = readFileSync(transcript.path, "utf-8");
+  let messages: ClineMessage[];
+  try {
+    messages = JSON.parse(content) as ClineMessage[];
+  } catch {
+    throw new Error(`Failed to parse Cline task: ${transcript.path}`);
+  }
+
+  // Try to load metadata
+  let metadata: ClineTaskMetadata | undefined;
+  const metadataPath = resolve(transcript.path, "..", "task_metadata.json");
+  if (existsSync(metadataPath)) {
+    try {
+      metadata = JSON.parse(readFileSync(metadataPath, "utf-8")) as ClineTaskMetadata;
+    } catch {
+      // Skip invalid metadata
+    }
+  }
+
+  // Fetch pricing data
+  const pricingFetcher = new LiteLLMPricingFetcher();
+  const pricingData = await pricingFetcher.fetchModelPricing();
+  const pricing = Object.fromEntries(pricingData);
+
+  // Resolve git context
+  const cwd = process.cwd();
+  const gitContext = await resolveGitContext(cwd, undefined);
+
+  if (gitContext?.repo) {
+    console.log(`Repository: ${gitContext.repo}`);
+  }
+
+  // Convert to unified format
+  console.log("Converting transcript...");
+  const result = convertClineTranscript(messages, {
+    pricing,
+    gitContext,
+    cwd,
+    taskId: transcript.id,
+    metadata,
+    clientVersion: metadata?.environment_history?.[0]?.cline_version,
+  });
+
+  if (!result) {
+    throw new Error("Failed to convert Cline transcript");
+  }
+
+  // Upload
+  console.log("Uploading...");
+  const uploadResult = await uploadUnifiedToAllEnvs({
+    unifiedTranscript: result.transcript,
+    sessionId: transcript.id,
+    cwd,
+    rawTranscript: content,
+  });
+
+  if (uploadResult.skipped) {
+    console.log("");
+    console.log("Skipped: Repository not in allowlist");
+    return true;
+  }
+
+  if (uploadResult.anySuccess && uploadResult.id) {
+    console.log("");
+    console.log("Upload successful!");
+    console.log(`Transcript ID: ${uploadResult.id}`);
+
+    for (const envResult of uploadResult.results) {
+      if (envResult.success) {
+        const url = `${envResult.baseURL}/s/${uploadResult.id}`;
+        console.log(`View: ${url}`);
+      }
+    }
+    return true;
+  } else {
+    console.error("");
+    console.error("Upload failed:");
+    for (const envResult of uploadResult.results) {
       if (!envResult.success && envResult.error) {
         console.error(`  ${envResult.envName}: ${envResult.error}`);
       }

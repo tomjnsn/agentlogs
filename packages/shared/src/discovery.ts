@@ -62,6 +62,7 @@ const NON_PROMPT_PREFIXES = [
 ];
 
 const DEFAULT_CLAUDE_HOME = join(homedir(), ".claude");
+const DEFAULT_CLINE_HOME = join(homedir(), ".cline");
 const DEFAULT_CODEX_HOME = join(homedir(), ".codex");
 const DEFAULT_PI_SESSIONS = join(homedir(), ".pi", "agent", "sessions");
 
@@ -81,7 +82,9 @@ export async function discoverClaudeCodeTranscripts(options?: { limit?: number }
   const fileCandidates: Array<{ path: string; id: string; mtime: Date }> = [];
 
   try {
-    const projectEntries = await fs.readdir(projectsRoot, { withFileTypes: true });
+    const projectEntries = await fs.readdir(projectsRoot, {
+      withFileTypes: true,
+    });
 
     for (const projectEntry of projectEntries) {
       if (!projectEntry.isDirectory()) continue;
@@ -99,7 +102,11 @@ export async function discoverClaudeCodeTranscripts(options?: { limit?: number }
 
           try {
             const stat = await fs.stat(filePath);
-            fileCandidates.push({ path: filePath, id: transcriptId, mtime: stat.mtime });
+            fileCandidates.push({
+              path: filePath,
+              id: transcriptId,
+              mtime: stat.mtime,
+            });
           } catch {
             // Skip inaccessible files
           }
@@ -339,10 +346,79 @@ export async function discoverPiSessions(options?: { limit?: number }): Promise<
 }
 
 /**
+ * Discover Cline transcripts from ~/.cline/data/tasks/
+ */
+export async function discoverClineTranscripts(options?: { limit?: number }): Promise<DiscoveredTranscript[]> {
+  const limit = options?.limit ?? DEFAULT_LIMIT;
+  const clineHome = process.env.CLINE_HOME ?? DEFAULT_CLINE_HOME;
+  const tasksRoot = join(clineHome, "data", "tasks");
+
+  if (!(await isDirectory(tasksRoot))) {
+    return [];
+  }
+
+  const allTranscripts: DiscoveredTranscript[] = [];
+
+  try {
+    const taskDirs = await fs.readdir(tasksRoot, { withFileTypes: true });
+
+    // Collect candidates with mtimes
+    const candidates: Array<{ path: string; id: string; mtime: Date }> = [];
+
+    for (const taskDir of taskDirs) {
+      if (!taskDir.isDirectory()) continue;
+
+      const conversationPath = join(tasksRoot, taskDir.name, "api_conversation_history.json");
+
+      try {
+        const stat = await fs.stat(conversationPath);
+        candidates.push({
+          path: conversationPath,
+          id: taskDir.name,
+          mtime: stat.mtime,
+        });
+      } catch {
+        // Skip tasks without conversation history
+      }
+    }
+
+    // Sort by mtime descending
+    candidates.sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
+
+    // Only parse top candidates
+    const parseCandidates = candidates.slice(0, limit * 2);
+
+    for (const candidate of parseCandidates) {
+      try {
+        const info = await parseClineTranscript(candidate.path);
+        if (!info) continue;
+
+        allTranscripts.push({
+          id: candidate.id,
+          source: "cline",
+          path: candidate.path,
+          timestamp: info.timestamp,
+          preview: info.preview,
+          cwd: info.cwd,
+          repoId: null,
+          stats: null,
+        });
+      } catch {
+        // Skip invalid files
+      }
+    }
+  } catch {
+    // Directory not accessible
+  }
+
+  return allTranscripts.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()).slice(0, limit);
+}
+
+/**
  * Discover transcripts from all sources
  */
 export async function discoverAllTranscripts(options?: DiscoveryOptions): Promise<DiscoveredTranscript[]> {
-  const sources = options?.sources ?? ["claude-code", "codex", "opencode", "pi"];
+  const sources = options?.sources ?? ["claude-code", "cline", "codex", "opencode", "pi"];
   const limit = options?.limit ?? DEFAULT_LIMIT;
   const cwdFilter = options?.cwd ? resolve(options.cwd) : null;
 
@@ -352,6 +428,7 @@ export async function discoverAllTranscripts(options?: DiscoveryOptions): Promis
   // Discover from each source in parallel
   const discoveries = await Promise.all([
     sources.includes("claude-code") ? discoverClaudeCodeTranscripts({ limit: perSourceLimit }) : [],
+    sources.includes("cline") ? discoverClineTranscripts({ limit: perSourceLimit }) : [],
     sources.includes("codex") ? discoverCodexTranscripts({ limit: perSourceLimit }) : [],
     sources.includes("opencode") ? discoverOpenCodeSessions({ limit: perSourceLimit }) : [],
     sources.includes("pi") ? discoverPiSessions({ limit: perSourceLimit }) : [],
@@ -472,9 +549,7 @@ async function parseClaudeCodeTranscript(filePath: string): Promise<ClaudeCodeTr
 
         // Stop early if we have what we need from head
         if (cwd && preview) break;
-      } catch {
-        continue;
-      }
+      } catch {}
     }
 
     // Read tail of file for latest timestamp
@@ -504,9 +579,7 @@ async function parseClaudeCodeTranscript(filePath: string): Promise<ClaudeCodeTr
               }
             }
           }
-        } catch {
-          continue;
-        }
+        } catch {}
       }
     }
 
@@ -688,9 +761,7 @@ async function parseCodexTranscript(filePath: string): Promise<CodexTranscriptIn
 
         // Stop early if we have what we need
         if (sessionId && cwd && preview) break;
-      } catch {
-        continue;
-      }
+      } catch {}
     }
 
     // Read tail for latest timestamp
@@ -720,9 +791,7 @@ async function parseCodexTranscript(filePath: string): Promise<CodexTranscriptIn
               }
             }
           }
-        } catch {
-          continue;
-        }
+        } catch {}
       }
     }
 
@@ -734,6 +803,77 @@ async function parseCodexTranscript(filePath: string): Promise<CodexTranscriptIn
       cwd,
       preview,
       stats: null, // Not calculated in fast discovery mode
+    };
+  } finally {
+    await fileHandle.close();
+  }
+}
+
+// --- Cline parsing ---
+
+interface ClineTranscriptInfo {
+  timestamp: Date;
+  cwd: string | null;
+  preview: string | null;
+}
+
+const CLINE_ENVIRONMENT_DETAILS_PATTERN =
+  /<environment_details|task|feedback>[\s\S]*?<\/environment_details|task|feedback>/g;
+
+/**
+ * Fast parse for Cline - reads the JSON array to extract preview and timestamp.
+ * Only reads first 50KB to avoid parsing huge files.
+ */
+async function parseClineTranscript(filePath: string): Promise<ClineTranscriptInfo | null> {
+  const fileHandle = await fs.open(filePath, "r");
+  try {
+    const stat = await fileHandle.stat();
+    const fileSize = stat.size;
+
+    // Read head of file for preview
+    const headBuffer = Buffer.alloc(Math.min(HEAD_READ_SIZE, fileSize));
+    await fileHandle.read(headBuffer, 0, headBuffer.length, 0);
+    const headContent = headBuffer.toString("utf8");
+
+    let preview: string | null = null;
+    const cwd: string | null = null;
+
+    // Cline stores JSON array - try to find the first user message text
+    // Look for the task tag pattern in the first text block
+    const taskMatch = headContent.match(/<task>\n?([\s\S]*?)\n?<\/task>/);
+    if (taskMatch?.[1]) {
+      const taskText = taskMatch[1].trim();
+      if (taskText) {
+        preview = truncatePreview(taskText);
+      }
+    }
+
+    // If no task tag, look for first user text content
+    if (!preview) {
+      // Find first "role":"user" followed by text content
+      const userTextMatch = headContent.match(
+        /"role"\s*:\s*"user"[\s\S]*?"type"\s*:\s*"text"\s*,\s*"text"\s*:\s*"([^"]{1,200})/,
+      );
+      const userText = userTextMatch?.[1]?.trim();
+      if (userText) {
+        const text = userText
+          .replace(CLINE_ENVIRONMENT_DETAILS_PATTERN, "")
+          .replace(CLINE_ENVIRONMENT_DETAILS_PATTERN, "")
+          .replace(/\\n/g, " ")
+          .trim();
+        if (text && !text.startsWith("[") && !text.startsWith("#")) {
+          preview = truncatePreview(text);
+        }
+      }
+    }
+
+    // Use file mtime as timestamp (Cline doesn't store timestamps in messages)
+    const timestamp = stat.mtime;
+
+    return {
+      timestamp,
+      cwd,
+      preview,
     };
   } finally {
     await fileHandle.close();
@@ -815,9 +955,7 @@ async function parsePiSession(filePath: string): Promise<PiSessionInfo | null> {
 
         // Stop early if we have what we need
         if (sessionId && cwd && preview) break;
-      } catch {
-        continue;
-      }
+      } catch {}
     }
 
     // Read tail for latest timestamp
@@ -846,9 +984,7 @@ async function parsePiSession(filePath: string): Promise<PiSessionInfo | null> {
               }
             }
           }
-        } catch {
-          continue;
-        }
+        } catch {}
       }
     }
 

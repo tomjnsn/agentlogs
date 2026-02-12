@@ -22,6 +22,8 @@ function PrivateDetailComponent() {
         return "Claude Code";
       case "codex":
         return "Codex";
+      case "cline":
+        return "Cline";
       default:
         return "Unknown";
     }
