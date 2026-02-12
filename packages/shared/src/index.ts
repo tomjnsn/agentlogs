@@ -4,6 +4,13 @@ export * from "./logger";
 export * from "./upload";
 export * from "./paths";
 export * from "./claudecode";
+export {
+  convertClineTranscript,
+  convertClineFile,
+  type ConvertClineOptions,
+  type ClineMessage,
+  type ClineTaskMetadata,
+} from "./cline";
 export { convertCodexTranscript, convertCodexFile, convertCodexFiles, type ConvertCodexOptions } from "./codex";
 export {
   convertOpenCodeTranscript,

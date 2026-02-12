@@ -15,57 +15,58 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
+import { useDebugMode } from "@/hooks/use-debug-mode";
 import type { UnifiedTranscriptMessage } from "@agentlogs/shared/claudecode";
 import { getModelDisplayName } from "@agentlogs/shared/models";
 import { unifiedTranscriptSchema } from "@agentlogs/shared/schemas";
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
   Asterisk,
   Check,
+  ChevronDown,
+  Clock,
   Coins,
   Copy,
   Database,
   Download,
-  Hash,
-  Link2,
-  SquareCheck,
-  ChevronDown,
-  Clock,
   ExternalLink,
   FileText,
   Folder,
   GitBranch,
   Globe,
+  Hash,
+  Link2,
   Loader2,
   Lock,
   Pencil,
   Search,
   Sparkles,
   Square,
+  SquareCheck,
   SquareTerminal,
   Terminal,
   Trash2,
   Users,
 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { CodeBlock, DiffViewer, FileViewer, GrepContentViewer, ShellOutput } from "../../../components/diff-viewer";
 import {
   ClaudeCodeIcon,
+  ClineIcon,
   CodexIcon,
   GitHubIcon,
   MCPIcon,
   OpenCodeIcon,
   PiIcon,
 } from "../../../components/icons/source-icons";
-import { CodeBlock, DiffViewer, FileViewer, GrepContentViewer, ShellOutput } from "../../../components/diff-viewer";
-import { useEffect, useRef, useState } from "react";
 import { MarkdownRenderer } from "../../../components/markdown-renderer";
-import { useDebugMode } from "@/hooks/use-debug-mode";
 
 import {
   extractImageReferences,
-  replaceImageReferencesForDisplay,
   type ImageReference,
+  replaceImageReferencesForDisplay,
 } from "../../../lib/message-utils";
 import { deleteTranscript, getTranscript, updateTitle, updateVisibility } from "../../../lib/server-functions";
 
@@ -106,7 +107,10 @@ export const Route = createFileRoute("/_app/app/logs/$id")({
         { property: "og:type", content: "article" },
         { property: "og:site_name", content: "AgentLogs" },
         // Twitter Card
-        { name: "twitter:card", content: isPublic ? "summary_large_image" : "summary" },
+        {
+          name: "twitter:card",
+          content: isPublic ? "summary_large_image" : "summary",
+        },
         { name: "twitter:title", content: title },
         { name: "twitter:description", content: description },
         ...(ogImageUrl ? [{ name: "twitter:image", content: ogImageUrl }] : []),
@@ -166,6 +170,8 @@ function getSourceIcon(source: string, className?: string) {
       return <OpenCodeIcon className={className} />;
     case "pi":
       return <PiIcon className={className} />;
+    case "cline":
+      return <ClineIcon className={className} />;
     default:
       return <Terminal className={className} />;
   }
@@ -223,12 +229,18 @@ function isImportantMessage(
 // Segment type for grouping messages
 type MessageSegment =
   | { type: "important"; message: UnifiedTranscriptMessage; index: number }
-  | { type: "collapsed"; messages: Array<{ message: UnifiedTranscriptMessage; index: number }> };
+  | {
+      type: "collapsed";
+      messages: Array<{ message: UnifiedTranscriptMessage; index: number }>;
+    };
 
 // Group messages into segments of important messages and collapsed steps
 function groupMessagesIntoSegments(messages: UnifiedTranscriptMessage[]): MessageSegment[] {
   const segments: MessageSegment[] = [];
-  let currentCollapsedGroup: Array<{ message: UnifiedTranscriptMessage; index: number }> = [];
+  let currentCollapsedGroup: Array<{
+    message: UnifiedTranscriptMessage;
+    index: number;
+  }> = [];
 
   for (let i = 0; i < messages.length; i++) {
     const message = messages[i];
@@ -1339,7 +1351,11 @@ interface ToolCallBlockProps {
 }
 
 // Parse diff to count additions, deletions, and modifications
-function parseDiffStats(diff: string): { added: number; removed: number; modified: number } {
+function parseDiffStats(diff: string): {
+  added: number;
+  removed: number;
+  modified: number;
+} {
   const lines = diff.split("\n");
   let added = 0;
   let removed = 0;
@@ -1698,7 +1714,11 @@ function ToolCallBlock({
 
   // For TodoWrite tool - render as a nice todo list
   if (toolName === "TodoWrite") {
-    type TodoItem = { content: string; status: "pending" | "in_progress" | "completed"; activeForm?: string };
+    type TodoItem = {
+      content: string;
+      status: "pending" | "in_progress" | "completed";
+      activeForm?: string;
+    };
     const todos: TodoItem[] = (outputObj?.newTodos ?? inputObj?.todos ?? outputObj?.oldTodos ?? []) as TodoItem[];
     const completedCount = todos.filter((t) => t.status === "completed").length;
 
@@ -1850,7 +1870,12 @@ function ToolCallBlock({
   if (toolName === "Task") {
     type TaskContentItem = { type?: string; text?: string };
     const taskOutput = outputObj as
-      | { status?: string; totalDurationMs?: number; totalToolUseCount?: number; content?: TaskContentItem[] }
+      | {
+          status?: string;
+          totalDurationMs?: number;
+          totalToolUseCount?: number;
+          content?: TaskContentItem[];
+        }
       | undefined;
     const subagentType = inputObj?.subagent_type ? String(inputObj.subagent_type) : null;
     const taskDescription = inputObj?.description ? String(inputObj.description) : null;

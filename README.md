@@ -127,7 +127,7 @@ cd agentlogs
 bun install
 
 # Configure environment
-cp packages/web/.dev.vars.example packages/web/.dev.vars
+cp packages/web/.env.example packages/web/.env
 # Edit .dev.vars with your GitHub OAuth credentials and a secret:
 #   GITHUB_CLIENT_ID=...
 #   GITHUB_CLIENT_SECRET=...

@@ -12,6 +12,8 @@ import { interactiveUploadCommand } from "./commands/upload";
 import { hookCommand as claudeCodeHookCommand } from "./commands/claudecode/hook";
 import { syncCommand } from "./commands/claudecode/sync";
 import { claudeCodeUploadCommand } from "./commands/claudecode/upload";
+// Cline commands
+import { clineUploadCommand } from "./commands/cline/upload";
 // Codex commands
 import { codexUploadCommand } from "./commands/codex/upload";
 // OpenCode commands
@@ -28,7 +30,7 @@ const program = new Command();
 
 program
   .name("agentlogs")
-  .description("CLI tools for working with AgentLogs accounts and transcripts from Claude Code and Codex");
+  .description("CLI tools for working with AgentLogs accounts and transcripts from AI coding agents");
 
 program
   .command("login")
@@ -56,7 +58,7 @@ program
 program
   .command("upload")
   .argument("[directory]", "Filter transcripts to this directory")
-  .option("-s, --source <source>", "Filter by source: claude-code, codex, opencode, or pi")
+  .option("-s, --source <source>", "Filter by source: claude-code, cline, codex, opencode, or pi")
   .option("-l, --latest", "Upload the most recent transcript without picker")
   .description("Interactively select and upload a transcript")
   .action(async (directory: string | undefined, options: { source?: string; latest?: boolean }) => {
@@ -106,6 +108,16 @@ opencode
   .description("Process OpenCode hook input from stdin")
   .action(async () => {
     await openCodeHookCommand();
+  });
+
+const cline = program.command("cline").description("Cline transcript utilities for AgentLogs");
+
+cline
+  .command("upload")
+  .argument("[taskIdOrPath]", "Cline task ID or path to task directory/file")
+  .description("Upload a Cline task transcript to AgentLogs")
+  .action(async (taskIdOrPath?: string) => {
+    await clineUploadCommand(taskIdOrPath);
   });
 
 const pi = program.command("pi").description("Pi transcript utilities for AgentLogs");

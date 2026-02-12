@@ -1,0 +1,183 @@
+{
+  "files_in_context": [
+    {
+      "path": "README.md",
+      "record_state": "active",
+      "record_source": "read_tool",
+      "cline_read_date": 1770913333472,
+      "cline_edit_date": null,
+      "user_edit_date": null
+    },
+    {
+      "path": "package.json",
+      "record_state": "active",
+      "record_source": "read_tool",
+      "cline_read_date": 1770913333495,
+      "cline_edit_date": null,
+      "user_edit_date": null
+    },
+    {
+      "path": "docs/introduction/overview.mdx",
+      "record_state": "active",
+      "record_source": "read_tool",
+      "cline_read_date": 1770913333516,
+      "cline_edit_date": null,
+      "user_edit_date": null
+    },
+    {
+      "path": "packages/shared/src/claudecode.ts",
+      "record_state": "active",
+      "record_source": "read_tool",
+      "cline_read_date": 1770913631609,
+      "cline_edit_date": null,
+      "user_edit_date": null
+    },
+    {
+      "path": "packages/shared/src/types.ts",
+      "record_state": "active",
+      "record_source": "read_tool",
+      "cline_read_date": 1770913631638,
+      "cline_edit_date": null,
+      "user_edit_date": null
+    },
+    {
+      "path": "packages/shared/src/discovery.ts",
+      "record_state": "active",
+      "record_source": "read_tool",
+      "cline_read_date": 1770913631664,
+      "cline_edit_date": null,
+      "user_edit_date": null
+    },
+    {
+      "path": "packages/shared/src/index.ts",
+      "record_state": "active",
+      "record_source": "read_tool",
+      "cline_read_date": 1770913631686,
+      "cline_edit_date": null,
+      "user_edit_date": null
+    },
+    {
+      "path": "packages/shared/src/schemas.ts",
+      "record_state": "active",
+      "record_source": "read_tool",
+      "cline_read_date": 1770913631706,
+      "cline_edit_date": null,
+      "user_edit_date": null
+    },
+    {
+      "path": "packages/shared/src/codex.ts",
+      "record_state": "active",
+      "record_source": "read_tool",
+      "cline_read_date": 1770913687194,
+      "cline_edit_date": null,
+      "user_edit_date": null
+    },
+    {
+      "path": "packages/shared/src/transcripts.ts",
+      "record_state": "active",
+      "record_source": "read_tool",
+      "cline_read_date": 1770913687238,
+      "cline_edit_date": null,
+      "user_edit_date": null
+    },
+    {
+      "path": "packages/cli/src/commands/upload.ts",
+      "record_state": "active",
+      "record_source": "read_tool",
+      "cline_read_date": 1770913694558,
+      "cline_edit_date": null,
+      "user_edit_date": null
+    },
+    {
+      "path": "packages/shared/src/models.ts",
+      "record_state": "active",
+      "record_source": "read_tool",
+      "cline_read_date": 1770913694605,
+      "cline_edit_date": null,
+      "user_edit_date": null
+    },
+    {
+      "path": "packages/cli/src/commands/claudecode/sync.ts",
+      "record_state": "active",
+      "record_source": "read_tool",
+      "cline_read_date": 1770913702496,
+      "cline_edit_date": null,
+      "user_edit_date": null
+    },
+    {
+      "path": "packages/cli/src/lib/perform-upload.ts",
+      "record_state": "active",
+      "record_source": "read_tool",
+      "cline_read_date": 1770913702520,
+      "cline_edit_date": null,
+      "user_edit_date": null
+    },
+    {
+      "path": "packages/cli/src/index.ts",
+      "record_state": "active",
+      "record_source": "read_tool",
+      "cline_read_date": 1770913702544,
+      "cline_edit_date": null,
+      "user_edit_date": null
+    },
+    {
+      "path": "packages/cli/src/commands/pi/upload.ts",
+      "record_state": "active",
+      "record_source": "read_tool",
+      "cline_read_date": 1770913709776,
+      "cline_edit_date": null,
+      "user_edit_date": null
+    },
+    {
+      "path": "packages/shared/src/pi.ts",
+      "record_state": "active",
+      "record_source": "read_tool",
+      "cline_read_date": 1770913709801,
+      "cline_edit_date": null,
+      "user_edit_date": null
+    },
+    {
+      "path": "packages/shared/src/upload.ts",
+      "record_state": "active",
+      "record_source": "read_tool",
+      "cline_read_date": 1770913716982,
+      "cline_edit_date": null,
+      "user_edit_date": null
+    },
+    {
+      "path": "packages/shared/package.json",
+      "record_state": "active",
+      "record_source": "read_tool",
+      "cline_read_date": 1770913717004,
+      "cline_edit_date": null,
+      "user_edit_date": null
+    },
+    {
+      "path": "packages/shared/src/claudecode-tools.test.ts",
+      "record_state": "active",
+      "record_source": "read_tool",
+      "cline_read_date": 1770913723152,
+      "cline_edit_date": null,
+      "user_edit_date": null
+    }
+  ],
+  "model_usage": [
+    {
+      "ts": 1770913324843,
+      "model_id": "claude-opus-4-6",
+      "model_provider_id": "anthropic",
+      "mode": "act"
+    }
+  ],
+  "environment_history": [
+    {
+      "ts": 1770913324842,
+      "os_name": "darwin",
+      "os_version": "25.2.0",
+      "os_arch": "arm64",
+      "host_name": "Cline CLI - Node.js",
+      "host_version": "2.2.0",
+      "cline_version": "3.58.0"
+    }
+  ]
+}
