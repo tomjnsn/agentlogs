@@ -109,11 +109,11 @@ unset AGENTLOGS_CLI_PATH
 
 ## Debug Logging
 
-Debug logs are written to `/tmp/agentlogs-pi.log` when not in production mode.
+Debug logs are written to `/tmp/agentlogs.log` when not in production mode.
 
 ```bash
 # Watch logs in real-time
-tail -f /tmp/agentlogs-pi.log
+tail -f /tmp/agentlogs.log
 ```
 
 ## CLI Commands

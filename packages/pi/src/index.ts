@@ -54,7 +54,7 @@ interface ExtensionAPI {
 // Debug Logging (compiled out in production builds)
 // ============================================================================
 
-const LOG_FILE = "/tmp/agentlogs-pi.log";
+const LOG_FILE = "/tmp/agentlogs.log";
 const TRANSCRIPT_LINK_REGEX = /https?:\/\/[^\s"'`]+\/s\/[a-zA-Z0-9_-]+/;
 
 function log(message: string, data?: unknown): void {

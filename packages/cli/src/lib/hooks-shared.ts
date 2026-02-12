@@ -3,15 +3,29 @@
  */
 
 import { createLogger } from "@agentlogs/shared/logger";
-import { getDevLogPath } from "@agentlogs/shared/paths";
 import { getAuthenticatedEnvironments } from "../config";
 import { getOrCreateTranscriptId } from "../local-store";
 
+const HOOK_LOG_PATH = "/tmp/agentlogs.log";
+
+function shouldEnableHookFileLogging(): boolean {
+  if (process.env.NODE_ENV === "production" || process.env.NODE_ENV === "test") {
+    return false;
+  }
+
+  // Explicit opt-in for debugging installed builds.
+  if (process.env.AGENTLOGS_DEBUG_LOGS === "true") {
+    return true;
+  }
+
+  // Enable automatically when running from TypeScript source in local dev.
+  return import.meta.url.endsWith(".ts");
+}
+
 // Create logger for hook commands
-const logPath = getDevLogPath();
 export const hookLogger = createLogger("cli", {
-  logFilePath: logPath ?? undefined,
-  logToFile: logPath !== null,
+  logFilePath: HOOK_LOG_PATH,
+  logToFile: shouldEnableHookFileLogging(),
   disableConsole: true,
 });
 
