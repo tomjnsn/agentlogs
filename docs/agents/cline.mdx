@@ -8,49 +8,43 @@ icon: /icons/cline.svg
 
 # Cline Integration
 
-Cline is an open source AI coding agent that brings frontier AI models directly to your workflow. AgentLogs provides automatic transcript capture through an MCP server integration.
+Cline is an open source AI coding agent that brings frontier AI models directly to your workflow. AgentLogs provides automatic transcript capture through Cline's hooks system.
 
 ## Features
 
-- **Automatic capture** - Transcripts are uploaded after each agent response
-- **Background service** - Watches sessions and handles uploads automatically
+- **Automatic capture** - Transcripts are uploaded when a task completes or is cancelled
+- **Zero config** - A single CLI command installs the hooks
 
 ## Installation
 
 ### 1. Authentication
 
-Run the following command in the terminal:
-
 ```bash
 npx agentlogs login agentlogs.ai
 ```
 
-### 2. Configure MCP Server
+### 2. Install hooks
 
-<Accordion title="Manual configuration">
-Add the following to your Cline MCP config file (`~/.cline/data/settings/cline_mcp_settings.json`):
-
-```json
-{
-  "agentlogs": {
-    "type": "stdio",
-    "command": "npx",
-    "args": ["-y", "agentlogs", "mcp"]
-  }
-}
+```bash
+npx agentlogs cline install
 ```
 
-</Accordion>
+This creates hook scripts in `~/Documents/Cline/Hooks/` that automatically upload transcripts on task completion and cancellation.
+
+Re-running `install` safely updates existing hooks managed by agentlogs. Hooks you created yourself are never overwritten.
 
 ## How It Works
 
-The MCP server is spawned by any Cline client and connects to a background service that watches `~/.cline/data/tasks/` for changes. When an agent response completes, the transcript is uploaded.
+Cline supports [file-based hooks](https://docs.cline.bot/features/hooks/hook-reference) — executable scripts that run at key points in a task's lifecycle. The install command creates two hooks:
 
-The MCP server doesn't expose any tools or prompts—it exists purely for lifecycle management. The background service shuts down automatically after all Cline sessions close.
+- **`TaskComplete`** — runs when Cline finishes a task, uploads the transcript
+- **`TaskCancel`** — runs when a task is cancelled, uploads what exists so far
+
+Each hook receives JSON from Cline via stdin containing the `taskId`, then calls `agentlogs cline upload` in the background to convert and upload the transcript from `~/.cline/data/tasks/`.
 
 ## Manual Upload
 
-You can manually upload transcripts using the CLI:
+You can also upload transcripts manually:
 
 ```bash
 # Interactive picker to browse and upload any transcript
@@ -65,5 +59,3 @@ npx agentlogs cline upload <TASK-ID>
 # Upload a specific transcript file
 npx agentlogs cline upload ~/.cline/data/tasks/<TASK-ID>/api_conversation_history.json
 ```
-
-The interactive `upload` command discovers transcripts from all agents and lets you pick one to upload.

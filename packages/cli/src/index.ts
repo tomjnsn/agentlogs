@@ -13,6 +13,7 @@ import { hookCommand as claudeCodeHookCommand } from "./commands/claudecode/hook
 import { syncCommand } from "./commands/claudecode/sync";
 import { claudeCodeUploadCommand } from "./commands/claudecode/upload";
 // Cline commands
+import { clineInstallCommand } from "./commands/cline/install";
 import { clineUploadCommand } from "./commands/cline/upload";
 // Codex commands
 import { codexUploadCommand } from "./commands/codex/upload";
@@ -118,6 +119,13 @@ cline
   .description("Upload a Cline task transcript to AgentLogs")
   .action(async (taskIdOrPath?: string) => {
     await clineUploadCommand(taskIdOrPath);
+  });
+
+cline
+  .command("install")
+  .description("Install agentlogs hooks into Cline's global hooks directory")
+  .action(async () => {
+    await clineInstallCommand();
   });
 
 const pi = program.command("pi").description("Pi transcript utilities for AgentLogs");
