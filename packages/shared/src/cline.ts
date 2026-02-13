@@ -2,8 +2,8 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import {
-  calculateTranscriptStats,
   type ConversionResult,
+  calculateTranscriptStats,
   type TranscriptBlob,
   type UnifiedGitContext,
   type UnifiedTokenUsage,
@@ -141,11 +141,15 @@ const TOOL_NAME_MAP: Record<string, string> = {
   list_code_definition_names: "Ls",
   load_mcp_documentation: "LoadMcpDocs",
   access_mcp_resource: "AccessMcpResource",
-  focus_chain: "FocusChain",
+  focus_chain: "TodoWrite",
+  web_fetch: "WebFetch",
+  web_search: "WebSearch",
+  ask_followup_question: "AskUserQuestion",
+  use_subagents: "Task",
+
   // Agent Response Tools that should be treated as agent messages with the response in the input
   attempt_completion: "AgentResponse",
   plan_mode_respond: "AgentResponse",
-  ask_followup_question: "AgentResponse",
 };
 
 // Patterns to strip from user messages (Cline injects environment details, etc.)
@@ -562,23 +566,19 @@ function sanitizeToolInput(toolName: string, input: unknown, cwd: string | null)
     record.file_path = relativizePath(record.file_path, cwd);
   }
 
-  // For Write tool: rename content field
   if (toolName === "Write" && typeof record.content === "string") {
     // content is already the right field name for Write
   }
 
-  // For Edit tool (replace_in_file): convert to diff format
   if (toolName === "Edit" && typeof record.diff === "string") {
     // Cline uses a SEARCH/REPLACE block format in the diff field
     // Keep it as-is since it's already a diff representation
   }
 
-  // For Bash tool: normalize command field
   if (toolName === "Bash" && typeof record.command === "string") {
     // Already in the right format
   }
 
-  // For Grep tool (search_files): normalize fields
   if (toolName === "Grep") {
     if (typeof record.regex === "string") {
       record.pattern = record.regex;
@@ -586,8 +586,17 @@ function sanitizeToolInput(toolName: string, input: unknown, cwd: string | null)
     }
   }
 
+  if (toolName === "AskUserQuestion") {
+    record.answers = {
+      question: record.question,
+      options: typeof record.options === "object" ? { ...record.options } : record.options,
+    };
+    delete record.question;
+    delete record.options;
+  }
+
   if (toolName === "AgentResponse") {
-    return record.response ?? record.result ?? record.question ?? record.options;
+    return record.response || record.result;
   }
 
   // Apply generic path relativization
@@ -668,7 +677,9 @@ function isSystemInjectedText(text: string): boolean {
   if (
     text.startsWith("[apply_patch for patch application]") ||
     text.startsWith("[read_file for ") ||
-    text.startsWith("[write_to_file for ")
+    text.startsWith("[write_to_file for ") ||
+    text.startsWith("[subagents] Result:") ||
+    text.includes("[ERROR] You did not use a tool")
   ) {
     return true;
   }

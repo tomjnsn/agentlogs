@@ -66,6 +66,18 @@ npx agentlogs login agentlogs.ai
 /plugin install agentlogs
 ```
 
+**Cline:** - add to `~/.cline/data/settings/cline_mcp_settings.json`
+
+```json
+{
+  "agentlogs": {
+    "type": "stdio",
+    "command": "npx",
+    "args": ["-y", "agentlogs", "mcp"]
+  }
+}
+```
+
 **Codex:**
 
 ```bash

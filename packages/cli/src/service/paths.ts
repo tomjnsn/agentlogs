@@ -13,5 +13,9 @@ export const SERVICE_LOG_FILE = join(AGENTLOGS_DIR, "service.log");
 export const CODEX_DIR = join(homedir(), ".codex");
 export const CODEX_SESSIONS_DIR = join(CODEX_DIR, "sessions");
 
+// Cline directories
+export const CLINE_DIR = join(homedir(), ".cline");
+export const CLINE_TASKS_DIR = join(CLINE_DIR, "data", "tasks");
+
 // Watcher log (temporary, for debugging)
 export const WATCHER_LOG_FILE = join(AGENTLOGS_DIR, "watcher-events.log");
