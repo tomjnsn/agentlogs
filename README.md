@@ -45,6 +45,7 @@ AgentLogs fixes that:
 | Agent                                                          | Transcripts | Auto-sync | Commit Tracking |
 | -------------------------------------------------------------- | ----------- | --------- | --------------- |
 | [Claude Code](https://agentlogs.ai/docs/agents/claude-code)    | ✓           | ✓         | ✓               |
+| [Cline](https://agentlogs.ai/docs/agents/cline) (experimental) | ✓           | ✓         | —               |
 | [Codex](https://agentlogs.ai/docs/agents/codex) (experimental) | ✓           | ✓         | —               |
 | [OpenCode](https://agentlogs.ai/docs/agents/opencode)          | ✓           | ✓         | ✓               |
 | [Pi](https://agentlogs.ai/docs/agents/pi)                      | ✓           | ✓         | ✓               |
@@ -66,7 +67,7 @@ npx agentlogs login agentlogs.ai
 /plugin install agentlogs
 ```
 
-**Cline:** - add to `~/.cline/data/settings/cline_mcp_settings.json`
+**Cline** - add to `~/.cline/data/settings/cline_mcp_settings.json`
 
 ```json
 {
