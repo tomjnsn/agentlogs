@@ -31,7 +31,7 @@ export const user = sqliteTable("user", {
   email: text("email").notNull().unique(),
   emailVerified: integer("email_verified", { mode: "boolean" }).default(false).notNull(),
   image: text("image"),
-  role: text("role").$type<UserRole>().default("waitlist").notNull(),
+  role: text("role").$type<UserRole>().default("user").notNull(),
   welcomeEmailSentAt: integer("welcome_email_sent_at", { mode: "timestamp_ms" }),
   createdAt: integer("created_at", { mode: "timestamp_ms" })
     .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)

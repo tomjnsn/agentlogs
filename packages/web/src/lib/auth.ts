@@ -7,7 +7,7 @@ import * as queries from "../db/queries";
 import { env } from "./env";
 import { logger } from "./logger";
 
-const ADMIN_EMAILS = ["hello@philippspiess.com", "skymk1@gmail.com"];
+const ADMIN_EMAILS = ["tobias.hagemann@gmail.com", "hello@philippspiess.com", "skymk1@gmail.com"];
 
 let authInstanceCache: ReturnType<typeof betterAuth> | null = null;
 

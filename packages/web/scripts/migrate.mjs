@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS \`user\` (
   \`email\` text NOT NULL,
   \`email_verified\` integer DEFAULT 0 NOT NULL,
   \`image\` text,
-  \`role\` text DEFAULT 'waitlist' NOT NULL,
+  \`role\` text DEFAULT 'user' NOT NULL,
   \`welcome_email_sent_at\` integer,
   \`created_at\` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
   \`updated_at\` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL
