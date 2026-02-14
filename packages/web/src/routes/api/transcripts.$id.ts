@@ -1,19 +1,19 @@
 import { createDrizzle } from "@/db";
 import { createFileRoute } from "@tanstack/react-router";
 import { json } from "@tanstack/react-start";
-import { env } from "cloudflare:workers";
 import { eq } from "drizzle-orm";
 import * as queries from "../../db/queries";
 import { transcripts } from "../../db/schema";
 import { getAuthErrorResponse, requireActiveUser } from "../../lib/access-control";
 import { logger } from "../../lib/logger";
+import { storage } from "../../lib/storage";
 
 export const Route = createFileRoute("/api/transcripts/$id")({
   server: {
     handlers: {
       DELETE: async ({ request, params }: { request: Request; params: { id: string } }) => {
         const { id } = params;
-        const db = createDrizzle(env.DB);
+        const db = createDrizzle();
 
         logger.debug("Delete transcript request received", { id });
 
@@ -59,19 +59,17 @@ export const Route = createFileRoute("/api/transcripts/$id")({
         }
 
         try {
-          // Construct R2 key based on whether it's a repo or private transcript
+          // Construct storage key based on whether it's a repo or private transcript
           const repoName = transcript.repo?.repo;
-          const r2Key = repoName
+          const storageKey = repoName
             ? `${repoName}/${transcript.transcriptId}.json`
             : `private/${transcript.userId}/${transcript.transcriptId}.json`;
 
-          // Delete from R2 first
-          await env.BUCKET.delete(r2Key);
-          logger.info("Deleted unified transcript from R2", { r2Key });
+          // Delete from storage first
+          await storage.delete(storageKey);
+          logger.info("Deleted unified transcript from storage", { storageKey });
 
           // Delete transcript record from database
-          // Note: Associated transcript_blobs will be cascade deleted
-          // but we do NOT delete the blobs themselves (they may be shared)
           await db.delete(transcripts).where(eq(transcripts.id, id));
 
           logger.info("Transcript deleted successfully", {

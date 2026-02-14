@@ -1,7 +1,6 @@
 import { createDrizzle } from "@/db";
 import { createFileRoute } from "@tanstack/react-router";
 import { json } from "@tanstack/react-start";
-import { env } from "cloudflare:workers";
 import { eq } from "drizzle-orm";
 import { commitTracking, transcripts } from "../../db/schema";
 import { requireActiveUser, getAuthErrorResponse } from "../../lib/access-control";
@@ -20,7 +19,7 @@ export const Route = createFileRoute("/api/commit-track")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const db = createDrizzle(env.DB);
+        const db = createDrizzle();
         logger.debug("Commit track request received");
 
         let userId: string;

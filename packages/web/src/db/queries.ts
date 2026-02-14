@@ -990,8 +990,8 @@ export async function getTeamAgentUsage(db: DrizzleDB, teamId: string, days: num
  * OR if any team-shared transcript (with proper access) references it.
  */
 export async function canAccessBlob(db: DrizzleDB, viewerId: string, blobSha256: string) {
-  // Use raw D1 client for complex EXISTS query
-  const result = await db.$client
+  // Use raw SQLite client for complex EXISTS query
+  const result = db.$client
     .prepare(`
     SELECT 1 FROM transcript_blobs tb
     INNER JOIN transcripts t ON tb.transcript_id = t.id
@@ -1015,10 +1015,9 @@ export async function canAccessBlob(db: DrizzleDB, viewerId: string, blobSha256:
     )
     LIMIT 1
   `)
-    .bind(blobSha256, viewerId, viewerId)
-    .first();
+    .get(blobSha256, viewerId, viewerId);
 
-  return result !== null;
+  return result !== undefined;
 }
 
 /**
@@ -1026,7 +1025,7 @@ export async function canAccessBlob(db: DrizzleDB, viewerId: string, blobSha256:
  * Used for unauthenticated access to blobs.
  */
 export async function canAccessPublicBlob(db: DrizzleDB, blobSha256: string) {
-  const result = await db.$client
+  const result = db.$client
     .prepare(`
     SELECT 1 FROM transcript_blobs tb
     INNER JOIN transcripts t ON tb.transcript_id = t.id
@@ -1034,8 +1033,7 @@ export async function canAccessPublicBlob(db: DrizzleDB, blobSha256: string) {
     AND t.visibility = 'public'
     LIMIT 1
   `)
-    .bind(blobSha256)
-    .first();
+    .get(blobSha256);
 
-  return result !== null;
+  return result !== undefined;
 }

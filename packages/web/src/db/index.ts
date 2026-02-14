@@ -1,26 +1,35 @@
-import { drizzle } from "drizzle-orm/d1";
+import Database from "better-sqlite3";
+import { drizzle } from "drizzle-orm/better-sqlite3";
 import { logger } from "../lib/logger";
 import * as schema from "./schema";
 
-/**
- * Creates a Drizzle instance for the given D1 database
- * This is called per-request in the Cloudflare Workers environment
- *
- * SQL query logging can be enabled by setting DEBUG_SQL=true environment variable
- */
-export function createDrizzle(d1: D1Database) {
-  const enableSqlLogging = process.env.DEBUG_SQL === "true";
+const DB_PATH = process.env.DB_PATH || "/data/agentlogs.db";
 
-  return drizzle(d1, {
-    schema,
-    ...(enableSqlLogging && {
-      logger: {
-        logQuery(query: string, params: unknown[]) {
-          logger.debug("SQL Query:", { query, params });
+let dbInstance: ReturnType<typeof drizzle<typeof schema>> | null = null;
+
+/**
+ * Creates or returns the singleton Drizzle instance for the SQLite database.
+ * Uses better-sqlite3 with WAL mode for self-hosted deployment.
+ */
+export function createDrizzle() {
+  if (!dbInstance) {
+    const enableSqlLogging = process.env.DEBUG_SQL === "true";
+    const sqlite = new Database(DB_PATH);
+    sqlite.pragma("journal_mode = WAL");
+    sqlite.pragma("foreign_keys = ON");
+
+    dbInstance = drizzle(sqlite, {
+      schema,
+      ...(enableSqlLogging && {
+        logger: {
+          logQuery(query: string, params: unknown[]) {
+            logger.debug("SQL Query:", { query, params });
+          },
         },
-      },
-    }),
-  });
+      }),
+    });
+  }
+  return dbInstance;
 }
 
 export type DrizzleDB = ReturnType<typeof createDrizzle>;

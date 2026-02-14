@@ -1,7 +1,6 @@
 import { createDrizzle } from "@/db";
 import { createFileRoute } from "@tanstack/react-router";
 import { json } from "@tanstack/react-start";
-import { env } from "cloudflare:workers";
 import { eq } from "drizzle-orm";
 import { repos, transcripts } from "../../db/schema";
 import { getAuthErrorResponse, requireActiveUser } from "../../lib/access-control";
@@ -11,7 +10,7 @@ export const Route = createFileRoute("/api/transcripts")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const db = createDrizzle(env.DB);
+        const db = createDrizzle();
         logger.debug("Transcripts metadata request received");
 
         let userId: string;

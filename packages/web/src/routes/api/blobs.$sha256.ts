@@ -1,16 +1,16 @@
 import { createDrizzle } from "@/db";
 import { createFileRoute } from "@tanstack/react-router";
-import { env } from "cloudflare:workers";
 import { eq } from "drizzle-orm";
 import { canAccessBlob, canAccessPublicBlob } from "../../db/queries";
 import { blobs } from "../../db/schema";
 import { createAuth } from "../../lib/auth";
 import { logger } from "../../lib/logger";
+import { storage } from "../../lib/storage";
 
 type BlobAccessResult = { authorized: true; mediaType: string } | { authorized: false; response: Response };
 
 async function checkBlobAccess(request: Request, sha256: string): Promise<BlobAccessResult> {
-  const db = createDrizzle(env.DB);
+  const db = createDrizzle();
   const auth = createAuth();
 
   const session = await auth.api.getSession({
@@ -63,7 +63,7 @@ export const Route = createFileRoute("/api/blobs/$sha256" as any)({
           return accessResult.response;
         }
 
-        const object = await env.BUCKET.head(`blobs/${sha256}`);
+        const object = await storage.head(`blobs/${sha256}`);
         if (!object) {
           return new Response(null, { status: 404 });
         }
@@ -85,9 +85,9 @@ export const Route = createFileRoute("/api/blobs/$sha256" as any)({
           return accessResult.response;
         }
 
-        const object = await env.BUCKET.get(`blobs/${sha256}`);
+        const object = await storage.get(`blobs/${sha256}`);
         if (!object) {
-          logger.warn("Blob not found in R2", { sha256: sha256.slice(0, 8) });
+          logger.warn("Blob not found in storage", { sha256: sha256.slice(0, 8) });
           return new Response("Not found", { status: 404 });
         }
 
