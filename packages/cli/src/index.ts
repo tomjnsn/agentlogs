@@ -13,6 +13,7 @@ import { hookCommand as claudeCodeHookCommand } from "./commands/claudecode/hook
 import { syncCommand } from "./commands/claudecode/sync";
 import { claudeCodeUploadCommand } from "./commands/claudecode/upload";
 // Cline commands
+import { clineHookCommand } from "./commands/cline/hook";
 import { clineInstallCommand } from "./commands/cline/install";
 import { clineUploadCommand } from "./commands/cline/upload";
 // Codex commands
@@ -119,6 +120,13 @@ cline
   .description("Upload a Cline task transcript to AgentLogs")
   .action(async (taskIdOrPath?: string) => {
     await clineUploadCommand(taskIdOrPath);
+  });
+
+cline
+  .command("hook")
+  .description("Process Cline hook input from stdin")
+  .action(async () => {
+    await clineHookCommand();
   });
 
 cline

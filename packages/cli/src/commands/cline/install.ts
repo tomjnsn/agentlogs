@@ -1,8 +1,8 @@
 /**
  * Cline Install Command
  *
- * Sets up agentlogs hooks in Cline's global hooks directory (~/ Documents/Cline/Hooks/).
- * Creates TaskComplete and TaskCancel hook scripts that auto-upload transcripts.
+ * Sets up agentlogs hooks in Cline's global hooks directory (~/Documents/Cline/Hooks/).
+ * Creates hooks for transcript upload (TaskComplete, TaskCancel) and commit tracking (PostToolUse).
  */
 
 import { existsSync, mkdirSync, writeFileSync, chmodSync, readFileSync } from "fs";
@@ -13,19 +13,33 @@ const CLINE_HOOKS_DIR = join(homedir(), "Documents", "Cline", "Hooks");
 
 const MARKER = "# agentlogs-managed";
 
-function hookScript(_hookName: string): string {
+/**
+ * All hooks pipe stdin to `agentlogs cline hook` which handles routing internally.
+ * The hook runs in the background for TaskComplete/TaskCancel (upload is slow),
+ * but inline for PostToolUse (commit tracking is fast and within Cline's 30s timeout).
+ */
+function hookScript(hookName: string): string {
+  if (hookName === "PostToolUse") {
+    // Inline — commit tracking is fast, and we need to finish before Cline moves on
+    return `#!/usr/bin/env bash
+${MARKER}
+input=$(cat)
+echo "$input" | npx agentlogs cline hook 2>/dev/null
+echo '{"cancel": false}'
+`;
+  }
+
+  // Background — upload is slow, don't block Cline
   return `#!/usr/bin/env bash
 ${MARKER}
 input=$(cat)
-task_id=$(echo "$input" | jq -r '.taskId // empty')
-if [[ -n "$task_id" ]]; then
-  npx agentlogs cline upload "$task_id" &>/dev/null &
-fi
+echo "$input" | npx agentlogs cline hook &>/dev/null &
 echo '{"cancel": false}'
 `;
 }
 
 const HOOKS: { name: string; description: string }[] = [
+  { name: "PostToolUse", description: "Track git commits in agentlogs" },
   { name: "TaskComplete", description: "Upload transcript when a Cline task completes" },
   { name: "TaskCancel", description: "Upload transcript when a Cline task is cancelled" },
 ];
@@ -46,7 +60,6 @@ export async function clineInstallCommand(): Promise<void> {
     if (existsSync(hookPath)) {
       const existing = readFileSync(hookPath, "utf-8");
       if (existing.includes(MARKER)) {
-        // Overwrite our own hooks (update to latest version)
         writeFileSync(hookPath, hookScript(hook.name), { mode: 0o755 });
         console.log(`  Updated: ${hook.name}`);
         installed++;
@@ -70,6 +83,6 @@ export async function clineInstallCommand(): Promise<void> {
     console.log(`Skipped ${skipped} hook(s) with existing non-agentlogs content.`);
   }
   console.log("");
-  console.log("Cline will now auto-upload transcripts to agentlogs on task completion.");
+  console.log("Cline will now auto-upload transcripts and track commits.");
   console.log("Run `agentlogs status` to verify you are logged in.");
 }
