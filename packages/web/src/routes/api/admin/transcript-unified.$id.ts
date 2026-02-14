@@ -1,11 +1,11 @@
 import { createDrizzle } from "@/db";
 import { createFileRoute } from "@tanstack/react-router";
-import { env } from "cloudflare:workers";
 import { eq } from "drizzle-orm";
 import * as queries from "../../../db/queries";
 import { transcripts } from "../../../db/schema";
 import { createAuth } from "../../../lib/auth";
 import { logger } from "../../../lib/logger";
+import { storage } from "../../../lib/storage";
 
 async function requireAdmin(request: Request): Promise<string | Response> {
   const auth = createAuth();
@@ -18,7 +18,7 @@ async function requireAdmin(request: Request): Promise<string | Response> {
     });
   }
 
-  const db = createDrizzle(env.DB);
+  const db = createDrizzle();
   const role = await queries.getUserRole(db, session.user.id);
 
   if (role !== "admin") {
@@ -44,9 +44,9 @@ export const Route = createFileRoute("/api/admin/transcript-unified/$id" as any)
           return adminResult;
         }
 
-        const db = createDrizzle(env.DB);
+        const db = createDrizzle();
 
-        // Get transcript from database to find R2 path
+        // Get transcript from database to find storage path
         const transcript = await db.query.transcripts.findFirst({
           where: eq(transcripts.id, id),
           with: {
@@ -64,15 +64,15 @@ export const Route = createFileRoute("/api/admin/transcript-unified/$id" as any)
           });
         }
 
-        // Construct R2 key based on whether it's a repo or private transcript
+        // Construct storage key based on whether it's a repo or private transcript
         const repoName = transcript.repo?.repo;
-        const r2Key = repoName
+        const storageKey = repoName
           ? `${repoName}/${transcript.transcriptId}.json`
           : `private/${transcript.userId}/${transcript.transcriptId}.json`;
 
-        const r2Object = await env.BUCKET.get(r2Key);
-        if (!r2Object) {
-          logger.error("Admin transcript download: R2 object not found", { id, r2Key });
+        const storageObject = await storage.get(storageKey);
+        if (!storageObject) {
+          logger.error("Admin transcript download: storage object not found", { id, storageKey });
           return new Response(JSON.stringify({ error: "Transcript content not found in storage" }), {
             status: 404,
             headers: { "Content-Type": "application/json" },
@@ -85,7 +85,7 @@ export const Route = createFileRoute("/api/admin/transcript-unified/$id" as any)
           transcriptUuid: transcript.transcriptId,
         });
 
-        const content = await r2Object.text();
+        const content = await storageObject.text();
 
         return new Response(content, {
           headers: {

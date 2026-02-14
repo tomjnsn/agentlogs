@@ -1,6 +1,6 @@
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { generateText } from "ai";
-import { env } from "cloudflare:workers";
+import { env } from "../env";
 
 const SUMMARIZE_PROMPT = `Write a 3-6 word title for this coding task. No colons, no articles (a/an/the) at start. Title case.
 
@@ -26,7 +26,8 @@ export interface SummaryResult {
 }
 
 function getApiKey(): string | undefined {
-  return (env as unknown as Record<string, unknown>).OPENROUTER_API_KEY as string | undefined;
+  const key = env.OPENROUTER_API_KEY;
+  return key || undefined;
 }
 
 function isTestEnvironment(): boolean {

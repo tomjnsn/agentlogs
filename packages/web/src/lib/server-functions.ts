@@ -1,7 +1,6 @@
 import { init } from "@paralleldrive/cuid2";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
-import { env } from "cloudflare:workers";
 import { and, eq, sql } from "drizzle-orm";
 import { createDrizzle } from "../db";
 import * as queries from "../db/queries";
@@ -19,7 +18,9 @@ import {
 } from "../db/schema";
 import { createAuth } from "./auth";
 import { requireActiveUser, tryGetActiveUserId } from "./access-control";
+import { env } from "./env";
 import { logger } from "./logger";
+import { storage } from "./storage";
 
 let cuidGenerator: (() => string) | undefined;
 const getCuidGenerator = () => {
@@ -55,7 +56,7 @@ export const getSession = createServerFn({ method: "GET" }).handler(async () => 
     }
 
     // Fetch user role from database
-    const db = createDrizzle(env.DB);
+    const db = createDrizzle();
     let role: string | null = null;
     try {
       role = await queries.getUserRole(db, session.user.id);
@@ -94,7 +95,7 @@ export const getSession = createServerFn({ method: "GET" }).handler(async () => 
  * Server function to fetch all repositories for the authenticated user
  */
 export const getRepos = createServerFn().handler(async () => {
-  const db = createDrizzle(env.DB);
+  const db = createDrizzle();
   const userId = await getAuthenticatedUserId();
   return queries.getRepos(db, userId);
 });
@@ -103,7 +104,7 @@ export const getRepos = createServerFn().handler(async () => {
  * Server function to fetch private transcripts grouped by cwd
  */
 export const getPrivateTranscriptsByCwd = createServerFn().handler(async () => {
-  const db = createDrizzle(env.DB);
+  const db = createDrizzle();
   const userId = await getAuthenticatedUserId();
   return queries.getPrivateTranscriptsByCwd(db, userId);
 });
@@ -114,7 +115,7 @@ export const getPrivateTranscriptsByCwd = createServerFn().handler(async () => {
 export const getTranscriptsByRepo = createServerFn()
   .inputValidator((repoId: string) => repoId)
   .handler(async ({ data: repoId }) => {
-    const db = createDrizzle(env.DB);
+    const db = createDrizzle();
     const userId = await getAuthenticatedUserId();
     const transcripts = await queries.getTranscriptsByRepo(db, userId, repoId);
 
@@ -140,7 +141,7 @@ export const getTranscriptsByRepo = createServerFn()
 export const getTranscriptsByCwd = createServerFn()
   .inputValidator((cwd: string) => cwd)
   .handler(async ({ data: cwd }) => {
-    const db = createDrizzle(env.DB);
+    const db = createDrizzle();
     const userId = await getAuthenticatedUserId();
     const transcripts = await queries.getTranscriptsByCwd(db, userId, cwd);
 
@@ -177,7 +178,7 @@ async function tryGetUserId(): Promise<string | null> {
 export const getTranscript = createServerFn({ method: "GET" })
   .inputValidator((id: string) => id)
   .handler(async ({ data: id }) => {
-    const db = createDrizzle(env.DB);
+    const db = createDrizzle();
     const viewerId = await tryGetUserId();
 
     let transcript;
@@ -204,8 +205,8 @@ export const getTranscript = createServerFn({ method: "GET" })
       : `private/${transcript.userId}/${transcript.transcriptId}.json`;
 
     // Fetch R2 content AND commits in parallel for better performance
-    const [r2Object, commits] = await Promise.all([
-      env.BUCKET.get(r2Key),
+    const [storageObject, commits] = await Promise.all([
+      storage.get(r2Key),
       db
         .select({
           commitSha: commitTracking.commitSha,
@@ -218,12 +219,12 @@ export const getTranscript = createServerFn({ method: "GET" })
         .orderBy(commitTracking.timestamp),
     ]);
 
-    if (!r2Object) {
-      logger.error("Unified transcript not found in R2", { key: r2Key });
+    if (!storageObject) {
+      logger.error("Unified transcript not found in storage", { key: r2Key });
       throw new Error("Transcript content not found");
     }
 
-    const unifiedTranscript = JSON.parse(await r2Object.text());
+    const unifiedTranscript = JSON.parse(await storageObject.text());
 
     // Return transcript with metadata and unified content
     return {
@@ -270,7 +271,7 @@ export const getTranscript = createServerFn({ method: "GET" })
 export const getTranscriptBySessionId = createServerFn({ method: "GET" })
   .inputValidator((id: string) => id)
   .handler(async ({ data: id }) => {
-    const db = createDrizzle(env.DB);
+    const db = createDrizzle();
     const userId = await tryGetUserId();
 
     let transcript;
@@ -292,7 +293,7 @@ export const getTranscriptBySessionId = createServerFn({ method: "GET" })
  * Includes: own transcripts, public transcripts, team-shared transcripts
  */
 export const getAllTranscripts = createServerFn().handler(async () => {
-  const db = createDrizzle(env.DB);
+  const db = createDrizzle();
   const viewerId = await getAuthenticatedUserId();
 
   // Use access-controlled query
@@ -331,7 +332,7 @@ const PAGE_SIZE = 20;
  * Server function to fetch daily activity counts for the activity chart
  */
 export const getDailyActivity = createServerFn({ method: "GET" }).handler(async () => {
-  const db = createDrizzle(env.DB);
+  const db = createDrizzle();
   const userId = await getAuthenticatedUserId();
   const results = await queries.getDailyActivityCounts(db, userId, 30);
 
@@ -369,7 +370,7 @@ export const getTranscriptsPaginated = createServerFn({ method: "GET" })
     },
   )
   .handler(async ({ data }) => {
-    const db = createDrizzle(env.DB);
+    const db = createDrizzle();
     const userId = await getAuthenticatedUserId();
     const result = await queries.getTranscriptsPaginated(db, userId, data);
 
@@ -422,7 +423,7 @@ async function requireAdmin() {
     throw new Error("Unauthorized");
   }
 
-  const db = createDrizzle(env.DB);
+  const db = createDrizzle();
   const role = await queries.getUserRole(db, session.user.id);
 
   if (role !== "admin") {
@@ -437,7 +438,7 @@ async function requireAdmin() {
  */
 export const getAdminStats = createServerFn({ method: "GET" }).handler(async () => {
   await requireAdmin();
-  const db = createDrizzle(env.DB);
+  const db = createDrizzle();
   return queries.getAdminAggregateStats(db);
 });
 
@@ -446,7 +447,7 @@ export const getAdminStats = createServerFn({ method: "GET" }).handler(async () 
  */
 export const getAdminUsers = createServerFn({ method: "GET" }).handler(async () => {
   await requireAdmin();
-  const db = createDrizzle(env.DB);
+  const db = createDrizzle();
   return queries.getAdminUserStats(db);
 });
 
@@ -465,7 +466,7 @@ export const updateUserRole = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }) => {
     await requireAdmin();
-    const db = createDrizzle(env.DB);
+    const db = createDrizzle();
     await queries.updateUserRole(db, data.userId, data.role);
     return { success: true };
   });
@@ -482,7 +483,7 @@ export const sendWelcomeEmail = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }) => {
     await requireAdmin();
-    const db = createDrizzle(env.DB);
+    const db = createDrizzle();
 
     // Get user info
     const targetUser = await queries.getUserById(db, data.userId);
@@ -512,7 +513,7 @@ export const sendWelcomeEmail = createServerFn({ method: "POST" })
  * Get user's team with members
  */
 export const getTeam = createServerFn({ method: "GET" }).handler(async () => {
-  const db = createDrizzle(env.DB);
+  const db = createDrizzle();
   const userId = await getAuthenticatedUserId();
   return queries.getUserTeam(db, userId);
 });
@@ -523,7 +524,7 @@ export const getTeam = createServerFn({ method: "GET" }).handler(async () => {
 export const createTeam = createServerFn({ method: "POST" })
   .inputValidator((input: { name: string }) => input)
   .handler(async ({ data: { name } }) => {
-    const db = createDrizzle(env.DB);
+    const db = createDrizzle();
     const { userId } = await requireActiveUser(getRequestHeaders(), db);
 
     const trimmedName = name.trim();
@@ -545,17 +546,17 @@ export const createTeam = createServerFn({ method: "POST" })
     // Pre-generate ID since batch can't reference results between statements
     const teamId = generateId();
 
-    await db.batch([
-      db.insert(teams).values({
+    await db.transaction(async (tx) => {
+      await tx.insert(teams).values({
         id: teamId,
         name: teamName,
         ownerId: userId,
-      }),
-      db.insert(teamMembers).values({
+      });
+      await tx.insert(teamMembers).values({
         teamId: teamId,
         userId: userId,
-      }),
-    ]);
+      });
+    });
 
     logger.info("Team created", { teamId, ownerId: userId });
     return { id: teamId, name: teamName };
@@ -569,7 +570,7 @@ export const createTeam = createServerFn({ method: "POST" })
 export const deleteTeam = createServerFn({ method: "POST" })
   .inputValidator((teamId: string) => teamId)
   .handler(async ({ data: teamId }) => {
-    const db = createDrizzle(env.DB);
+    const db = createDrizzle();
     const userId = await getAuthenticatedUserId();
 
     // Verify team exists and user is owner
@@ -600,7 +601,7 @@ export const deleteTeam = createServerFn({ method: "POST" })
 export const leaveTeam = createServerFn({ method: "POST" })
   .inputValidator((teamId: string) => teamId)
   .handler(async ({ data: teamId }) => {
-    const db = createDrizzle(env.DB);
+    const db = createDrizzle();
     const userId = await getAuthenticatedUserId();
 
     // Verify team exists
@@ -635,7 +636,7 @@ export const leaveTeam = createServerFn({ method: "POST" })
 export const addMemberByEmail = createServerFn({ method: "POST" })
   .inputValidator((input: { teamId: string; email: string }) => input)
   .handler(async ({ data: { teamId, email } }) => {
-    const db = createDrizzle(env.DB);
+    const db = createDrizzle();
     const { userId, session } = await requireActiveUser(getRequestHeaders(), db);
 
     // Verify team exists and user is owner
@@ -664,17 +665,19 @@ export const addMemberByEmail = createServerFn({ method: "POST" })
     }
 
     // Add member and upgrade from waitlist if needed
-    const insertMember = db.insert(teamMembers).values({ teamId, userId: targetUser.id });
     const targetRole = await queries.getUserRole(db, targetUser.id);
     if (targetRole === "waitlist") {
-      await db.batch([insertMember, db.update(user).set({ role: "user" }).where(eq(user.id, targetUser.id))]);
+      await db.transaction(async (tx) => {
+        await tx.insert(teamMembers).values({ teamId, userId: targetUser.id });
+        await tx.update(user).set({ role: "user" }).where(eq(user.id, targetUser.id));
+      });
       logger.info("Member added to team and upgraded from waitlist", {
         teamId,
         memberId: targetUser.id,
         addedBy: userId,
       });
     } else {
-      await insertMember;
+      await db.insert(teamMembers).values({ teamId, userId: targetUser.id });
       logger.info("Member added to team", { teamId, memberId: targetUser.id, addedBy: userId });
     }
 
@@ -695,7 +698,7 @@ export const addMemberByEmail = createServerFn({ method: "POST" })
 export const removeMember = createServerFn({ method: "POST" })
   .inputValidator((input: { teamId: string; targetUserId: string }) => input)
   .handler(async ({ data: { teamId, targetUserId } }) => {
-    const db = createDrizzle(env.DB);
+    const db = createDrizzle();
     const userId = await getAuthenticatedUserId();
 
     // Verify team exists and user is owner
@@ -734,7 +737,7 @@ export const removeMember = createServerFn({ method: "POST" })
 export const generateInvite = createServerFn({ method: "POST" })
   .inputValidator((teamId: string) => teamId)
   .handler(async ({ data: teamId }) => {
-    const db = createDrizzle(env.DB);
+    const db = createDrizzle();
     const userId = await getAuthenticatedUserId();
 
     // Verify team exists and user is owner
@@ -771,7 +774,7 @@ export const generateInvite = createServerFn({ method: "POST" })
 export const getInviteInfo = createServerFn({ method: "GET" })
   .inputValidator((code: string) => code)
   .handler(async ({ data: code }) => {
-    const db = createDrizzle(env.DB);
+    const db = createDrizzle();
 
     const invite = await queries.getInviteByCode(db, code);
     if (!invite) {
@@ -795,7 +798,7 @@ export const getInviteInfo = createServerFn({ method: "GET" })
 export const acceptInvite = createServerFn({ method: "POST" })
   .inputValidator((code: string) => code)
   .handler(async ({ data: code }) => {
-    const db = createDrizzle(env.DB);
+    const db = createDrizzle();
     const userId = await getAuthenticatedUserId();
 
     const invite = await queries.getInviteByCode(db, code);
@@ -816,17 +819,19 @@ export const acceptInvite = createServerFn({ method: "POST" })
     }
 
     // Add user to team and upgrade from waitlist if needed
-    const insertMember = db.insert(teamMembers).values({ teamId: invite.teamId, userId });
     const currentRole = await queries.getUserRole(db, userId);
     if (currentRole === "waitlist") {
-      await db.batch([insertMember, db.update(user).set({ role: "user" }).where(eq(user.id, userId))]);
+      await db.transaction(async (tx) => {
+        await tx.insert(teamMembers).values({ teamId: invite.teamId, userId });
+        await tx.update(user).set({ role: "user" }).where(eq(user.id, userId));
+      });
       logger.info("User joined team via invite and upgraded from waitlist", {
         teamId: invite.teamId,
         userId,
         code,
       });
     } else {
-      await insertMember;
+      await db.insert(teamMembers).values({ teamId: invite.teamId, userId });
       logger.info("User joined team via invite", { teamId: invite.teamId, userId, code });
     }
 
@@ -840,7 +845,7 @@ export const acceptInvite = createServerFn({ method: "POST" })
 export const updateTitle = createServerFn({ method: "POST" })
   .inputValidator((input: { transcriptId: string; title: string }) => input)
   .handler(async ({ data: { transcriptId, title } }) => {
-    const db = createDrizzle(env.DB);
+    const db = createDrizzle();
     const userId = await getAuthenticatedUserId();
 
     // Get user role to check if admin
@@ -875,7 +880,7 @@ export const updateTitle = createServerFn({ method: "POST" })
 export const updateVisibility = createServerFn({ method: "POST" })
   .inputValidator((input: { transcriptId: string; visibility: string }) => input)
   .handler(async ({ data: { transcriptId, visibility } }) => {
-    const db = createDrizzle(env.DB);
+    const db = createDrizzle();
     const userId = await getAuthenticatedUserId();
 
     // Verify transcript exists and user owns it
@@ -926,7 +931,7 @@ export const updateVisibility = createServerFn({ method: "POST" })
 export const deleteTranscript = createServerFn({ method: "POST" })
   .inputValidator((input: { transcriptId: string }) => input)
   .handler(async ({ data: { transcriptId } }) => {
-    const db = createDrizzle(env.DB);
+    const db = createDrizzle();
     const userId = await getAuthenticatedUserId();
 
     // Get user role to check if admin
@@ -959,7 +964,7 @@ export const deleteTranscript = createServerFn({ method: "POST" })
       : `private/${transcript.userId}/${transcript.transcriptId}.json`;
 
     // Delete from R2 first
-    await env.BUCKET.delete(r2Key);
+    await storage.delete(r2Key);
     logger.info("Deleted unified transcript from R2", { r2Key });
 
     // Delete transcript record from database
@@ -988,7 +993,7 @@ export const deleteTranscript = createServerFn({ method: "POST" })
 export const getJoinPageData = createServerFn({ method: "GET" })
   .inputValidator((code: string) => code)
   .handler(async ({ data: code }) => {
-    const db = createDrizzle(env.DB);
+    const db = createDrizzle();
     const auth = createAuth();
     const headers = getRequestHeaders();
 
@@ -1027,7 +1032,7 @@ export const getJoinPageData = createServerFn({ method: "GET" })
  */
 export const getAdminPageData = createServerFn({ method: "GET" }).handler(async () => {
   await requireAdmin();
-  const db = createDrizzle(env.DB);
+  const db = createDrizzle();
 
   const [stats, users] = await Promise.all([queries.getAdminAggregateStats(db), queries.getAdminUserStats(db)]);
 
@@ -1039,7 +1044,7 @@ export const getAdminPageData = createServerFn({ method: "GET" }).handler(async 
  * Consolidates getTeam and getSession into a single RPC call
  */
 export const getTeamPageData = createServerFn({ method: "GET" }).handler(async () => {
-  const db = createDrizzle(env.DB);
+  const db = createDrizzle();
   const { userId, session } = await requireActiveUser(getRequestHeaders(), db);
   const team = await queries.getUserTeam(db, userId);
   return { team, session };
@@ -1058,7 +1063,7 @@ export const getTeamDashboardData = createServerFn({ method: "GET" })
     return { days };
   })
   .handler(async ({ data: { days } }) => {
-    const db = createDrizzle(env.DB);
+    const db = createDrizzle();
     const { userId, session } = await requireActiveUser(getRequestHeaders(), db);
     const team = await queries.getUserTeam(db, userId);
 
@@ -1140,7 +1145,7 @@ export const getTeamDashboardData = createServerFn({ method: "GET" })
  * Consolidates getTranscriptsPaginated, getDailyActivity, and getRepos into a single RPC call
  */
 export const getHomePageData = createServerFn({ method: "GET" }).handler(async () => {
-  const db = createDrizzle(env.DB);
+  const db = createDrizzle();
   const userId = await getAuthenticatedUserId();
 
   const [paginatedResult, repos, dailyActivityResults] = await Promise.all([

@@ -1,4 +1,3 @@
-import { env } from "cloudflare:workers";
 import { createDrizzle, type DrizzleDB } from "../db";
 import * as queries from "../db/queries";
 import type { UserRole } from "../db/schema";
@@ -36,7 +35,7 @@ export async function requireActiveUserFromSession(session: AuthSession, dbOverr
   }
   const authenticatedSession = session as AuthenticatedSession;
 
-  const db = dbOverride ?? createDrizzle(env.DB);
+  const db = dbOverride ?? createDrizzle();
   let role: UserRole | null = null;
 
   try {

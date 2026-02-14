@@ -1,5 +1,5 @@
 import { Resend } from "resend";
-import { env } from "cloudflare:workers";
+import { env } from "../env";
 
 let resendClient: Resend | undefined;
 

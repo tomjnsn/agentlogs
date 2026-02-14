@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { json } from "@tanstack/react-start";
-import { env } from "cloudflare:workers";
 import { eq } from "drizzle-orm";
 import { createDrizzle } from "../../../db";
 import { transcripts } from "../../../db/schema";
@@ -11,7 +10,7 @@ export const Route = createFileRoute("/api/transcripts/clear")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const db = createDrizzle(env.DB);
+        const db = createDrizzle();
         logger.debug("Clear transcripts request received");
 
         let userId: string;
@@ -32,7 +31,6 @@ export const Route = createFileRoute("/api/transcripts/clear")({
 
         try {
           // Delete all transcripts for this user
-          // Note: Repos remain but transcriptCount is now computed dynamically
           const deletedTranscripts = await db.delete(transcripts).where(eq(transcripts.userId, userId)).returning();
 
           logger.info("Cleared all transcripts", {

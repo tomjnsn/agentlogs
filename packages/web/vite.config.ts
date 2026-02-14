@@ -1,6 +1,4 @@
 import path from "path";
-import { cloudflare } from "@cloudflare/vite-plugin";
-import { sentryVitePlugin } from "@sentry/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
@@ -14,6 +12,10 @@ import { websocketLogger } from "./src/vite-plugins/websocket-logger";
 export default defineConfig({
   build: {
     sourcemap: true,
+  },
+  ssr: {
+    noExternal: true,
+    external: ["better-sqlite3"],
   },
   server: {
     port: 3000,
@@ -32,22 +34,8 @@ export default defineConfig({
     }),
     tailwindcss(),
     tsconfigPaths(),
-    cloudflare({
-      viteEnvironment: { name: "ssr" },
-      // Use test database if VITE_USE_TEST_DB is set, otherwise use default .wrangler/state
-      persistState: process.env.VITE_USE_TEST_DB === "true" ? { path: ".wrangler-test/state" } : true,
-      configPath: "wrangler.jsonc",
-    }),
     tanstackStart(),
     viteReact(),
-    sentryVitePlugin({
-      org: "agentlogs",
-      project: "agentlogs",
-      authToken: process.env.SENTRY_AUTH_TOKEN,
-      sourcemaps: {
-        filesToDeleteAfterUpload: ["**/*.map"],
-      },
-    }),
   ],
   resolve: {
     alias: {
