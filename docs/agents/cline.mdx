@@ -13,6 +13,7 @@ Cline is an open source AI coding agent that brings frontier AI models directly 
 ## Features
 
 - **Automatic capture** - Transcripts are uploaded when a task completes or is cancelled
+- **Commit tracking** - Git commits made during a task are linked to the transcript
 - **Zero config** - A single CLI command installs the hooks
 
 ## Installation
@@ -35,12 +36,13 @@ Re-running `install` safely updates existing hooks managed by agentlogs. Hooks y
 
 ## How It Works
 
-Cline supports [file-based hooks](https://docs.cline.bot/features/hooks/hook-reference) — executable scripts that run at key points in a task's lifecycle. The install command creates two hooks:
+Cline supports [file-based hooks](https://docs.cline.bot/features/hooks/hook-reference) — executable scripts that run at key points in a task's lifecycle. The install command creates three hooks:
 
+- **`PostToolUse`** — after each tool execution, detects git commits and tracks the commit SHA against the transcript
 - **`TaskComplete`** — runs when Cline finishes a task, uploads the transcript
 - **`TaskCancel`** — runs when a task is cancelled, uploads what exists so far
 
-Each hook receives JSON from Cline via stdin containing the `taskId`, then calls `agentlogs cline upload` in the background to convert and upload the transcript from `~/.cline/data/tasks/`.
+Each hook pipes Cline's JSON payload to `agentlogs cline hook`, which routes by event type. Task uploads run in the background to avoid blocking Cline; commit tracking runs inline since it's fast.
 
 ## Manual Upload
 
