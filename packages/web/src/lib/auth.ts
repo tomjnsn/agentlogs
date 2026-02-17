@@ -4,10 +4,7 @@ import { bearer, deviceAuthorization } from "better-auth/plugins";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { env } from "cloudflare:workers";
 import { createDrizzle } from "../db";
-import * as queries from "../db/queries";
 import { logger } from "./logger";
-
-const ADMIN_EMAILS = ["hello@philippspiess.com", "skymk1@gmail.com"];
 
 /**
  * Per-request auth instance cache
@@ -60,18 +57,6 @@ export function createAuth() {
           username: {
             type: "string",
             required: false,
-          },
-        },
-      },
-      databaseHooks: {
-        user: {
-          create: {
-            after: async (user) => {
-              if (ADMIN_EMAILS.includes(user.email)) {
-                await queries.updateUserRole(db, user.id, "admin");
-                logger.info("Auto-assigned admin role to user", { email: user.email });
-              }
-            },
           },
         },
       },
