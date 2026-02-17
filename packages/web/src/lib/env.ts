@@ -21,4 +21,19 @@ export const env = {
   get RESEND_API_KEY() {
     return process.env.RESEND_API_KEY ?? "";
   },
+  get S3_ENDPOINT() {
+    return process.env.S3_ENDPOINT ?? "";
+  },
+  get S3_BUCKET() {
+    return process.env.S3_BUCKET ?? "";
+  },
+  get S3_REGION() {
+    return process.env.S3_REGION ?? "";
+  },
+  get S3_ACCESS_KEY() {
+    return process.env.S3_ACCESS_KEY ?? "";
+  },
+  get S3_SECRET_KEY() {
+    return process.env.S3_SECRET_KEY ?? "";
+  },
 };
