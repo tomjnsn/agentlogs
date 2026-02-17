@@ -8,7 +8,7 @@ COPY packages/web/package.json packages/web/
 COPY packages/shared/package.json packages/shared/
 COPY packages/cli/package.json packages/cli/
 
-# Install dependencies (skip native compilation - better-sqlite3 is SSR-external)
+# Install dependencies
 RUN bun install --ignore-scripts
 
 # Copy source code
@@ -17,7 +17,7 @@ COPY . .
 # Build the web application
 RUN bun --cwd packages/web build
 
-# Runtime stage - Node.js Alpine for native better-sqlite3
+# Runtime stage - Node.js Alpine (postgres.js is pure JS, no native modules needed)
 FROM node:22-alpine AS runtime
 
 WORKDIR /app
@@ -33,15 +33,14 @@ COPY --from=build /app/packages/web/migrations migrations
 COPY --from=build /app/packages/web/scripts/migrate.mjs scripts/migrate.mjs
 COPY --from=build /app/packages/web/scripts/serve.mjs scripts/serve.mjs
 
-# Install better-sqlite3 native module for runtime
-RUN npm install better-sqlite3@11.9.1
+# Install runtime dependencies (pure JS, no native builds)
+RUN npm install postgres drizzle-orm
 
 # Create data directories
 RUN mkdir -p /data/storage
 
 EXPOSE 3000
 
-ENV DB_PATH=/data/agentlogs.db
 ENV STORAGE_PATH=/data/storage
 ENV PORT=3000
 ENV NODE_ENV=production
