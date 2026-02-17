@@ -698,17 +698,16 @@ export async function getDailyActivityCounts(db: DrizzleDB, viewerId: string, da
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days + 1);
   startDate.setHours(0, 0, 0, 0);
-  const startTimestamp = Math.floor(startDate.getTime() / 1000);
 
   const results = await db
     .select({
-      date: sql<string>`DATE(${transcripts.createdAt}, 'unixepoch')`.as("date"),
+      date: sql<string>`${transcripts.createdAt}::date`.as("date"),
       count: sql<number>`CAST(COUNT(*) AS INTEGER)`.as("count"),
     })
     .from(transcripts)
-    .where(and(buildVisibilityCondition(viewerId), sql`${transcripts.createdAt} >= ${startTimestamp}`))
-    .groupBy(sql`DATE(${transcripts.createdAt}, 'unixepoch')`)
-    .orderBy(sql`DATE(${transcripts.createdAt}, 'unixepoch')`);
+    .where(and(buildVisibilityCondition(viewerId), sql`${transcripts.createdAt} >= ${startDate}`))
+    .groupBy(sql`${transcripts.createdAt}::date`)
+    .orderBy(sql`${transcripts.createdAt}::date`);
 
   return results;
 }
@@ -736,8 +735,8 @@ function buildTeamVisibleCondition(teamId: string) {
 /**
  * Build condition for transcripts visible to a team with date filter.
  */
-function buildTeamVisibleConditionWithDate(teamId: string, startTimestamp: number) {
-  return and(buildTeamVisibleCondition(teamId), sql`${transcripts.createdAt} >= ${startTimestamp}`);
+function buildTeamVisibleConditionWithDate(teamId: string, startDate: Date) {
+  return and(buildTeamVisibleCondition(teamId), sql`${transcripts.createdAt} >= ${startDate}`);
 }
 
 /**
@@ -747,7 +746,6 @@ export async function getTeamStats(db: DrizzleDB, teamId: string, days: number) 
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days + 1);
   startDate.setHours(0, 0, 0, 0);
-  const startTimestamp = Math.floor(startDate.getTime() / 1000);
 
   const [stats] = await db
     .select({
@@ -757,7 +755,7 @@ export async function getTeamStats(db: DrizzleDB, teamId: string, days: number) 
       linesModified: sql<number>`COALESCE(SUM(${transcripts.linesModified}), 0)`,
     })
     .from(transcripts)
-    .where(buildTeamVisibleConditionWithDate(teamId, startTimestamp));
+    .where(buildTeamVisibleConditionWithDate(teamId, startDate));
 
   return stats;
 }
@@ -769,17 +767,16 @@ export async function getTeamDailyActivity(db: DrizzleDB, teamId: string, days: 
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days + 1);
   startDate.setHours(0, 0, 0, 0);
-  const startTimestamp = Math.floor(startDate.getTime() / 1000);
 
   const results = await db
     .select({
-      date: sql<string>`DATE(${transcripts.createdAt}, 'unixepoch')`.as("date"),
+      date: sql<string>`${transcripts.createdAt}::date`.as("date"),
       count: sql<number>`CAST(COUNT(*) AS INTEGER)`.as("count"),
     })
     .from(transcripts)
-    .where(buildTeamVisibleConditionWithDate(teamId, startTimestamp))
-    .groupBy(sql`DATE(${transcripts.createdAt}, 'unixepoch')`)
-    .orderBy(sql`DATE(${transcripts.createdAt}, 'unixepoch')`);
+    .where(buildTeamVisibleConditionWithDate(teamId, startDate))
+    .groupBy(sql`${transcripts.createdAt}::date`)
+    .orderBy(sql`${transcripts.createdAt}::date`);
 
   return results;
 }
@@ -797,13 +794,12 @@ export async function getTeamActivityByUser(db: DrizzleDB, teamId: string, days:
     startDate.setDate(startDate.getDate() - days + 1);
     startDate.setHours(0, 0, 0, 0);
   }
-  const startTimestamp = Math.floor(startDate.getTime() / 1000);
 
   // Use hour grouping for 24h, day grouping otherwise
   const periodSql =
     days === 1
-      ? sql<string>`STRFTIME('%Y-%m-%d %H:00', ${transcripts.createdAt}, 'unixepoch')`
-      : sql<string>`DATE(${transcripts.createdAt}, 'unixepoch')`;
+      ? sql<string>`TO_CHAR(${transcripts.createdAt}, 'YYYY-MM-DD HH24:00')`
+      : sql<string>`${transcripts.createdAt}::date`;
 
   const results = await db
     .select({
@@ -814,7 +810,7 @@ export async function getTeamActivityByUser(db: DrizzleDB, teamId: string, days:
     })
     .from(transcripts)
     .innerJoin(user, eq(transcripts.userId, user.id))
-    .where(buildTeamVisibleConditionWithDate(teamId, startTimestamp))
+    .where(buildTeamVisibleConditionWithDate(teamId, startDate))
     .groupBy(periodSql, transcripts.userId, user.name)
     .orderBy(periodSql);
 
@@ -828,7 +824,6 @@ export async function getTeamMemberStats(db: DrizzleDB, teamId: string, days: nu
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days + 1);
   startDate.setHours(0, 0, 0, 0);
-  const startTimestamp = Math.floor(startDate.getTime() / 1000);
 
   // Get basic member stats
   const memberStats = await db
@@ -854,7 +849,7 @@ export async function getTeamMemberStats(db: DrizzleDB, teamId: string, days: nu
           and(eq(transcripts.visibility, "team"), eq(transcripts.sharedWithTeamId, teamId)),
           eq(transcripts.visibility, "public"),
         ),
-        sql`${transcripts.createdAt} >= ${startTimestamp}`,
+        sql`${transcripts.createdAt} >= ${startDate}`,
       ),
     )
     .where(eq(teamMembers.teamId, teamId))
@@ -877,7 +872,7 @@ export async function getTeamMemberStats(db: DrizzleDB, teamId: string, days: nu
           and(eq(transcripts.visibility, "team"), eq(transcripts.sharedWithTeamId, teamId)),
           eq(transcripts.visibility, "public"),
         ),
-        sql`${transcripts.createdAt} >= ${startTimestamp}`,
+        sql`${transcripts.createdAt} >= ${startDate}`,
         sql`${transcripts.model} IS NOT NULL`,
       ),
     )
@@ -900,7 +895,7 @@ export async function getTeamMemberStats(db: DrizzleDB, teamId: string, days: nu
           and(eq(transcripts.visibility, "team"), eq(transcripts.sharedWithTeamId, teamId)),
           eq(transcripts.visibility, "public"),
         ),
-        sql`${transcripts.createdAt} >= ${startTimestamp}`,
+        sql`${transcripts.createdAt} >= ${startDate}`,
       ),
     )
     .groupBy(transcripts.userId, transcripts.source)
@@ -943,7 +938,6 @@ export async function getTeamModelUsage(db: DrizzleDB, teamId: string, days: num
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days + 1);
   startDate.setHours(0, 0, 0, 0);
-  const startTimestamp = Math.floor(startDate.getTime() / 1000);
 
   const results = await db
     .select({
@@ -951,7 +945,7 @@ export async function getTeamModelUsage(db: DrizzleDB, teamId: string, days: num
       count: sql<number>`CAST(COUNT(*) AS INTEGER)`.as("count"),
     })
     .from(transcripts)
-    .where(and(buildTeamVisibleConditionWithDate(teamId, startTimestamp), sql`${transcripts.model} IS NOT NULL`))
+    .where(and(buildTeamVisibleConditionWithDate(teamId, startDate), sql`${transcripts.model} IS NOT NULL`))
     .groupBy(transcripts.model)
     .orderBy(desc(sql`count`));
 
@@ -968,7 +962,6 @@ export async function getTeamAgentUsage(db: DrizzleDB, teamId: string, days: num
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days + 1);
   startDate.setHours(0, 0, 0, 0);
-  const startTimestamp = Math.floor(startDate.getTime() / 1000);
 
   const results = await db
     .select({
@@ -976,7 +969,7 @@ export async function getTeamAgentUsage(db: DrizzleDB, teamId: string, days: num
       count: sql<number>`CAST(COUNT(*) AS INTEGER)`.as("count"),
     })
     .from(transcripts)
-    .where(buildTeamVisibleConditionWithDate(teamId, startTimestamp))
+    .where(buildTeamVisibleConditionWithDate(teamId, startDate))
     .groupBy(transcripts.source)
     .orderBy(desc(sql`count`));
 
@@ -990,21 +983,19 @@ export async function getTeamAgentUsage(db: DrizzleDB, teamId: string, days: num
  * OR if any team-shared transcript (with proper access) references it.
  */
 export async function canAccessBlob(db: DrizzleDB, viewerId: string, blobSha256: string) {
-  // Use raw SQLite client for complex EXISTS query
-  const result = db.$client
-    .prepare(`
+  const result = await db.execute(sql`
     SELECT 1 FROM transcript_blobs tb
     INNER JOIN transcripts t ON tb.transcript_id = t.id
-    WHERE tb.sha256 = ?
+    WHERE tb.sha256 = ${blobSha256}
     AND (
-      t.user_id = ?
+      t.user_id = ${viewerId}
       OR t.visibility = 'public'
       OR (
         t.visibility = 'team'
         AND EXISTS (
           SELECT 1 FROM team_members viewer_tm
           WHERE viewer_tm.team_id = t.shared_with_team_id
-          AND viewer_tm.user_id = ?
+          AND viewer_tm.user_id = ${viewerId}
         )
         AND EXISTS (
           SELECT 1 FROM team_members owner_tm
@@ -1014,10 +1005,9 @@ export async function canAccessBlob(db: DrizzleDB, viewerId: string, blobSha256:
       )
     )
     LIMIT 1
-  `)
-    .get(blobSha256, viewerId, viewerId);
+  `);
 
-  return result !== undefined;
+  return result.length > 0;
 }
 
 /**
@@ -1025,15 +1015,13 @@ export async function canAccessBlob(db: DrizzleDB, viewerId: string, blobSha256:
  * Used for unauthenticated access to blobs.
  */
 export async function canAccessPublicBlob(db: DrizzleDB, blobSha256: string) {
-  const result = db.$client
-    .prepare(`
+  const result = await db.execute(sql`
     SELECT 1 FROM transcript_blobs tb
     INNER JOIN transcripts t ON tb.transcript_id = t.id
-    WHERE tb.sha256 = ?
+    WHERE tb.sha256 = ${blobSha256}
     AND t.visibility = 'public'
     LIMIT 1
-  `)
-    .get(blobSha256);
+  `);
 
-  return result !== undefined;
+  return result.length > 0;
 }

@@ -3,8 +3,8 @@ import { defineConfig } from "drizzle-kit";
 export default defineConfig({
   schema: "./src/db/schema.ts",
   out: "./migrations",
-  dialect: "sqlite",
+  dialect: "postgresql",
   dbCredentials: {
-    url: process.env.DB_PATH || "file:local.db",
+    url: process.env.DATABASE_URL || "postgres://localhost:5432/agentlogs",
   },
 });

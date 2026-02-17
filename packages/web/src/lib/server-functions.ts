@@ -1,7 +1,7 @@
 import { init } from "@paralleldrive/cuid2";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { createDrizzle } from "../db";
 import * as queries from "../db/queries";
 import {
@@ -584,9 +584,6 @@ export const deleteTeam = createServerFn({ method: "POST" })
       throw new Error("Only the owner can delete the team");
     }
 
-    // Enable foreign keys for local D1 (remote D1 has them enabled by default)
-    // This ensures CASCADE deletes work correctly
-    await db.run(sql`PRAGMA foreign_keys = ON`);
     await db.delete(teams).where(eq(teams.id, teamId));
 
     logger.info("Team deleted", { teamId, deletedBy: userId });

@@ -29,7 +29,7 @@ export function createAuth() {
 
   authInstanceCache = betterAuth({
     database: drizzleAdapter(db, {
-      provider: "sqlite",
+      provider: "pg",
     }),
     user: {
       additionalFields: {
