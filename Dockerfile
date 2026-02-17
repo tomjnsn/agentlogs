@@ -34,7 +34,7 @@ COPY --from=build /app/packages/web/scripts/migrate.mjs scripts/migrate.mjs
 COPY --from=build /app/packages/web/scripts/serve.mjs scripts/serve.mjs
 
 # Install runtime dependencies (pure JS, no native builds)
-RUN npm install postgres drizzle-orm
+RUN npm install postgres drizzle-orm @aws-sdk/client-s3
 
 # Create data directories
 RUN mkdir -p /data/storage

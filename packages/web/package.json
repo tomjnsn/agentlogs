@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@agentlogs/shared": "workspace:*",
+    "@aws-sdk/client-s3": "^3.991.0",
     "@base-ui/react": "^1.1.0",
     "@fontsource/instrument-serif": "^5.2.8",
     "@fontsource/jetbrains-mono": "^5.2.8",
