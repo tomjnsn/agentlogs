@@ -1,6 +1,6 @@
 import { init } from "@paralleldrive/cuid2";
-import { relations, sql } from "drizzle-orm";
-import { index, integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { relations } from "drizzle-orm";
+import { boolean, doublePrecision, index, integer, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
 let cuidGenerator: (() => string) | undefined;
 
@@ -24,32 +24,28 @@ export type UserRole = (typeof userRoles)[number];
 export const visibilityOptions = ["private", "team", "public"] as const;
 export type VisibilityOption = (typeof visibilityOptions)[number];
 
-export const user = sqliteTable("user", {
+export const user = pgTable("user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   username: text("username").notNull(),
   email: text("email").notNull().unique(),
-  emailVerified: integer("email_verified", { mode: "boolean" }).default(false).notNull(),
+  emailVerified: boolean("email_verified").default(false).notNull(),
   image: text("image"),
   role: text("role").$type<UserRole>().default("user").notNull(),
-  welcomeEmailSentAt: integer("welcome_email_sent_at", { mode: "timestamp_ms" }),
-  createdAt: integer("created_at", { mode: "timestamp_ms" })
-    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-    .notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
-    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+  welcomeEmailSentAt: timestamp("welcome_email_sent_at", { withTimezone: true, mode: "date" }),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+    .defaultNow()
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
 });
 
-export const session = sqliteTable("session", {
+export const session = pgTable("session", {
   id: text("id").primaryKey(),
-  expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true, mode: "date" }).notNull(),
   token: text("token").notNull().unique(),
-  createdAt: integer("created_at", { mode: "timestamp_ms" })
-    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-    .notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
   ipAddress: text("ip_address"),
@@ -59,7 +55,7 @@ export const session = sqliteTable("session", {
     .references(() => user.id, { onDelete: "cascade" }),
 });
 
-export const account = sqliteTable("account", {
+export const account = pgTable("account", {
   id: text("id").primaryKey(),
   accountId: text("account_id").notNull(),
   providerId: text("provider_id").notNull(),
@@ -69,44 +65,42 @@ export const account = sqliteTable("account", {
   accessToken: text("access_token"),
   refreshToken: text("refresh_token"),
   idToken: text("id_token"),
-  accessTokenExpiresAt: integer("access_token_expires_at", {
-    mode: "timestamp_ms",
+  accessTokenExpiresAt: timestamp("access_token_expires_at", {
+    withTimezone: true,
+    mode: "date",
   }),
-  refreshTokenExpiresAt: integer("refresh_token_expires_at", {
-    mode: "timestamp_ms",
+  refreshTokenExpiresAt: timestamp("refresh_token_expires_at", {
+    withTimezone: true,
+    mode: "date",
   }),
   scope: text("scope"),
   password: text("password"),
-  createdAt: integer("created_at", { mode: "timestamp_ms" })
-    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-    .notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
 });
 
-export const verification = sqliteTable("verification", {
+export const verification = pgTable("verification", {
   id: text("id").primaryKey(),
   identifier: text("identifier").notNull(),
   value: text("value").notNull(),
-  expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
-  createdAt: integer("created_at", { mode: "timestamp_ms" })
-    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-    .notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
-    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+  expiresAt: timestamp("expires_at", { withTimezone: true, mode: "date" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+    .defaultNow()
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
 });
 
-export const deviceCode = sqliteTable("device_code", {
+export const deviceCode = pgTable("device_code", {
   id: text("id").primaryKey(),
   deviceCode: text("device_code").notNull(),
   userCode: text("user_code").notNull(),
   userId: text("user_id"),
-  expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true, mode: "date" }).notNull(),
   status: text("status").notNull(),
-  lastPolledAt: integer("last_polled_at", { mode: "timestamp_ms" }),
+  lastPolledAt: timestamp("last_polled_at", { withTimezone: true, mode: "date" }),
   pollingInterval: integer("polling_interval"),
   clientId: text("client_id"),
   scope: text("scope"),
@@ -115,19 +109,19 @@ export const deviceCode = sqliteTable("device_code", {
 // =============================================================================
 // AgentLogs tables (with userId for multi-tenancy)
 // =============================================================================
-export const repos = sqliteTable("repos", {
+export const repos = pgTable("repos", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => generateId()),
   repo: text("repo").notNull().unique(),
   lastActivity: text("last_activity"),
-  isPublic: integer("is_public", { mode: "boolean" }),
-  createdAt: integer("created_at", { mode: "timestamp" })
+  isPublic: boolean("is_public"),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
     .notNull()
     .$defaultFn(() => new Date()),
 });
 
-export const transcripts = sqliteTable(
+export const transcripts = pgTable(
   "transcripts",
   {
     id: text("id")
@@ -145,14 +139,14 @@ export const transcripts = sqliteTable(
     sha256: text("sha256").notNull(),
     transcriptId: text("transcript_id").notNull(),
     source: text("source").notNull(),
-    createdAt: integer("created_at", { mode: "timestamp" })
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
       .notNull()
       .$defaultFn(() => new Date()),
     preview: text("preview"),
     summary: text("summary"),
     model: text("model"),
     clientVersion: text("client_version"),
-    costUsd: real("cost_usd").notNull(),
+    costUsd: doublePrecision("cost_usd").notNull(),
     blendedTokens: integer("blended_tokens").notNull(),
     messageCount: integer("message_count").notNull(),
     toolCount: integer("tool_count").notNull().default(0),
@@ -172,14 +166,12 @@ export const transcripts = sqliteTable(
     cwd: text("cwd"),
     previewBlobSha256: text("preview_blob_sha256"),
 
-    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
-      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .defaultNow()
       .$onUpdate(() => /* @__PURE__ */ new Date())
       .notNull(),
   },
   (table) => ({
-    // Note: SQLite unique index on (repoId, transcriptId) where repoId can be null
-    // Multiple rows with (null, transcriptId) are allowed, so we need separate constraint
     repoTranscriptIdx: uniqueIndex("idx_repo_transcript").on(table.repoId, table.transcriptId),
     userTranscriptIdx: uniqueIndex("idx_user_transcript").on(table.userId, table.transcriptId),
     repoIdx: index("idx_repo_id").on(table.repoId),
@@ -188,7 +180,7 @@ export const transcripts = sqliteTable(
   }),
 );
 
-export const commitTracking = sqliteTable(
+export const commitTracking = pgTable(
   "commit_tracking",
   {
     id: text("id")
@@ -205,7 +197,7 @@ export const commitTracking = sqliteTable(
     commitSha: text("commit_sha"),
     commitTitle: text("commit_title"),
     branch: text("branch"),
-    createdAt: integer("created_at", { mode: "timestamp" })
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
       .notNull()
       .$defaultFn(() => new Date()),
   },
@@ -223,11 +215,11 @@ export const commitTracking = sqliteTable(
  * Global blob storage - content-addressed by SHA256
  * Each unique blob (image/screenshot) is stored once
  */
-export const blobs = sqliteTable("blobs", {
+export const blobs = pgTable("blobs", {
   sha256: text("sha256").primaryKey(),
   mediaType: text("media_type").notNull(),
   size: integer("size").notNull(),
-  createdAt: integer("created_at", { mode: "timestamp" })
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
     .notNull()
     .$defaultFn(() => new Date()),
 });
@@ -236,7 +228,7 @@ export const blobs = sqliteTable("blobs", {
  * Junction table linking transcripts to blobs
  * Enables access control - user can access blob if they own a transcript that references it
  */
-export const transcriptBlobs = sqliteTable(
+export const transcriptBlobs = pgTable(
   "transcript_blobs",
   {
     id: text("id")
@@ -263,7 +255,7 @@ export const transcriptBlobs = sqliteTable(
  * Teams - each team has one owner
  * Name is auto-generated as "[Owner]'s Team"
  */
-export const teams = sqliteTable("teams", {
+export const teams = pgTable("teams", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => generateId()),
@@ -271,11 +263,11 @@ export const teams = sqliteTable("teams", {
   ownerId: text("owner_id")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
-  createdAt: integer("created_at", { mode: "timestamp" })
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
     .notNull()
     .$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
-    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+  updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+    .defaultNow()
     .$onUpdate(() => new Date())
     .notNull(),
 });
@@ -285,7 +277,7 @@ export const teams = sqliteTable("teams", {
  * UNIQUE(teamId, userId) allows future multi-team support
  * App code enforces 0-1 team for MVP
  */
-export const teamMembers = sqliteTable(
+export const teamMembers = pgTable(
   "team_members",
   {
     id: text("id")
@@ -297,7 +289,7 @@ export const teamMembers = sqliteTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    joinedAt: integer("joined_at", { mode: "timestamp" })
+    joinedAt: timestamp("joined_at", { withTimezone: true, mode: "date" })
       .notNull()
       .$defaultFn(() => new Date()),
   },
@@ -312,7 +304,7 @@ export const teamMembers = sqliteTable(
  * Team invites - invite links with 7-day expiry
  * One active invite per team (generating new one replaces old)
  */
-export const teamInvites = sqliteTable(
+export const teamInvites = pgTable(
   "team_invites",
   {
     id: text("id")
@@ -322,8 +314,8 @@ export const teamInvites = sqliteTable(
       .notNull()
       .references(() => teams.id, { onDelete: "cascade" }),
     code: text("code").notNull().unique(),
-    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
-    createdAt: integer("created_at", { mode: "timestamp" })
+    expiresAt: timestamp("expires_at", { withTimezone: true, mode: "date" }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
       .notNull()
       .$defaultFn(() => new Date()),
   },
