@@ -24,7 +24,10 @@ const client = postgres(DATABASE_URL, { max: 1 });
 const db = drizzle(client);
 
 try {
-  await migrate(db, { migrationsFolder: resolve(__dirname, "../migrations") });
+  await migrate(db, {
+    migrationsFolder: resolve(__dirname, "../migrations"),
+    migrationsSchema: "public",
+  });
   console.log("[migrate] Migrations applied successfully.");
 } catch (error) {
   console.error("[migrate] Migration failed:", error);
