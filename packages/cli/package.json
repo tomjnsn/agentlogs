@@ -15,6 +15,11 @@
   ],
   "homepage": "https://agentlogs.ai",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/agentlogs/agentlogs",
+    "directory": "packages/cli"
+  },
   "bin": {
     "agentlogs": "dist/index.js"
   },
