@@ -1,6 +1,6 @@
 {
-  "id": "01a03271-e7da-42c3-ad83-c42130873d4d",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "b2c04382-f8eb-53d4-be94-d53241984e5e",
+  "prevId": "01a03271-e7da-42c3-ad83-c42130873d4d",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1236,7 +1236,7 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "default": "'user'"
+          "default": "'waitlist'"
         },
         "welcome_email_sent_at": {
           "name": "welcome_email_sent_at",
