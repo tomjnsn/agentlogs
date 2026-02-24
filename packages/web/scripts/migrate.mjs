@@ -3,6 +3,8 @@
 /**
  * Database migration runner for self-hosted PostgreSQL deployments.
  * Uses Drizzle's built-in migrator to apply migrations from the migrations folder.
+ *
+ * Migration tracking is stored in public.__drizzle_migrations (migrationsSchema: "public").
  */
 
 import { drizzle } from "drizzle-orm/postgres-js";
@@ -24,7 +26,10 @@ const client = postgres(DATABASE_URL, { max: 1 });
 const db = drizzle(client);
 
 try {
-  await migrate(db, { migrationsFolder: resolve(__dirname, "../migrations") });
+  await migrate(db, {
+    migrationsFolder: resolve(__dirname, "../migrations"),
+    migrationsSchema: "public",
+  });
   console.log("[migrate] Migrations applied successfully.");
 } catch (error) {
   console.error("[migrate] Migration failed:", error);
