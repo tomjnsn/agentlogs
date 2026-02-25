@@ -705,7 +705,7 @@ export async function getDailyActivityCounts(db: DrizzleDB, viewerId: string, da
       count: sql<number>`CAST(COUNT(*) AS INTEGER)`.as("count"),
     })
     .from(transcripts)
-    .where(and(buildVisibilityCondition(viewerId), sql`${transcripts.createdAt} >= ${startDate}`))
+    .where(and(buildVisibilityCondition(viewerId), sql`${transcripts.createdAt} >= ${startDate.toISOString()}`))
     .groupBy(sql`${transcripts.createdAt}::date`)
     .orderBy(sql`${transcripts.createdAt}::date`);
 
@@ -736,7 +736,7 @@ function buildTeamVisibleCondition(teamId: string) {
  * Build condition for transcripts visible to a team with date filter.
  */
 function buildTeamVisibleConditionWithDate(teamId: string, startDate: Date) {
-  return and(buildTeamVisibleCondition(teamId), sql`${transcripts.createdAt} >= ${startDate}`);
+  return and(buildTeamVisibleCondition(teamId), sql`${transcripts.createdAt} >= ${startDate.toISOString()}`);
 }
 
 /**
@@ -849,7 +849,7 @@ export async function getTeamMemberStats(db: DrizzleDB, teamId: string, days: nu
           and(eq(transcripts.visibility, "team"), eq(transcripts.sharedWithTeamId, teamId)),
           eq(transcripts.visibility, "public"),
         ),
-        sql`${transcripts.createdAt} >= ${startDate}`,
+        sql`${transcripts.createdAt} >= ${startDate.toISOString()}`,
       ),
     )
     .where(eq(teamMembers.teamId, teamId))
@@ -872,7 +872,7 @@ export async function getTeamMemberStats(db: DrizzleDB, teamId: string, days: nu
           and(eq(transcripts.visibility, "team"), eq(transcripts.sharedWithTeamId, teamId)),
           eq(transcripts.visibility, "public"),
         ),
-        sql`${transcripts.createdAt} >= ${startDate}`,
+        sql`${transcripts.createdAt} >= ${startDate.toISOString()}`,
         sql`${transcripts.model} IS NOT NULL`,
       ),
     )
@@ -895,7 +895,7 @@ export async function getTeamMemberStats(db: DrizzleDB, teamId: string, days: nu
           and(eq(transcripts.visibility, "team"), eq(transcripts.sharedWithTeamId, teamId)),
           eq(transcripts.visibility, "public"),
         ),
-        sql`${transcripts.createdAt} >= ${startDate}`,
+        sql`${transcripts.createdAt} >= ${startDate.toISOString()}`,
       ),
     )
     .groupBy(transcripts.userId, transcripts.source)
