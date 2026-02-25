@@ -94,12 +94,8 @@
           "name": "account_user_id_user_id_fk",
           "tableFrom": "account",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -243,12 +239,8 @@
           "name": "commit_tracking_user_id_user_id_fk",
           "tableFrom": "commit_tracking",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -256,12 +248,8 @@
           "name": "commit_tracking_transcript_id_transcripts_id_fk",
           "tableFrom": "commit_tracking",
           "tableTo": "transcripts",
-          "columnsFrom": [
-            "transcript_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["transcript_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -387,9 +375,7 @@
         "repos_repo_unique": {
           "name": "repos_repo_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "repo"
-          ]
+          "columns": ["repo"]
         }
       },
       "policies": {},
@@ -456,12 +442,8 @@
           "name": "session_user_id_user_id_fk",
           "tableFrom": "session",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -471,9 +453,7 @@
         "session_token_unique": {
           "name": "session_token_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "token"
-          ]
+          "columns": ["token"]
         }
       },
       "policies": {},
@@ -537,12 +517,8 @@
           "name": "team_invites_team_id_teams_id_fk",
           "tableFrom": "team_invites",
           "tableTo": "teams",
-          "columnsFrom": [
-            "team_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["team_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -552,9 +528,7 @@
         "team_invites_code_unique": {
           "name": "team_invites_code_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "code"
-          ]
+          "columns": ["code"]
         }
       },
       "policies": {},
@@ -648,12 +622,8 @@
           "name": "team_members_team_id_teams_id_fk",
           "tableFrom": "team_members",
           "tableTo": "teams",
-          "columnsFrom": [
-            "team_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["team_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -661,12 +631,8 @@
           "name": "team_members_user_id_user_id_fk",
           "tableFrom": "team_members",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -719,12 +685,8 @@
           "name": "teams_owner_id_user_id_fk",
           "tableFrom": "teams",
           "tableTo": "user",
-          "columnsFrom": [
-            "owner_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["owner_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -801,12 +763,8 @@
           "name": "transcript_blobs_transcript_id_transcripts_id_fk",
           "tableFrom": "transcript_blobs",
           "tableTo": "transcripts",
-          "columnsFrom": [
-            "transcript_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["transcript_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -814,12 +772,8 @@
           "name": "transcript_blobs_sha256_blobs_sha256_fk",
           "tableFrom": "transcript_blobs",
           "tableTo": "blobs",
-          "columnsFrom": [
-            "sha256"
-          ],
-          "columnsTo": [
-            "sha256"
-          ],
+          "columnsFrom": ["sha256"],
+          "columnsTo": ["sha256"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1148,12 +1102,8 @@
           "name": "transcripts_repo_id_repos_id_fk",
           "tableFrom": "transcripts",
           "tableTo": "repos",
-          "columnsFrom": [
-            "repo_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["repo_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1161,12 +1111,8 @@
           "name": "transcripts_user_id_user_id_fk",
           "tableFrom": "transcripts",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1174,12 +1120,8 @@
           "name": "transcripts_shared_with_team_id_teams_id_fk",
           "tableFrom": "transcripts",
           "tableTo": "teams",
-          "columnsFrom": [
-            "shared_with_team_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["shared_with_team_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1266,9 +1208,7 @@
         "user_email_unique": {
           "name": "user_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         }
       },
       "policies": {},
